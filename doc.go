@@ -134,4 +134,4 @@ secure the additional hop as well, but typically -remote is aimed at the 127.0.0
 which will be internal to the remote host itself and so needs no encryption.
 
 */
-package gosshtun
+package sshego

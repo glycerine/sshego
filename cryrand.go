@@ -1,10 +1,10 @@
-package gosshtun
+package sshego
 
 import (
 	cryrand "crypto/rand"
 	"encoding/binary"
 
-	"github.com/glycerine/gosshtun/dict"
+	"github.com/glycerine/sshego/dict"
 )
 
 // Use crypto/rand to get an random int64

@@ -1,4 +1,4 @@
-package gosshtun
+package sshego
 
 import (
 	"bufio"

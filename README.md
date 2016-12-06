@@ -1,6 +1,6 @@
-# gosshtun
+# sshego
 
-`gosshtun` is a golang (Go) library for ssh
+`sshego` is a golang (Go) library for ssh
 tunneling (secure port forwarding). It also offers an
 embeddable 3-factor authentication sshd server,
 which can be useful for securing reverse forwards.
@@ -32,7 +32,7 @@ than OpenVPN.
 [1] http://serverfault.com/questions/653211/ssh-tunneling-is-faster-than-openvpn-could-it-be
 
 In any case, you should realize that this is principally an ssh
-client. In its principal use, gosshtun is the equivalent
+client. In its principal use, sshego is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
 There is also an optional sshd service that can be run
 to add security layers to the reverse tunnel.
@@ -58,11 +58,12 @@ same ssh tunnel.
 We check the sshd server's host key. We prevent MITM attacks
 by only allowing new servers if `-new` is given.
 
-You should give `-new` only once at setup time.
+When running the standalone `gosshtun` to test
+a foward, you should give `-new` only once at setup time.
 
-Then the lack of `-new` can protect you on subsequent runs,
+Then the lack of `-new` protects you on subsequent runs,
 because the server's host key must match what we were
-given the first time.
+given the very first time.
 
 # flags accepted, see `gosshtun -h`
 
@@ -157,12 +158,12 @@ The `-user` flag should be used if your local $USER is different from that on th
 
 # source code for gosshtun command
 
-See `github.com/glycerine/gosshtun/cmd/gosshtun/main.go` for the source code. This
+See `github.com/glycerine/sshego/cmd/gosshtun/main.go` for the source code. This
 also serves as an example of how to use the library.
 
 # host key storage location (default)
 
-`~/.ssh/gosshtun.known.hosts.json.snappy`
+`~/.ssh/sshego.known.hosts.json.snappy`
 
 # prep before running
 
@@ -180,7 +181,7 @@ c) fields recognized
 
 ~~~
 #
-# config file for gosshtun:
+# config file for sshego:
 #
 SSHD_ADDR="1.2.3.4:22"
 FWD_LISTEN_ADDR="127.0.0.1:8888"
@@ -189,10 +190,10 @@ REV_LISTEN_ADDR=""
 REV_REMOTE_ADDR=""
 SSHD_LOGIN_USERNAME="$USER"
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/id_rsa_nopw"
-SSH_KNOWN_HOSTS_PATH="$HOME/.ssh/gosshtun.known.hosts"
+SSH_KNOWN_HOSTS_PATH="$HOME/.ssh/.sshego.known.hosts"
 
 # optional in-process sshd
-EMBEDDED_SSHD_HOST_DB_PATH="$HOME/.ssh/gosshtun.sshd.db"
+EMBEDDED_SSHD_HOST_DB_PATH="$HOME/.ssh/.sshego.sshd.db"
 EMBEDDED_SSHD_LISTEN_ADDR="127.0.0.1:2022"
 ~~~
 

@@ -1,4 +1,4 @@
-package gosshtun
+package sshego
 
 /*
 See blog: https://blog.gopheracademy.com/go-and-ssh/

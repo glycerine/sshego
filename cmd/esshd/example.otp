@@ -1,1 +1,0 @@
-otpauth://totp/example.com:alice@example.com?algorithm=SHA1&digits=6&issuer=example.com&period=30&secret=ZPUA22GICQTWDV6E
