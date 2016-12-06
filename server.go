@@ -339,7 +339,16 @@ func (e *Esshd) Start() {
 			panic(msg)
 			return
 		}
+		var k int64
 		for {
+			k++
+			// crude but effective rate login rate limiting:
+			// limit attempts to 1 per second.
+			// TODO: notice bad login IPs and if too many, block the IP.
+			if k > 1 {
+				time.Sleep(500 * time.Millisecond)
+			}
+
 			timeoutMillisec := 1000
 			err = listener.(*net.TCPListener).SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
 			panicOn(err)
