@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled 
+b84416093b7c9f60b0b386057dc87827a51a4572 refs/remotes/origin/APIv3
+da43f5534154ff293b63e2e7cbfe8b7fa9c0fccc refs/remotes/origin/create-acceptance-tests
+9f63922ba672c1a995eb9e43d132f99c970cc8ce refs/remotes/origin/custom-client
+6268390555f864abd8555d3f69fbb39ca0345caa refs/remotes/origin/godoc-cleanup
+369a1fa57ce6fb314e627087b9fff0db5c266c0f refs/remotes/origin/master
+2845d46cc438540b4244c82190006fa0f7108afa refs/remotes/origin/misc-changes
+1e3b6e0a57e91d6d38786e264afc5d6fbe5fd28f refs/tags/v1.0.0
+9e0fc0daca24724a102e9adec6ec19040213dce0 refs/tags/v1.0.1
+369a1fa57ce6fb314e627087b9fff0db5c266c0f refs/tags/v1.0.2

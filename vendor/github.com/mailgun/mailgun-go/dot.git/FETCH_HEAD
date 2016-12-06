@@ -1,0 +1,6 @@
+369a1fa57ce6fb314e627087b9fff0db5c266c0f		branch 'master' of https://github.com/mailgun/mailgun-go
+b84416093b7c9f60b0b386057dc87827a51a4572	not-for-merge	branch 'APIv3' of https://github.com/mailgun/mailgun-go
+da43f5534154ff293b63e2e7cbfe8b7fa9c0fccc	not-for-merge	branch 'create-acceptance-tests' of https://github.com/mailgun/mailgun-go
+9f63922ba672c1a995eb9e43d132f99c970cc8ce	not-for-merge	branch 'custom-client' of https://github.com/mailgun/mailgun-go
+6268390555f864abd8555d3f69fbb39ca0345caa	not-for-merge	branch 'godoc-cleanup' of https://github.com/mailgun/mailgun-go
+2845d46cc438540b4244c82190006fa0f7108afa	not-for-merge	branch 'misc-changes' of https://github.com/mailgun/mailgun-go

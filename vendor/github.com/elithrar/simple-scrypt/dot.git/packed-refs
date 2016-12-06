@@ -1,0 +1,8 @@
+# pack-refs with: peeled fully-peeled 
+c0b82ba3a8fd8bb27c1207c90f853a709c8b1709 refs/remotes/origin/ci/travis-go-1.6
+2325946f714c95de4a6088202c402fbdfa64163b refs/remotes/origin/master
+47d66e6a86ff948a82060effb4bbd82bffdf0f1d refs/tags/v0.1
+^86d98541dd8cad5935a83bad5e054567f9b28910
+91677dbb137ba54a115939f6df798180b91447f6 refs/tags/v1.0
+^0c163cec9afe2891d191aebc81c5c6c292294eae
+47767683c6c880a9f89e48d376c70de7f5268951 refs/tags/v1.1
