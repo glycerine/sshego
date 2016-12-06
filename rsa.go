@@ -47,8 +47,9 @@ func GenRSAKeyPair(rsaFile string, bits int, email string) (priv *rsa.PrivateKey
 		if email != "" {
 			p("adding in email")
 			var by bytes.Buffer
-			fmt.Fprintf(&by, " %s", email)
+			fmt.Fprintf(&by, " %s\n", email)
 			n := len(pubBytes)
+			// overwrite the newline
 			pubBytes = append(pubBytes[:n-1], by.Bytes()...)
 		}
 
