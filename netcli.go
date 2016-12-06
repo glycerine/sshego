@@ -17,8 +17,6 @@ func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath
 	nConn, err := net.Dial("tcp", addr)
 	panicOn(err)
 
-	//	tcpC := nConn.(*net.TCPConn)
-
 	deadline := time.Now().Add(time.Second * 10)
 	err = nConn.SetDeadline(deadline)
 	panicOn(err)
@@ -52,4 +50,44 @@ func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath
 	panicOn(err)
 
 	return r.TOTPpath, r.QrPath, r.PrivateKeyPath, nil
+}
+
+func (cfg *SshegoConfig) TcpClientUserDel(user *User) error {
+
+	// send newUserCmd followed by the msgp marshalled user
+	sendMe, err := user.MarshalMsg(nil)
+	panicOn(err)
+
+	addr := fmt.Sprintf("127.0.0.1:%v", cfg.SshegoSystemMutexPort)
+	nConn, err := net.Dial("tcp", addr)
+	panicOn(err)
+
+	deadline := time.Now().Add(time.Second * 10)
+	err = nConn.SetDeadline(deadline)
+	panicOn(err)
+
+	_, err = nConn.Write(DelUserCmd)
+	panicOn(err)
+
+	_, err = nConn.Write(sendMe)
+	panicOn(err)
+
+	// read response
+	deadline = time.Now().Add(time.Second * 10)
+	err = nConn.SetDeadline(deadline)
+	panicOn(err)
+
+	dat, err := ioutil.ReadAll(nConn)
+	panicOn(err)
+
+	n := len(DelUserReply)
+	if len(dat) < n {
+		panic(fmt.Errorf("expected '%s' preamble, but got '%s' of length %v", NewUserReply, string(dat), len(dat)))
+	}
+	p("dat = '%v'", string(dat))
+
+	err = nConn.Close()
+	panicOn(err)
+
+	return nil
 }

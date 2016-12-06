@@ -28,8 +28,12 @@ type Esshd struct {
 	reqStop              chan bool
 	addUserToDatabase    chan *User
 	replyWithCreatedUser chan *User
-	mut                  sync.Mutex
-	stopRequested        bool
+
+	delUserReq           chan *User
+	replyWithDeletedDone chan bool
+
+	mut           sync.Mutex
+	stopRequested bool
 
 	cr *CommandRecv
 }
@@ -56,6 +60,8 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 		reqStop:              make(chan bool),
 		addUserToDatabase:    make(chan *User),
 		replyWithCreatedUser: make(chan *User),
+		delUserReq:           make(chan *User),
+		replyWithDeletedDone: make(chan bool),
 	}
 	err := srv.cfg.NewHostDb()
 	panicOn(err)
@@ -118,12 +124,21 @@ type CommandRecv struct {
 
 	addUserReq           chan *User
 	replyWithCreatedUser chan *User
-	reqStop              chan bool
-	Done                 chan bool
+
+	delUserReq           chan *User
+	replyWithDeletedDone chan bool
+
+	reqStop chan bool
+	Done    chan bool
 }
 
-var NewUserCmd = []byte("0NEWUSER")
-var NewUserReply = []byte("0REPLY")
+var NewUserCmd = []byte("00NEWUSER___")
+var NewUserCmdStr = string(NewUserCmd)
+var NewUserReply = []byte("00REPLY_____")
+
+var DelUserCmd = []byte("01DELUSER___")
+var DelUserCmdStr = string(DelUserCmd)
+var DelUserReply = []byte("01REPLY_____")
 
 func (e *Esshd) NewCommandRecv() *CommandRecv {
 	return &CommandRecv{
@@ -134,6 +149,8 @@ func (e *Esshd) NewCommandRecv() *CommandRecv {
 		reqStop:              make(chan bool),
 		Done:                 make(chan bool),
 		replyWithCreatedUser: e.replyWithCreatedUser,
+		delUserReq:           e.delUserReq,
+		replyWithDeletedDone: e.replyWithDeletedDone,
 	}
 }
 
@@ -181,57 +198,87 @@ func (cr *CommandRecv) Start() error {
 				}
 
 				by := make([]byte, len(NewUserCmd))
-				n, err := nConn.Read(by)
+				_, err := nConn.Read(by)
 				if err != nil {
 					log.Printf("warning: CommandRecv: nConn.Read ignoring "+
 						"Read error '%v'; could be timeout.", err)
 					nConn.Close()
 					continue mainloop
 				}
-
-				if n != len(NewUserCmd) || bytes.Compare(by, NewUserCmd) != 0 {
+				cmd := string(by)
+				switch cmd {
+				case NewUserCmdStr:
+					log.Printf("CommandRecv: we got a NEWUSER command")
+				case DelUserCmdStr:
+					log.Printf("CommandRecv: we got a DELUSER command")
+				default:
 					log.Printf("warning: CommandRecv: nConn.Read ignoring "+
-						"unrecognized command '%v' as it was not RELO",
-						string(by))
+						"unrecognized command '%v'", cmd)
 					nConn.Close()
 					continue mainloop
 				}
-				log.Printf("CommandRecv: we got a NEWUSER command")
 
 				// unmarshal into a User structure
 				newUser := NewUser()
 				reader := msgp.NewReader(nConn)
 				err = newUser.DecodeMsg(reader)
 				if err != nil {
-					log.Printf("warning: saw NEWUSER preamble but got"+
+					log.Printf("warning: saw NEWUSER/DELUSER preamble but got"+
 						" error reading the User data: %v", err)
 					nConn.Close()
 					continue mainloop
 				}
-				log.Printf("CommandRecv: newUser '%v' with email '%v'", newUser.MyLogin, newUser.MyEmail)
+				log.Printf("CommandRecv: %s '%v' with email '%v'", cmd, newUser.MyLogin, newUser.MyEmail)
 
-				// make the add request
-				select {
-				case cr.addUserReq <- newUser:
-				case <-time.After(10 * time.Second):
-					log.Printf("warning: unable to deliver newUser request" +
-						"after 10 seconds")
-				case <-cr.reqStop:
-					close(cr.Done)
-					return
+				if cmd == DelUserCmdStr {
+					// make the delete request
+					select {
+					case cr.delUserReq <- newUser:
+					case <-time.After(10 * time.Second):
+						log.Printf("warning: unable to deliver delUser request" +
+							"after 10 seconds")
+					case <-cr.reqStop:
+						close(cr.Done)
+						return
+					}
+					// ack back
+					select {
+					case <-cr.replyWithDeletedDone:
+						err := nConn.SetWriteDeadline(time.Now().Add(time.Second * 5))
+						panicOn(err)
+						_, err = nConn.Write(DelUserReply)
+						panicOn(err)
+						nConn.Close()
+
+					case <-cr.reqStop:
+						close(cr.Done)
+						return
+					}
 				}
-				// send remote client a reply, also a User
-				// but now with fields filled in.
-				select {
-				case goback := <-cr.replyWithCreatedUser:
-					p("goback received!")
-					writeBackHelper(goback, nConn)
-				case <-cr.reqStop:
-					close(cr.Done)
-					return
 
+				if cmd == NewUserCmdStr {
+					// make the add request
+					select {
+					case cr.addUserReq <- newUser:
+					case <-time.After(10 * time.Second):
+						log.Printf("warning: unable to deliver newUser request" +
+							"after 10 seconds")
+					case <-cr.reqStop:
+						close(cr.Done)
+						return
+					}
+					// send remote client a reply, also a User
+					// but now with fields filled in.
+					select {
+					case goback := <-cr.replyWithCreatedUser:
+						p("goback received!")
+						writeBackHelper(goback, nConn)
+					case <-cr.reqStop:
+						close(cr.Done)
+						return
+
+					}
 				}
-
 			}
 		}
 	}()
