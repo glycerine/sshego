@@ -402,11 +402,6 @@ func (z *User) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
-		case "PublicKeyFingerprint":
-			z.PublicKeyFingerprint, err = dc.ReadString()
-			if err != nil {
-				return
-			}
 		case "SeenPubKey":
 			var zxhx uint32
 			zxhx, err = dc.ReadMapHeader()
@@ -498,9 +493,9 @@ func (z *User) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 18
+	// map header, size 17
 	// write "MyEmail"
-	err = en.Append(0xde, 0x0, 0x12, 0xa7, 0x4d, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c)
+	err = en.Append(0xde, 0x0, 0x11, 0xa7, 0x4d, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c)
 	if err != nil {
 		return err
 	}
@@ -568,15 +563,6 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		return err
 	}
 	err = en.WriteString(z.Issuer)
-	if err != nil {
-		return
-	}
-	// write "PublicKeyFingerprint"
-	err = en.Append(0xb4, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74)
-	if err != nil {
-		return err
-	}
-	err = en.WriteString(z.PublicKeyFingerprint)
 	if err != nil {
 		return
 	}
@@ -683,9 +669,9 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 18
+	// map header, size 17
 	// string "MyEmail"
-	o = append(o, 0xde, 0x0, 0x12, 0xa7, 0x4d, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c)
+	o = append(o, 0xde, 0x0, 0x11, 0xa7, 0x4d, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c)
 	o = msgp.AppendString(o, z.MyEmail)
 	// string "MyFullname"
 	o = append(o, 0xaa, 0x4d, 0x79, 0x46, 0x75, 0x6c, 0x6c, 0x6e, 0x61, 0x6d, 0x65)
@@ -708,9 +694,6 @@ func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Issuer"
 	o = append(o, 0xa6, 0x49, 0x73, 0x73, 0x75, 0x65, 0x72)
 	o = msgp.AppendString(o, z.Issuer)
-	// string "PublicKeyFingerprint"
-	o = append(o, 0xb4, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74)
-	o = msgp.AppendString(o, z.PublicKeyFingerprint)
 	// string "SeenPubKey"
 	o = append(o, 0xaa, 0x53, 0x65, 0x65, 0x6e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79)
 	o = msgp.AppendMapHeader(o, uint32(len(z.SeenPubKey)))
@@ -807,11 +790,6 @@ func (z *User) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "PublicKeyFingerprint":
-			z.PublicKeyFingerprint, bts, err = msgp.ReadStringBytes(bts)
-			if err != nil {
-				return
-			}
 		case "SeenPubKey":
 			var zpks uint32
 			zpks, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -904,7 +882,7 @@ func (z *User) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *User) Msgsize() (s int) {
-	s = 3 + 8 + msgp.StringPrefixSize + len(z.MyEmail) + 11 + msgp.StringPrefixSize + len(z.MyFullname) + 8 + msgp.StringPrefixSize + len(z.MyLogin) + 14 + msgp.StringPrefixSize + len(z.PublicKeyPath) + 15 + msgp.StringPrefixSize + len(z.PrivateKeyPath) + 9 + msgp.StringPrefixSize + len(z.TOTPpath) + 7 + msgp.StringPrefixSize + len(z.QrPath) + 7 + msgp.StringPrefixSize + len(z.Issuer) + 21 + msgp.StringPrefixSize + len(z.PublicKeyFingerprint) + 11 + msgp.MapHeaderSize
+	s = 3 + 8 + msgp.StringPrefixSize + len(z.MyEmail) + 11 + msgp.StringPrefixSize + len(z.MyFullname) + 8 + msgp.StringPrefixSize + len(z.MyLogin) + 14 + msgp.StringPrefixSize + len(z.PublicKeyPath) + 15 + msgp.StringPrefixSize + len(z.PrivateKeyPath) + 9 + msgp.StringPrefixSize + len(z.TOTPpath) + 7 + msgp.StringPrefixSize + len(z.QrPath) + 7 + msgp.StringPrefixSize + len(z.Issuer) + 11 + msgp.MapHeaderSize
 	if z.SeenPubKey != nil {
 		for zajw, zwht := range z.SeenPubKey {
 			_ = zwht

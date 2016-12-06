@@ -1,4 +1,53 @@
-# sshego
+# sshego, a usable ssh library for Go
+
+### executive summary
+
+Google's "golang.org/x/crypto/ssh" library offers a
+fantastic full implementation of the ssh
+client and server protocols.
+However this library is minimalistic by
+design, cumbersome to figure out how to
+use with RSA keys, and needs additional code to
+support support tunneling
+and receiving connections as an sshd.
+
+`sshego` bridges this usability gap,
+providing a drop-in Go library
+to secure your tcp connections. In 
+places `sshego` can be used in preference to
+a virtual-private-network (VPN), for both
+convenience and speed. Moreover the SSH
+protocol's man-in-the-middle attack protection is
+better than a VPN in almost all cases.
+
+#### usable three-factor auth in an embeddable sshd
+
+For strong security, our embedded sshd
+offers three-factor auth (3FA). The three
+security factors are: a passphrase ("what you know");
+a 6-digit Google authenticator code (TOTP/RFC 6238;
+"what you have": your phone); and
+the use of PKI in the form of 4096-bit RSA keys.
+
+To promote strong passphrases, we follow the
+inspiration of https://xkcd.com/936/, and offer a user-
+friendly 3-word starting prompt (the user
+completes the sentence) to spark the
+user's imagination in creating
+a strong and memorizable passphrase. Passphrases of up
+to 100 characters are supported.
+
+Although not for the super-security conscious,
+if desired and configured, passphrases can automatically
+be backed up to email (via the Mailgun email service).
+
+On new account creation with `gosshtun -adduser yourlogin`,
+we will attempt to pop-up the QR-code on your
+local desktop for quick Google Authenticator setup
+on your phone.
+
+
+### introducing sshego: a gopher's do-it-yourself ssh tunneling library
 
 `sshego` is a golang (Go) library for ssh
 tunneling (secure port forwarding). It also offers an
@@ -31,12 +80,10 @@ than OpenVPN.
 
 [1] http://serverfault.com/questions/653211/ssh-tunneling-is-faster-than-openvpn-could-it-be
 
-In any case, you should realize that this is principally an ssh
-client. In its principal use, sshego is the equivalent
+In its principal use, sshego is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
-There is also an optional sshd service that can be run
-to add security layers to the reverse tunnel.
-However, the principal functionality is that of an ssh client.
+It acts like an ssh client without a remote shell; it simply
+tunnels other TCP connections securely.
 
 For example,
 
@@ -55,8 +102,8 @@ same ssh tunnel.
 
 # theory of operation
 
-We check the sshd server's host key. We prevent MITM attacks
-by only allowing new servers if `-new` is given.
+`gosshtun` and `sshego` will check the sshd server's host key. We prevent MITM attacks
+by only allowing new servers if `-new` (a.k.a. SshegoConfig.AddIfNotKnown == true) is given.
 
 When running the standalone `gosshtun` to test
 a foward, you should give `-new` only once at setup time.

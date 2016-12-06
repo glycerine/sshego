@@ -42,10 +42,9 @@ type User struct {
 	TOTPpath       string
 	QrPath         string
 
-	Issuer               string
-	publicKey            ssh.PublicKey
-	PublicKeyFingerprint string
-	SeenPubKey           map[string]LoginRecord
+	Issuer     string
+	publicKey  ssh.PublicKey
+	SeenPubKey map[string]LoginRecord
 
 	ScryptedPassword []byte
 	ClearPw          string // only on network, never on disk.
@@ -333,7 +332,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	user.PublicKeyPath = rsaPath + ".pub"
 	user.publicKey = signer.PublicKey()
 
-	user.PublicKeyFingerprint = Fingerprint(signer.PublicKey())
+	// fingerprint := Fingerprint(signer.PublicKey())
 
 	// don't save ClearPw to disk, and no need
 	// to ship it back b/c they supplied it in
