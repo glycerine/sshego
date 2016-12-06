@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"bytes"
 	cryptrand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,7 +16,7 @@ import (
 // the private key to rsa_file and the public key to rsa_file + ".pub". If rsa_file == ""
 // the keys are not written to disk.
 //
-func GenRSAKeyPair(rsaFile string, bits int) (priv *rsa.PrivateKey, sshPriv ssh.Signer, err error) {
+func GenRSAKeyPair(rsaFile string, bits int, email string) (priv *rsa.PrivateKey, sshPriv ssh.Signer, err error) {
 
 	privKey, err := rsa.GenerateKey(cryptrand.Reader, bits)
 	panicOn(err)
@@ -42,6 +43,12 @@ func GenRSAKeyPair(rsaFile string, bits int) (priv *rsa.PrivateKey, sshPriv ssh.
 
 		// serialize public key
 		pubBytes := RSAToSSHPublicKey(pubKey)
+
+		if email != "" {
+			var by bytes.Buffer
+			fmt.Fprintf(&by, " %s", email)
+			pubBytes = append(pubBytes, by.Bytes()...)
+		}
 
 		err = ioutil.WriteFile(rsaFile, privBytes, 0600)
 		panicOn(err)

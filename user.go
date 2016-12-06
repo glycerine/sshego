@@ -113,7 +113,8 @@ func (h *HostDb) generateHostKey() error {
 	path := h.privpath()
 	bits := 4096
 
-	_, signer, err := GenRSAKeyPair(path, bits)
+	host, _ := os.Hostname()
+	_, signer, err := GenRSAKeyPair(path, bits, host)
 	if err != nil {
 		return err
 	}
@@ -325,7 +326,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	bits := 4096
 
 	var signer ssh.Signer
-	_, signer, err = GenRSAKeyPair(rsaPath, bits)
+	_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
 	if err != nil {
 		return
 	}
