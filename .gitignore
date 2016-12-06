@@ -25,6 +25,5 @@ _testmain.go
 *.test
 *.prof
 *~
-gosshtun
-sshego
-cmd/gosshtun/gosshtun
+
+
