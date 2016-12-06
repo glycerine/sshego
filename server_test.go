@@ -151,7 +151,7 @@ func MakeAndMoveToTempDir() (origdir string, tmpdir string) {
 	if err != nil {
 		panic(err)
 	}
-	tmpdir, err = ioutil.TempDir(origdir, "temp.gosshtun.test.dir")
+	tmpdir, err = ioutil.TempDir(origdir, "temp.sshego.test.dir")
 	if err != nil {
 		panic(err)
 	}
@@ -173,9 +173,9 @@ func TempDirCleanup(origdir string, tmpdir string) {
 	fmt.Printf("\n TempDirCleanup of '%s' done.\n", tmpdir)
 }
 
-func genTestConfig() (c *GosshtunConfig, releasePorts func()) {
+func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 
-	cfg := NewGosshtunConfig()
+	cfg := NewSshegoConfig()
 	cfg.origdir, cfg.tempdir = MakeAndMoveToTempDir() // cd to tempdir
 
 	cfg.KnownHosts = NewKnownHosts(cfg.ClientKnownHostsPath)
@@ -205,7 +205,7 @@ func genTestConfig() (c *GosshtunConfig, releasePorts func()) {
 		revTargetLsn.Close()
 	}
 
-	cfg.GosshtunSystemMutexPort = xport
+	cfg.SshegoSystemMutexPort = xport
 
 	cfg.EmbeddedSSHd.Title = "esshd"
 	cfg.EmbeddedSSHd.Addr = fmt.Sprintf("127.0.0.1:%v", sshdLsnPort)

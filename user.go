@@ -76,7 +76,7 @@ type HostDb struct {
 	HostPrivateKeyPath string
 
 	hostSshSigner ssh.Signer
-	cfg           *GosshtunConfig
+	cfg           *SshegoConfig
 
 	loadedFromDisk bool
 
@@ -85,11 +85,11 @@ type HostDb struct {
 	userTcp TcpPort
 }
 
-func (cfg *GosshtunConfig) NewHostDb() error {
+func (cfg *SshegoConfig) NewHostDb() error {
 	h := &HostDb{
 		cfg:     cfg,
 		Users:   NewAtomicUserMap(),
-		userTcp: TcpPort{Port: cfg.GosshtunSystemMutexPort},
+		userTcp: TcpPort{Port: cfg.SshegoSystemMutexPort},
 	}
 	cfg.HostDb = h
 	return h.init()
@@ -386,7 +386,7 @@ func (user *User) RestoreTotp() {
 	}
 }
 
-// UserExists is used by gosshtun/cmd/gosshtun/main.go
+// UserExists is used by sshego/cmd/gosshtun/main.go
 func (h *HostDb) UserExists(mylogin string) bool {
 	_, ok := h.Users.Get2(mylogin)
 	return ok

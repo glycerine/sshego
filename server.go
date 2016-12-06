@@ -23,7 +23,7 @@ import (
 // Esshd is our embedded sshd server,
 // running from inside this libary.
 type Esshd struct {
-	cfg                  *GosshtunConfig
+	cfg                  *SshegoConfig
 	Done                 chan bool
 	reqStop              chan bool
 	addUserToDatabase    chan *User
@@ -49,7 +49,7 @@ func (e *Esshd) Stop() {
 // NewEsshd sets cfg.Esshd with a newly
 // constructed Esshd. does NewHostDb()
 // internally.
-func (cfg *GosshtunConfig) NewEsshd() *Esshd {
+func (cfg *SshegoConfig) NewEsshd() *Esshd {
 	srv := &Esshd{
 		cfg:                  cfg,
 		Done:                 make(chan bool),
@@ -75,10 +75,10 @@ type PerAttempt struct {
 	State  *AuthState
 	Config *ssh.ServerConfig
 
-	cfg *GosshtunConfig
+	cfg *SshegoConfig
 }
 
-func NewPerAttempt(s *AuthState, cfg *GosshtunConfig) *PerAttempt {
+func NewPerAttempt(s *AuthState, cfg *SshegoConfig) *PerAttempt {
 	pa := &PerAttempt{State: s}
 	pa.cfg = cfg
 	return pa
@@ -114,7 +114,7 @@ func NewAuthState(w *TOTP) *AuthState {
 type CommandRecv struct {
 	userTcp TcpPort
 	esshd   *Esshd
-	cfg     *GosshtunConfig
+	cfg     *SshegoConfig
 
 	addUserReq           chan *User
 	replyWithCreatedUser chan *User
@@ -127,7 +127,7 @@ var NewUserReply = []byte("0REPLY")
 
 func (e *Esshd) NewCommandRecv() *CommandRecv {
 	return &CommandRecv{
-		userTcp:              TcpPort{Port: e.cfg.GosshtunSystemMutexPort},
+		userTcp:              TcpPort{Port: e.cfg.SshegoSystemMutexPort},
 		esshd:                e,
 		cfg:                  e.cfg,
 		addUserReq:           e.addUserToDatabase,

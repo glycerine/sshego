@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-// GosshtunConfig is the top level, main config
-type GosshtunConfig struct {
+// SshegoConfig is the top level, main config
+type SshegoConfig struct {
 	ConfigPath string
 
 	SSHdServer    AddrHostPort // the sshd host we are logging into remotely.
@@ -43,8 +43,8 @@ type GosshtunConfig struct {
 	AddUser string
 	DelUser string
 
-	GosshtunSystemMutexPortString string
-	GosshtunSystemMutexPort       int
+	SshegoSystemMutexPortString string
+	SshegoSystemMutexPort       int
 
 	// testing support
 	origdir, tempdir string
@@ -66,8 +66,8 @@ type GosshtunConfig struct {
 	allowOneshotConnect bool
 }
 
-func NewGosshtunConfig() *GosshtunConfig {
-	cfg := &GosshtunConfig{}
+func NewSshegoConfig() *SshegoConfig {
+	cfg := &SshegoConfig{}
 	return cfg
 }
 
@@ -109,14 +109,14 @@ func (a *AddrHostPort) ParseAddr() error {
 	return nil
 }
 
-// TunnelSpec represents either a forward or a reverse tunnel in GosshtunConfig.
+// TunnelSpec represents either a forward or a reverse tunnel in SshegoConfig.
 type TunnelSpec struct {
 	Listen AddrHostPort
 	Remote AddrHostPort
 }
 
 // DefineFlags should be called before myflags.Parse().
-func (c *GosshtunConfig) DefineFlags(fs *flag.FlagSet) {
+func (c *SshegoConfig) DefineFlags(fs *flag.FlagSet) {
 
 	fs.StringVar(&c.ConfigPath, "cfg", "", "path to our config file")
 	fs.StringVar(&c.WriteConfigOut, "write-config", "", "(optional) write our config to this path before doing connections")
@@ -135,14 +135,14 @@ func (c *GosshtunConfig) DefineFlags(fs *flag.FlagSet) {
 
 	home := os.Getenv("HOME")
 	fs.StringVar(&c.PrivateKeyPath, "key", home+"/.ssh/id_rsa_nopw", "private key for sshd login")
-	fs.StringVar(&c.ClientKnownHostsPath, "known-hosts", home+"/.ssh/.gosshtun.cli.known.hosts", "path to gosshtun's own known-hosts file")
+	fs.StringVar(&c.ClientKnownHostsPath, "known-hosts", home+"/.ssh/.sshego.cli.known.hosts", "path to sshego's own known-hosts file")
 
 	fs.BoolVar(&c.Quiet, "quiet", false, "if -quiet is given, we don't log to stdout as each connection is made. The default is false; we log each tunneled connection.")
 	fs.StringVar(&c.EmbeddedSSHd.Addr, "esshd", "", "(optional) start an in-process embedded sshd (server), binding this host:port, with both RSA key and 2FA checking; useful for securing -revfwd connections. Example: 127.0.0.1:2022")
-	fs.StringVar(&c.EmbeddedSSHdHostDbPath, "esshd-host-db", home+"/.ssh/.gosshtun.sshd.db", "(only matters if -esshd is given) path to database holding sshd persistent state such as our host key, registered 2FA secrets, etc.")
+	fs.StringVar(&c.EmbeddedSSHdHostDbPath, "esshd-host-db", home+"/.ssh/.sshego.sshd.db", "(only matters if -esshd is given) path to database holding sshd persistent state such as our host key, registered 2FA secrets, etc.")
 	fs.StringVar(&c.AddUser, "adduser", "", "we will add this user to the known users database, generate a password, RSA key, and a 2FA secret/QR code.")
 	fs.StringVar(&c.DelUser, "deluser", "", "we will delete this user from the known users database.")
-	fs.IntVar(&c.GosshtunSystemMutexPort, "xport", 33355, "localhost tcp-port used for internal syncrhonization and commands such as adding users to running esshd; we must be able to acquire this exclusively for our use on 127.0.0.1")
+	fs.IntVar(&c.SshegoSystemMutexPort, "xport", 33355, "localhost tcp-port used for internal syncrhonization and commands such as adding users to running esshd; we must be able to acquire this exclusively for our use on 127.0.0.1")
 
 	c.MailCfg.DefineFlags(fs)
 
@@ -155,7 +155,7 @@ func (c *GosshtunConfig) DefineFlags(fs *flag.FlagSet) {
 }
 
 // ValidateConfig should be called after myflags.Parse().
-func (c *GosshtunConfig) ValidateConfig() error {
+func (c *SshegoConfig) ValidateConfig() error {
 
 	if c.ConfigPath != "" {
 		err := c.LoadConfig(c.ConfigPath)
@@ -223,7 +223,7 @@ func (c *GosshtunConfig) ValidateConfig() error {
 // LoadConfig reads configuration from a file, expecting
 // KEY=value pair on each line;
 // values optionally enclosed in double quotes.
-func (c *GosshtunConfig) LoadConfig(path string) error {
+func (c *SshegoConfig) LoadConfig(path string) error {
 	if !fileExists(path) {
 		return fmt.Errorf("path '%s' does not exist", path)
 	}
@@ -289,10 +289,10 @@ func (c *GosshtunConfig) LoadConfig(path string) error {
 			case "EMBEDDED_SSHD_LISTEN_ADDR":
 				c.EmbeddedSSHd.Addr = val
 			case "EMBEDDED_SSHD_COMMAND_XPORT":
-				c.GosshtunSystemMutexPortString = val
+				c.SshegoSystemMutexPortString = val
 				prt, err := strconv.Atoi(val)
 				panicOn(err)
-				c.GosshtunSystemMutexPort = prt
+				c.SshegoSystemMutexPort = prt
 
 			}
 		}
@@ -314,10 +314,10 @@ func (c *GosshtunConfig) LoadConfig(path string) error {
 }
 
 // SaveConfig writes the config structs to the given io.Writer
-func (c *GosshtunConfig) SaveConfig(fd io.Writer) error {
+func (c *SshegoConfig) SaveConfig(fd io.Writer) error {
 
 	_, err := fmt.Fprintf(fd, `#
-# config file gosshtun:
+# config file sshego:
 #
 `)
 	if err != nil {
@@ -337,9 +337,9 @@ func (c *GosshtunConfig) SaveConfig(fd io.Writer) error {
 	fmt.Fprintf(fd, "## optional sshd server config\n")
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_HOST_DB_PATH=\"%s\"\n", c.EmbeddedSSHdHostDbPath)
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_LISTEN_ADDR=\"%s\"\n", c.EmbeddedSSHd.Addr)
-	c.GosshtunSystemMutexPortString = fmt.Sprintf(
-		"%v", c.GosshtunSystemMutexPort)
-	fmt.Fprintf(fd, "EMBEDDED_SSHD_COMMAND_XPORT=\"%s\"\n", c.GosshtunSystemMutexPortString)
+	c.SshegoSystemMutexPortString = fmt.Sprintf(
+		"%v", c.SshegoSystemMutexPort)
+	fmt.Fprintf(fd, "EMBEDDED_SSHD_COMMAND_XPORT=\"%s\"\n", c.SshegoSystemMutexPortString)
 
 	err = c.MailCfg.SaveConfig(fd)
 	return err

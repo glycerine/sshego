@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-func (cfg *GosshtunConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath string, err error) {
+func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath string, err error) {
 
 	// send newUserCmd followed by the msgp marshalled user
 	sendMe, err := user.MarshalMsg(nil)
 	panicOn(err)
 
-	addr := fmt.Sprintf("127.0.0.1:%v", cfg.GosshtunSystemMutexPort)
+	addr := fmt.Sprintf("127.0.0.1:%v", cfg.SshegoSystemMutexPort)
 	nConn, err := net.Dial("tcp", addr)
 	panicOn(err)
 

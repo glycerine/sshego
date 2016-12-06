@@ -155,7 +155,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *GosshtunConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort uint64, passphrase string, toptUrl string) error {
+func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort uint64, passphrase string, toptUrl string) error {
 
 	p("SSHConnect sees sshdHost:port = %s:%v", sshdHost, sshdPort)
 
@@ -272,9 +272,9 @@ func (cfg *GosshtunConfig) SSHConnect(h *KnownHosts, username string, keypath st
 
 // StartupForwardListener is called when a forward tunnel is the
 // be listened for.
-func (cfg *GosshtunConfig) StartupForwardListener(sshClientConn *ssh.Client) error {
+func (cfg *SshegoConfig) StartupForwardListener(sshClientConn *ssh.Client) error {
 
-	p("gosshtun: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
+	p("sshego: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
 	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(cfg.LocalToRemote.Listen.Host), Port: int(cfg.LocalToRemote.Listen.Port)})
 	if err != nil {
 		return fmt.Errorf("could not -listen on %s: %s", cfg.LocalToRemote.Listen.Addr, err)
@@ -282,7 +282,7 @@ func (cfg *GosshtunConfig) StartupForwardListener(sshClientConn *ssh.Client) err
 
 	go func() {
 		for {
-			p("gosshtun: about to accept on local port %s\n", cfg.LocalToRemote.Listen.Addr)
+			p("sshego: about to accept on local port %s\n", cfg.LocalToRemote.Listen.Addr)
 			timeoutMillisec := 10000
 			err = ln.SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
 			panicOn(err) // todo handle error
@@ -296,7 +296,7 @@ func (cfg *GosshtunConfig) StartupForwardListener(sshClientConn *ssh.Client) err
 				panic(err) // todo handle error
 			}
 			if !cfg.Quiet {
-				log.Printf("gosshtun: accepted forward connection on %s, forwarding --> to sshd host %s, and thence --> to remote %s\n", cfg.LocalToRemote.Listen.Addr, cfg.SSHdServer.Addr, cfg.LocalToRemote.Remote.Addr)
+				log.Printf("sshego: accepted forward connection on %s, forwarding --> to sshd host %s, and thence --> to remote %s\n", cfg.LocalToRemote.Listen.Addr, cfg.SSHdServer.Addr, cfg.LocalToRemote.Remote.Addr)
 			}
 
 			// if you want to collect them...
@@ -318,13 +318,13 @@ func Fingerprint(k ssh.PublicKey) string {
 	return r
 }
 
-// Forwarder represents one bi-directional forward (gosshtun to sshd) tcp connection.
+// Forwarder represents one bi-directional forward (sshego to sshd) tcp connection.
 type Forwarder struct {
 	shovelPair *shovelPair
 }
 
 // NewForward is called to produce a Forwarder structure for each new forward connection.
-func NewForward(cfg *GosshtunConfig, sshClientConn *ssh.Client, fromBrowser net.Conn) *Forwarder {
+func NewForward(cfg *SshegoConfig, sshClientConn *ssh.Client, fromBrowser net.Conn) *Forwarder {
 
 	sp := newShovelPair(false)
 	channelToSSHd, err := sshClientConn.Dial("tcp", cfg.LocalToRemote.Remote.Addr)
@@ -345,14 +345,14 @@ func NewForward(cfg *GosshtunConfig, sshClientConn *ssh.Client, fromBrowser net.
 	return &Forwarder{shovelPair: sp}
 }
 
-// Reverse represents one bi-directional (initiated at sshd, tunneled to gosshtun) tcp connection.
+// Reverse represents one bi-directional (initiated at sshd, tunneled to sshego) tcp connection.
 type Reverse struct {
 	shovelPair *shovelPair
 }
 
 // StartupReverseListener is called when a reverse tunnel is requested, to listen
 // and tunnel those connections.
-func (cfg *GosshtunConfig) StartupReverseListener(sshClientConn *ssh.Client) error {
+func (cfg *SshegoConfig) StartupReverseListener(sshClientConn *ssh.Client) error {
 	p("StartupReverseListener called")
 
 	addr, err := net.ResolveTCPAddr("tcp", cfg.RemoteToLocal.Listen.Addr)
@@ -368,7 +368,7 @@ func (cfg *GosshtunConfig) StartupReverseListener(sshClientConn *ssh.Client) err
 	// service "forwarded-tcpip" requests
 	go func() {
 		for {
-			p("gosshtun: about to accept for remote addr %s\n", cfg.RemoteToLocal.Listen.Addr)
+			p("sshego: about to accept for remote addr %s\n", cfg.RemoteToLocal.Listen.Addr)
 			fromRemote, err := lsn.Accept()
 			if err != nil {
 				if _, ok := err.(*net.OpError); ok {
@@ -379,7 +379,7 @@ func (cfg *GosshtunConfig) StartupReverseListener(sshClientConn *ssh.Client) err
 				panic(err) // todo handle error
 			}
 			if !cfg.Quiet {
-				log.Printf("gosshtun: accepted reverse connection from remote on  %s, forwarding to --> to %s\n",
+				log.Printf("sshego: accepted reverse connection from remote on  %s, forwarding to --> to %s\n",
 					cfg.RemoteToLocal.Listen.Addr, cfg.RemoteToLocal.Remote.Addr)
 			}
 			_, err = cfg.StartNewReverse(sshClientConn, fromRemote)
@@ -393,7 +393,7 @@ func (cfg *GosshtunConfig) StartupReverseListener(sshClientConn *ssh.Client) err
 
 // StartNewReverse is invoked once per reverse connection made to generate
 // a new Reverse structure.
-func (cfg *GosshtunConfig) StartNewReverse(sshClientConn *ssh.Client, fromRemote net.Conn) (*Reverse, error) {
+func (cfg *SshegoConfig) StartNewReverse(sshClientConn *ssh.Client, fromRemote net.Conn) (*Reverse, error) {
 
 	channelToLocalFwd, err := net.Dial("tcp", cfg.RemoteToLocal.Remote.Addr)
 	if err != nil {

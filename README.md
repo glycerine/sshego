@@ -132,7 +132,7 @@ Usage of gosshtun:
 
 # installation
 
-  go get github.com/glycerine/gosshtun/...
+  go get github.com/glycerine/sshego/...
 
 # example use of the command
 
@@ -163,7 +163,7 @@ also serves as an example of how to use the library.
 
 # host key storage location (default)
 
-`~/.ssh/sshego.known.hosts.json.snappy`
+`~/.ssh/.sshego.known.hosts.json.snappy`
 
 # prep before running
 
