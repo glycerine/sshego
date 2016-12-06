@@ -31,12 +31,10 @@ than OpenVPN.
 
 [1] http://serverfault.com/questions/653211/ssh-tunneling-is-faster-than-openvpn-could-it-be
 
-In any case, you should realize that this is principally an ssh
-client. In its principal use, sshego is the equivalent
+In its principal use, sshego is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
-There is also an optional sshd service that can be run
-to add security layers to the reverse tunnel.
-However, the principal functionality is that of an ssh client.
+It acts like an ssh client without a remote shell; it simply
+tunnels other TCP connections securely.
 
 For example,
 
