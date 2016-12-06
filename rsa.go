@@ -45,9 +45,11 @@ func GenRSAKeyPair(rsaFile string, bits int, email string) (priv *rsa.PrivateKey
 		pubBytes := RSAToSSHPublicKey(pubKey)
 
 		if email != "" {
+			p("adding in email")
 			var by bytes.Buffer
 			fmt.Fprintf(&by, " %s", email)
-			pubBytes = append(pubBytes, by.Bytes()...)
+			n := len(pubBytes)
+			pubBytes = append(pubBytes[:n-1], by.Bytes()...)
 		}
 
 		err = ioutil.WriteFile(rsaFile, privBytes, 0600)
