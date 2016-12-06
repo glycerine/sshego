@@ -464,9 +464,10 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 
 	defer wait()
 
+	mylogin := conn.User()
 	echoAnswers := []bool{false, true}
-	ans, err := challenge("password",
-		"google-authenticator-code",
+	ans, err := challenge(mylogin,
+		fmt.Sprintf("login for %s:", mylogin),
 		[]string{passwordChallenge, gauthChallenge},
 		echoAnswers)
 	if err != nil {
@@ -475,7 +476,6 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 	}
 
 	//myemail := conn.User()
-	mylogin := conn.User()
 	remoteAddr := conn.RemoteAddr()
 	now := time.Now().UTC()
 
