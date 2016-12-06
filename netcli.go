@@ -80,7 +80,7 @@ func (cfg *SshegoConfig) TcpClientUserDel(user *User) error {
 	dat, err := ioutil.ReadAll(nConn)
 	panicOn(err)
 
-	n := len(DelUserReply)
+	n := len(DelUserReplyFailed)
 	if len(dat) < n {
 		panic(fmt.Errorf("expected '%s' preamble, but got '%s' of length %v", NewUserReply, string(dat), len(dat)))
 	}
@@ -88,6 +88,10 @@ func (cfg *SshegoConfig) TcpClientUserDel(user *User) error {
 
 	err = nConn.Close()
 	panicOn(err)
+
+	if string(dat[:n]) == string(DelUserReplyFailed) {
+		return fmt.Errorf("user delete failed -- typically because user does not exist")
+	}
 
 	return nil
 }

@@ -138,7 +138,8 @@ var NewUserReply = []byte("00REPLY_____")
 
 var DelUserCmd = []byte("01DELUSER___")
 var DelUserCmdStr = string(DelUserCmd)
-var DelUserReply = []byte("01REPLY_____")
+var DelUserReplyOK = []byte("01REPLY_OK__")
+var DelUserReplyFailed = []byte("01REPLY_FAIL")
 
 func (e *Esshd) NewCommandRecv() *CommandRecv {
 	return &CommandRecv{
@@ -235,7 +236,7 @@ func (cr *CommandRecv) Start() error {
 					select {
 					case cr.delUserReq <- newUser:
 					case <-time.After(10 * time.Second):
-						log.Printf("warning: unable to deliver delUser request" +
+						log.Printf("warning: unable to deliver delUser request " +
 							"after 10 seconds")
 					case <-cr.reqStop:
 						close(cr.Done)
@@ -243,10 +244,14 @@ func (cr *CommandRecv) Start() error {
 					}
 					// ack back
 					select {
-					case <-cr.replyWithDeletedDone:
+					case ok := <-cr.replyWithDeletedDone:
 						err := nConn.SetWriteDeadline(time.Now().Add(time.Second * 5))
 						panicOn(err)
-						_, err = nConn.Write(DelUserReply)
+						if ok {
+							_, err = nConn.Write(DelUserReplyOK)
+						} else {
+							_, err = nConn.Write(DelUserReplyFailed)
+						}
 						panicOn(err)
 						nConn.Close()
 
@@ -354,6 +359,18 @@ func (e *Esshd) Start() {
 					select {
 					case e.replyWithCreatedUser <- u:
 						p("sent: e.replyWithCreatedUser <- u")
+					case <-e.reqStop:
+						close(e.Done)
+						return
+					}
+
+				case u := <-e.delUserReq:
+					p("recived on e.delUserReq: '%v'", u.MyLogin)
+					err = e.cfg.HostDb.DelUser(u.MyLogin)
+					ok := (err == nil)
+
+					select {
+					case e.replyWithDeletedDone <- ok:
 					case <-e.reqStop:
 						close(e.Done)
 						return
