@@ -79,12 +79,12 @@ Usage of gosshtun:
         (only matters if -esshd is also given) path
         to database holding sshd persistent state
         such as our host key, registered 2FA secrets, etc.
-        (default "$HOME/.ssh/gosshtun.sshd.db")        
+        (default "$HOME/.ssh/.sshego.sshd.db")        
   -key string
         private key for sshd login (default "$HOME/.ssh/id_rsa_nopw")
   -known-hosts string
         path to gosshtun's own known-hosts file (default
-        "$HOME/.ssh/gosshtun.cli.known.hosts")
+        "$HOME/.ssh/.sshego.cli.known.hosts")
   -listen string
         (forward tunnel) We listen on this host:port locally,
         securely tunnel that traffic to sshd, then send it
