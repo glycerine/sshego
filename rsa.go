@@ -38,6 +38,7 @@ func GenRSAKeyPair(rsaFile string, bits int) (priv *rsa.PrivateKey, sshPriv ssh.
 	panicOn(err)
 
 	if rsaFile != "" {
+		p("GenRSAKeyPair is serializing to rsaFile -> '%s' and .pub", rsaFile)
 
 		// serialize public key
 		pubBytes := RSAToSSHPublicKey(pubKey)

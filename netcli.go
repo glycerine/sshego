@@ -39,8 +39,9 @@ func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath
 
 	n := len(NewUserReply)
 	if len(dat) < n {
-		panic(fmt.Errorf("expected '%s' preamble, but got '%s'", NewUserReply, string(dat)))
+		panic(fmt.Errorf("expected '%s' preamble, but got '%s' of length %v", NewUserReply, string(dat), len(dat)))
 	}
+	p("dat = '%v'", string(dat))
 	payload := dat[n:]
 
 	var r User // returned User

@@ -208,7 +208,7 @@ func (cr *CommandRecv) Start() error {
 					nConn.Close()
 					continue mainloop
 				}
-				log.Printf("CommandRecv: newUser details: %#v", newUser)
+				log.Printf("CommandRecv: newUser '%v' with email '%v'", newUser.MyLogin, newUser.MyEmail)
 
 				// make the add request
 				select {
@@ -224,6 +224,7 @@ func (cr *CommandRecv) Start() error {
 				// but now with fields filled in.
 				select {
 				case goback := <-cr.replyWithCreatedUser:
+					p("goback received!")
 					writeBackHelper(goback, nConn)
 				case <-cr.reqStop:
 					close(cr.Done)
@@ -301,10 +302,11 @@ func (e *Esshd) Start() {
 					return
 				case u := <-e.addUserToDatabase:
 					p("recived on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
-					e.cfg.HostDb.finishUserBuildout(u)
+					_, _, _, err = e.cfg.HostDb.finishUserBuildout(u)
 					panicOn(err)
 					select {
 					case e.replyWithCreatedUser <- u:
+						p("sent: e.replyWithCreatedUser <- u")
 					case <-e.reqStop:
 						close(e.Done)
 						return
@@ -696,7 +698,7 @@ func wait() {
 
 // write NewUserReply + MarshalMsg(goback) back to our remote client
 func writeBackHelper(goback *User, nConn net.Conn) error {
-
+	p("top of writeBackHelper")
 	err := nConn.SetWriteDeadline(time.Now().Add(time.Second * 5))
 	panicOn(err)
 
@@ -710,5 +712,8 @@ func writeBackHelper(goback *User, nConn net.Conn) error {
 	err = goback.EncodeMsg(wri)
 	panicOn(err)
 
+	p("end of writeBackHelper")
+	wri.Flush()
+	nConn.Close()
 	return nil
 }

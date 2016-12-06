@@ -317,7 +317,9 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	user.oneTime = w
 	user.QrPath = qrPath
 
-	rsaPath = user.PrivateKeyPath
+	rsaPath = h.rsapath(user.MyLogin)
+	user.PrivateKeyPath = rsaPath
+	user.PublicKeyPath = rsaPath + ".pub"
 
 	makeway(rsaPath)
 	bits := 4096
