@@ -568,11 +568,13 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 	firstPassOK := false
 	timeOK := false
 
+	var totpIdx int // where in the arrays the totp info is located
 	var chal []string
 	var echoAnswers []bool
 	if !a.cfg.SkipPassphrase {
 		chal = append(chal, passwordChallenge)
 		echoAnswers = append(echoAnswers, false)
+		totpIdx++
 	}
 	if !a.cfg.SkipTOTP {
 		chal = append(chal, gauthChallenge)
@@ -603,7 +605,7 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 	p("KeyboardInteractiveCallback, first pass-phrase accepted: %v; ans[0] was user-attempting-login provided this cleartext: '%s'; our stored scrypted pw is: '%s'", firstPassOK, ans[0], user.ScryptedPassword)
 	user.RestoreTotp()
 
-	if a.cfg.SkipTOTP || (len(ans[1]) > 0 && user.oneTime.IsValid(ans[1], mylogin)) {
+	if a.cfg.SkipTOTP || (len(ans[totpIdx]) > 0 && user.oneTime.IsValid(ans[totpIdx], mylogin)) {
 		timeOK = true
 	}
 
