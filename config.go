@@ -150,6 +150,10 @@ func (c *SshegoConfig) DefineFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.DelUser, "deluser", "", "we will delete this user from the known users database.")
 	fs.IntVar(&c.SshegoSystemMutexPort, "xport", 33355, "localhost tcp-port used for internal syncrhonization and commands such as adding users to running esshd; we must be able to acquire this exclusively for our use on 127.0.0.1")
 
+	fs.BoolVar(&c.SkipTOTP, "skip-totp", false, "skip time-based-one-time-password authentication requirement.")
+	fs.BoolVar(&c.SkipPassphrase, "skip-pass", false, "skip passphrase authentication requirement.")
+	fs.BoolVar(&c.SkipRSA, "skip-rsa", false, "skip RSA key authentication requirement.")
+
 	c.MailCfg.DefineFlags(fs)
 
 	c.SSHdServer.Title = "sshd"
