@@ -391,7 +391,7 @@ func (e *Esshd) Start() {
 				continue
 			}
 			attempt := NewPerAttempt(a, e.cfg)
-			attempt.SetTripleConfig()
+			attempt.SetupAuthRequirements()
 
 			// We explicitly do not use a go routine here.
 			// We *want* and require serializing all authentication
@@ -535,42 +535,78 @@ const gauthChallenge = "google-authenticator-code: "
 func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
 	p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
+	// no matter what happens, temper DDOS/many fast login attemps by
+	// waiting 1-2 seconds before replying.
 	defer wait()
 
 	mylogin := conn.User()
-	echoAnswers := []bool{false, true}
+	now := time.Now().UTC()
+	remoteAddr := conn.RemoteAddr()
+
+	user, knownUser := a.cfg.HostDb.Users.Get2(mylogin)
+
+	// don't reveal that the user is unknown by
+	// failing early without a challenge.
+
+	// Unless, of course, we have no call for
+	// interactive challenge at all... in which
+	// case, why are we in this routine? We
+	// should not be!
+	if a.cfg.SkipPassphrase && a.cfg.SkipTOTP {
+		panic("should not be in the KeyboardInteractiveCallback at all!")
+		/*
+			a.OneTimeOK = true
+			if a.cfg.SkipRSA || a.PublicKeyOK {
+				a.NoteLogin(user, now, conn)
+				return nil, nil
+			}
+			p("RSA still required and not met, yet.")
+			return nil, keyFail
+		*/
+	}
+
+	firstPassOK := false
+	timeOK := false
+
+	var chal []string
+	var echoAnswers []bool
+	if !a.cfg.SkipPassphrase {
+		chal = append(chal, passwordChallenge)
+		echoAnswers = append(echoAnswers, false)
+	}
+	if !a.cfg.SkipTOTP {
+		chal = append(chal, gauthChallenge)
+		echoAnswers = append(echoAnswers, true)
+	}
+
 	ans, err := challenge(mylogin,
 		fmt.Sprintf("login for %s:", mylogin),
-		[]string{passwordChallenge, gauthChallenge},
+		chal,
 		echoAnswers)
 	if err != nil {
 		p("actuall err is '%s', but we always return keyFail", err)
 		return nil, keyFail
 	}
 
-	//myemail := conn.User()
-	remoteAddr := conn.RemoteAddr()
-	now := time.Now().UTC()
-
-	user, already := a.cfg.HostDb.Users.Get2(mylogin)
-	if !already {
+	if !knownUser {
 		log.Printf("unrecognized login '%s' from remoteAddr '%s' at %v",
 			mylogin, remoteAddr, now)
 		return nil, keyFail
 	}
+
 	p("KeyboardInteractiveCallback sees login "+
 		"attempt for recognized user '%v'", user.MyLogin)
 
-	firstPassOK := false
-	if user.MatchingHashAndPw(ans[0]) {
+	if a.cfg.SkipPassphrase || user.MatchingHashAndPw(ans[0]) {
 		firstPassOK = true
 	}
 	p("KeyboardInteractiveCallback, first pass-phrase accepted: %v; ans[0] was user-attempting-login provided this cleartext: '%s'; our stored scrypted pw is: '%s'", firstPassOK, ans[0], user.ScryptedPassword)
 	user.RestoreTotp()
-	timeOK := false
-	if len(ans[1]) > 0 && user.oneTime.IsValid(ans[1], mylogin) {
+
+	if a.cfg.SkipTOTP || (len(ans[1]) > 0 && user.oneTime.IsValid(ans[1], mylogin)) {
 		timeOK = true
 	}
+
 	ok := firstPassOK && timeOK
 	if ok {
 		a.OneTimeOK = true
@@ -583,12 +619,16 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 			user.LastLoginTime.UTC(), user.LastLoginAddr)
 		challenge(fmt.Sprintf("user '%s' succesfully logged in", mylogin),
 			prev, nil, nil)
-		user.LastLoginTime = now
-		user.LastLoginAddr = remoteAddr.String()
-		a.cfg.HostDb.save(lockit)
+		a.NoteLogin(user, now, conn)
 		return nil, nil
 	}
 	return nil, keyFail
+}
+
+func (a *PerAttempt) NoteLogin(user *User, now time.Time, conn ssh.ConnMetadata) {
+	user.LastLoginTime = now
+	user.LastLoginAddr = conn.RemoteAddr().String()
+	a.cfg.HostDb.save(lockit)
 }
 
 func (a *PerAttempt) AuthLogCallback(conn ssh.ConnMetadata, method string, err error) {
@@ -725,6 +765,18 @@ func (a *AuthState) LoadPublicKeys(authorizedKeysPath string) error {
 		authorizedKeysBytes = rest
 	}
 	return nil
+}
+
+func (a *PerAttempt) SetupAuthRequirements() {
+	a.SetTripleConfig()
+	if a.cfg.SkipRSA {
+		a.Config.PublicKeyCallback = nil
+		a.PublicKeyOK = true
+	}
+	if a.cfg.SkipPassphrase && a.cfg.SkipTOTP {
+		a.Config.KeyboardInteractiveCallback = nil
+		a.OneTimeOK = true
+	}
 }
 
 // SetTripleConfig establishes an a.State.Config that requires

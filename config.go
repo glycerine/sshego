@@ -64,6 +64,12 @@ type SshegoConfig struct {
 	// practices, but under test
 	// it is just annoying.
 	allowOneshotConnect bool
+
+	// allow less than 3FA
+	// Not recommended, but possible.
+	SkipTOTP       bool
+	SkipPassphrase bool
+	SkipRSA        bool
 }
 
 func NewSshegoConfig() *SshegoConfig {
@@ -293,7 +299,12 @@ func (c *SshegoConfig) LoadConfig(path string) error {
 				prt, err := strconv.Atoi(val)
 				panicOn(err)
 				c.SshegoSystemMutexPort = prt
-
+			case "AUTH_OPTION_SKIP_TOTP":
+				c.SkipTOTP = stringToBool(val)
+			case "AUTH_OPTION_SKIP_PASSPHRASE":
+				c.SkipPassphrase = stringToBool(val)
+			case "AUTH_OPTION_SKIP_RSA":
+				c.SkipRSA = stringToBool(val)
 			}
 		}
 		lineNum++
@@ -340,6 +351,13 @@ func (c *SshegoConfig) SaveConfig(fd io.Writer) error {
 	c.SshegoSystemMutexPortString = fmt.Sprintf(
 		"%v", c.SshegoSystemMutexPort)
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_COMMAND_XPORT=\"%s\"\n", c.SshegoSystemMutexPortString)
+
+	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_TOTP=\"%s\"\n",
+		boolToString(c.SkipTOTP))
+	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_PASSPHRASE=\"%s\"\n",
+		boolToString(c.SkipPassphrase))
+	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_RSA=\"%s\"\n",
+		boolToString(c.SkipRSA))
 
 	err = c.MailCfg.SaveConfig(fd)
 	return err
