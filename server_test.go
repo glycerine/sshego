@@ -178,6 +178,8 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 	cfg := NewSshegoConfig()
 	cfg.origdir, cfg.tempdir = MakeAndMoveToTempDir() // cd to tempdir
 
+	cfg.BitLenRSAkeys = 1024 // faster for testing
+
 	cfg.KnownHosts = NewKnownHosts(cfg.ClientKnownHostsPath)
 
 	// get a bunch of distinct ports, all different.

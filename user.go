@@ -110,8 +110,9 @@ func (h *HostDb) generateHostKey() error {
 		return err
 	}
 	path := h.privpath()
-	bits := 4096
+	bits := h.cfg.BitLenRSAkeys // default 4096
 
+	fmt.Printf("\n bits = %v\n", bits)
 	host, _ := os.Hostname()
 	_, signer, err := GenRSAKeyPair(path, bits, host)
 	if err != nil {
@@ -322,7 +323,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	user.PublicKeyPath = rsaPath + ".pub"
 
 	makeway(rsaPath)
-	bits := 4096
+	bits := h.cfg.BitLenRSAkeys // default 4096
 
 	var signer ssh.Signer
 	_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)

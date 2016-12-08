@@ -70,10 +70,14 @@ type SshegoConfig struct {
 	SkipTOTP       bool
 	SkipPassphrase bool
 	SkipRSA        bool
+
+	BitLenRSAkeys int
 }
 
 func NewSshegoConfig() *SshegoConfig {
-	cfg := &SshegoConfig{}
+	cfg := &SshegoConfig{
+		BitLenRSAkeys: 4096,
+	}
 	return cfg
 }
 
@@ -153,6 +157,7 @@ func (c *SshegoConfig) DefineFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&c.SkipTOTP, "skip-totp", false, "(under -esshd) skip time-based-one-time-password authentication requirement.")
 	fs.BoolVar(&c.SkipPassphrase, "skip-pass", false, "(under -esshd) skip passphrase authentication requirement.")
 	fs.BoolVar(&c.SkipRSA, "skip-rsa", false, "(under -esshd) skip RSA key authentication requirement.")
+	fs.IntVar(&c.BitLenRSAkeys, "bits", 4096, "(under -adduser and for new host keys) number of bits in the generated RSA keys. note the one-time wait to generate: 10000 bits would offer terrific security, but will take between 1-8 minutes to generate such a key.")
 
 	c.MailCfg.DefineFlags(fs)
 
@@ -309,6 +314,10 @@ func (c *SshegoConfig) LoadConfig(path string) error {
 				c.SkipPassphrase = stringToBool(val)
 			case "AUTH_OPTION_SKIP_RSA":
 				c.SkipRSA = stringToBool(val)
+			case "KEYGEN_RSA_BITS":
+				bits, err := strconv.Atoi(val)
+				panicOn(err)
+				c.BitLenRSAkeys = bits
 			}
 		}
 		lineNum++
@@ -362,6 +371,7 @@ func (c *SshegoConfig) SaveConfig(fd io.Writer) error {
 		boolToString(c.SkipPassphrase))
 	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_RSA=\"%s\"\n",
 		boolToString(c.SkipRSA))
+	fmt.Fprintf(fd, "KEYGEN_RSA_BITS=\"%v\"\n", c.BitLenRSAkeys)
 
 	err = c.MailCfg.SaveConfig(fd)
 	return err
