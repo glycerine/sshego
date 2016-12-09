@@ -112,7 +112,7 @@ Then the lack of `-new` protects you on subsequent runs,
 because the server's host key must match what we were
 given the very first time.
 
-# flags accepted, see `gosshtun -h`
+# flags accepted, see `gosshtun -h` for complete list
 
 ~~~
 Usage of gosshtun:
@@ -222,9 +222,11 @@ b) add the corresponding public key to the user's .ssh/authorized_keys file on t
 
 a) see demo.env for an example
 
-b) comments are allowed; lines must start with `#`, comments continue until end-of-line
+b) run `gosshtun -write-config -` to generate a sample config file to stdout
 
-c) fields recognized
+c) comments are allowed; lines must start with `#`, comments continue until end-of-line
+
+d) fields recognized (see `gosshtun -write-config -` for a full list)
 
 ~~~
 #
@@ -238,8 +240,9 @@ REV_REMOTE_ADDR=""
 SSHD_LOGIN_USERNAME="$USER"
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/id_rsa_nopw"
 SSH_KNOWN_HOSTS_PATH="$HOME/.ssh/.sshego.known.hosts"
-
+#
 # optional in-process sshd
+#
 EMBEDDED_SSHD_HOST_DB_PATH="$HOME/.ssh/.sshego.sshd.db"
 EMBEDDED_SSHD_LISTEN_ADDR="127.0.0.1:2022"
 ~~~
