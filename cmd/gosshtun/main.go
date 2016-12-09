@@ -123,14 +123,18 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 	panicOn(err)
 	fullname = strings.Trim(fullname, "\n\r")
 
-	pw, err := tun.PromptForPassword(cfg.AddUser)
-	if err != nil {
-		fmt.Printf("\n%v\n", err)
-		os.Exit(1)
+	var pw string
+	if !cfg.SkipPassphrase {
+		pw, err = tun.PromptForPassword(cfg.AddUser)
+		if err != nil {
+			fmt.Printf("\n%v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("\n account: '%s', passphrase: '%s'\n", cfg.AddUser, pw)
 	}
-	fmt.Printf("\n account: '%s', passphrase: '%s'\n", cfg.AddUser, pw)
-	fmt.Printf("\n generating a strong RSA key, this may take a 5-10 seconds... \n")
-
+	if !cfg.SkipRSA {
+		fmt.Printf("\n generating a strong RSA key, this may take a 5-10 seconds... \n")
+	}
 	user := tun.NewUser()
 	user.MyLogin = mylogin
 	user.MyEmail = myemail
@@ -182,11 +186,16 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 	fmt.Fprintf(&html, "<br>")
 	fmt.Fprintf(both, "## \n")
 	fmt.Fprintf(&html, "<br>")
-	fmt.Fprintf(both, "##  tri-factor auth details:\n")
+	authDetail := "tri-factor"
+	if cfg.SkipPassphrase || cfg.SkipRSA || cfg.SkipTOTP {
+		authDetail = ""
+	}
+	authList := cfg.GenAuthString()
+	fmt.Fprintf(both, "##  %s auth details:\n", authDetail)
 	fmt.Fprintf(&html, "<br>")
 	fmt.Fprintf(both, "## \n")
 	fmt.Fprintf(&html, "<br>")
-	fmt.Fprintf(both, "##    RSA, phone-app, and memorable pass-phrase\n")
+	fmt.Fprintf(both, "##    %s\n", authList)
 	fmt.Fprintf(&html, "<br>")
 	fmt.Fprintf(both, "## \n")
 	fmt.Fprintf(&html, "<br>")
@@ -211,32 +220,35 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 	fmt.Fprintf(&plain, "your fullname:\n%s\n\n", fullname)
 	fmt.Fprintf(&html, "\n<p>your fullname:<br>\n<b>%s</b><p>\n\n", fullname)
 
-	fmt.Fprintf(&plain, "Passphrase:\n%v\n\n", pw)
-	fmt.Fprintf(&html, "<p>Passphrase:\n<br>\n<b>%v</b>\n\n", pw)
-	fmt.Fprintf(&html, "<p><p>")
-
-	fmt.Fprintf(&plain, "GoogleAuthenticator (time-based-one-time-password; RFC6238) secret location (on host %s):\n%s\n\n", hostname, toptPath)
-	fmt.Fprintf(&html, "GoogleAuthenticator (time-based-one-time-password; RFC6238) secret location (on host %s):\n<br>\n<b>%s</b><p><p>\n", hostname, toptPath)
-
-	qrUrl := fmt.Sprintf("file://%s", qrPath)
-
-	fmt.Printf("\n checking if we should open the QR-code automajically...\n")
-	if runtime.GOOS == "darwin" { // "windows", "linux"
-		fmt.Printf("...runtime.GOOS='%s'; try to open the QR-code\n",
-			runtime.GOOS)
-		open.Start(qrUrl)
+	if !cfg.SkipPassphrase {
+		fmt.Fprintf(&plain, "Passphrase:\n%v\n\n", pw)
+		fmt.Fprintf(&html, "<p>Passphrase:\n<br>\n<b>%v</b>\n\n", pw)
+		fmt.Fprintf(&html, "<p><p>")
 	}
+	if !cfg.SkipTOTP {
+		fmt.Fprintf(&plain, "GoogleAuthenticator (time-based-one-time-password; RFC6238) secret location (on host %s):\n%s\n\n", hostname, toptPath)
+		fmt.Fprintf(&html, "GoogleAuthenticator (time-based-one-time-password; RFC6238) secret location (on host %s):\n<br>\n<b>%s</b><p><p>\n", hostname, toptPath)
 
-	fmt.Fprintf(&plain, "GoogleAuthenticator QR-code url (on host %s):\n%s\n\n", hostname, qrPath)
-	fmt.Fprintf(&html, "GoogleAuthenticator QR-code url (on host %s):\n<br><b><a href=\"%s\" target=\"_blank\">%s</a></b><p>\n\n", hostname, qrUrl, qrUrl)
-	fmt.Fprintf(&html, "<p>")
+		qrUrl := fmt.Sprintf("file://%s", qrPath)
 
-	fmt.Fprintf(&plain, "Your new RSA Private key is here (on host %s):\n%s\n\n", hostname, rsaPath)
-	fmt.Fprintf(&html, "Your new RSA Private key is here (on host %s):\n<br><b>%s\n\n</b><p>", hostname, rsaPath)
+		fmt.Printf("\n checking if we should open the QR-code automajically...\n")
+		if runtime.GOOS == "darwin" { // "windows", "linux"
+			fmt.Printf("...runtime.GOOS='%s'; try to open the QR-code\n",
+				runtime.GOOS)
+			open.Start(qrUrl)
+		}
 
-	fmt.Fprintf(&plain, "Your new RSA Public key is here (on host %s):\n%s\n\n", hostname, rsaPath+".pub")
-	fmt.Fprintf(&html, "Your new RSA Public key is here (on host %s):\n<br><b>%s</b><p>\n\n", hostname, rsaPath+".pub")
+		fmt.Fprintf(&plain, "GoogleAuthenticator QR-code url (on host %s):\n%s\n\n", hostname, qrPath)
+		fmt.Fprintf(&html, "GoogleAuthenticator QR-code url (on host %s):\n<br><b><a href=\"%s\" target=\"_blank\">%s</a></b><p>\n\n", hostname, qrUrl, qrUrl)
+		fmt.Fprintf(&html, "<p>")
+	}
+	if !cfg.SkipRSA {
+		fmt.Fprintf(&plain, "Your new RSA Private key is here (on host %s):\n%s\n\n", hostname, rsaPath)
+		fmt.Fprintf(&html, "Your new RSA Private key is here (on host %s):\n<br><b>%s\n\n</b><p>", hostname, rsaPath)
 
+		fmt.Fprintf(&plain, "Your new RSA Public key is here (on host %s):\n%s\n\n", hostname, rsaPath+".pub")
+		fmt.Fprintf(&html, "Your new RSA Public key is here (on host %s):\n<br><b>%s</b><p>\n\n", hostname, rsaPath+".pub")
+	}
 	fmt.Fprintf(&html, "</body></html>")
 
 	os.Stdout.Write(plain.Bytes())

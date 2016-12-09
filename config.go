@@ -154,9 +154,9 @@ func (c *SshegoConfig) DefineFlags(fs *flag.FlagSet) {
 	fs.StringVar(&c.DelUser, "deluser", "", "we will delete this user from the known users database.")
 	fs.IntVar(&c.SshegoSystemMutexPort, "xport", 33355, "localhost tcp-port used for internal syncrhonization and commands such as adding users to running esshd; we must be able to acquire this exclusively for our use on 127.0.0.1")
 
-	fs.BoolVar(&c.SkipTOTP, "skip-totp", false, "(under -esshd) skip time-based-one-time-password authentication requirement.")
-	fs.BoolVar(&c.SkipPassphrase, "skip-pass", false, "(under -esshd) skip passphrase authentication requirement.")
-	fs.BoolVar(&c.SkipRSA, "skip-rsa", false, "(under -esshd) skip RSA key authentication requirement.")
+	fs.BoolVar(&c.SkipTOTP, "skip-totp", false, "(under -esshd and -adduser) skip time-based-one-time-password authentication requirement.")
+	fs.BoolVar(&c.SkipPassphrase, "skip-pass", false, "(under -esshd and -adduser) skip passphrase authentication requirement.")
+	fs.BoolVar(&c.SkipRSA, "skip-rsa", false, "(under -esshd and -adduser) skip RSA key authentication requirement.")
 	fs.IntVar(&c.BitLenRSAkeys, "bits", 4096, "(under -adduser and for new host keys) number of bits in the generated RSA keys. note the one-time wait to generate: 10000 bits would offer terrific security, but will take between 1-8 minutes to generate such a key.")
 
 	c.MailCfg.DefineFlags(fs)
@@ -413,4 +413,50 @@ func stringToBool(s string) bool {
 		return true
 	}
 	return false
+}
+
+func (cfg *SshegoConfig) GenAuthString() string {
+	s := ""
+	// "RSA, phone-app, and memorable pass-phrase"
+
+	count := 0
+	if !cfg.SkipRSA {
+		count++
+	}
+	if !cfg.SkipTOTP {
+		count++
+	}
+	if !cfg.SkipPassphrase {
+		count++
+	}
+	added := 0
+	if !cfg.SkipRSA {
+		s = "RSA"
+		added++
+	}
+	if !cfg.SkipTOTP {
+		if added > 0 {
+			switch count {
+			case 1:
+			case 2:
+				s += " and "
+			default:
+				s += ", "
+			}
+		}
+		s += "phone-app"
+		added++
+	}
+	if !cfg.SkipPassphrase {
+		switch added {
+		case 0:
+		case 1:
+			s += " and "
+		case 2:
+			s += ", and"
+		}
+		s += "memorable pass-phrase"
+	}
+
+	return s
 }

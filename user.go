@@ -291,9 +291,10 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname string) (toptPat
 	user.ClearPw = pw
 	user.Issuer = issuer
 	user.MyFullname = fullname
-	user.PrivateKeyPath = rsaPath
-	user.PublicKeyPath = rsaPath + ".pub"
-
+	if !h.cfg.SkipRSA {
+		user.PrivateKeyPath = rsaPath
+		user.PublicKeyPath = rsaPath + ".pub"
+	}
 	return h.finishUserBuildout(user)
 }
 
@@ -301,46 +302,48 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	p("finishUserBuildout started: user.MyLogin:'%v' user.ClearPw:'%v' user.MyEmail:'%v'",
 		user.MyLogin, user.ClearPw, user.MyEmail)
 
-	user.ScryptedPassword = ScryptHash(user.ClearPw)
-	var w *TOTP
-	w, err = NewTOTP(user.MyEmail, fmt.Sprintf("%s/%s", user.MyLogin, user.Issuer))
-	if err != nil {
-		panic(err)
+	if !h.cfg.SkipPassphrase {
+		user.ScryptedPassword = ScryptHash(user.ClearPw)
 	}
 
-	toptPath = h.toptpath(user.MyLogin)
-	user.TOTPpath = toptPath
-	makeway(toptPath)
+	if !h.cfg.SkipTOTP {
+		var w *TOTP
+		w, err = NewTOTP(user.MyEmail, fmt.Sprintf("%s/%s", user.MyLogin, user.Issuer))
+		if err != nil {
+			panic(err)
+		}
+		toptPath = h.toptpath(user.MyLogin)
+		user.TOTPpath = toptPath
+		makeway(toptPath)
 
-	user.TOTPorig = w.Key.String()
-	_, qrPath, err = w.SaveToFile(toptPath)
-	panicOn(err)
-	user.oneTime = w
-	user.QrPath = qrPath
-
-	rsaPath = h.rsapath(user.MyLogin)
-	user.PrivateKeyPath = rsaPath
-	user.PublicKeyPath = rsaPath + ".pub"
-
-	makeway(rsaPath)
-	bits := h.cfg.BitLenRSAkeys // default 4096
-
-	var signer ssh.Signer
-	_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
-	if err != nil {
-		return
+		user.TOTPorig = w.Key.String()
+		_, qrPath, err = w.SaveToFile(toptPath)
+		panicOn(err)
+		user.oneTime = w
+		user.QrPath = qrPath
 	}
-	user.PublicKeyPath = rsaPath + ".pub"
-	user.publicKey = signer.PublicKey()
 
-	// fingerprint := Fingerprint(signer.PublicKey())
+	if !h.cfg.SkipRSA {
+		rsaPath = h.rsapath(user.MyLogin)
+		user.PrivateKeyPath = rsaPath
+		user.PublicKeyPath = rsaPath + ".pub"
+
+		makeway(rsaPath)
+		bits := h.cfg.BitLenRSAkeys // default 4096
+
+		var signer ssh.Signer
+		_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
+		if err != nil {
+			return
+		}
+		user.PublicKeyPath = rsaPath + ".pub"
+		user.publicKey = signer.PublicKey()
+	}
 
 	// don't save ClearPw to disk, and no need
 	// to ship it back b/c they supplied it in
 	// the first place (and we can't change it
 	// after the fact).
-
-	// don't save ClearPw to disk
 	user.ClearPw = ""
 
 	//	p("user = %#v", user)
