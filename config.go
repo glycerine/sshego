@@ -32,6 +32,9 @@ type SshegoConfig struct {
 
 	WriteConfigOut string
 
+	// if -write-config is all we are doing
+	WriteConfigOnly bool
+
 	Quiet bool
 
 	Esshd                  *Esshd
@@ -218,7 +221,11 @@ func (c *SshegoConfig) ValidateConfig() error {
 		c.AddUser == "" &&
 		c.DelUser == "" {
 
-		return fmt.Errorf("no tunnels requested; one of -listen or -revlisten or -esshd is required")
+		if c.WriteConfigOut == "" {
+			return fmt.Errorf("no tunnels requested; one of -listen or -revlisten or -esshd is required")
+		} else {
+			c.WriteConfigOnly = true
+		}
 	}
 
 	err = c.SSHdServer.ParseAddr()
@@ -358,13 +365,14 @@ func (c *SshegoConfig) SaveConfig(fd io.Writer) error {
 	fmt.Fprintf(fd, "SSH_KNOWN_HOSTS_PATH=\"%s\"\n", c.ClientKnownHostsPath)
 	fmt.Fprintf(fd, "QUIET=\"%s\"\n", boolToString(c.Quiet))
 
-	fmt.Fprintf(fd, "## optional sshd server config\n")
+	fmt.Fprintf(fd, "#\n# optional sshd server config\n#\n")
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_HOST_DB_PATH=\"%s\"\n", c.EmbeddedSSHdHostDbPath)
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_LISTEN_ADDR=\"%s\"\n", c.EmbeddedSSHd.Addr)
 	c.SshegoSystemMutexPortString = fmt.Sprintf(
 		"%v", c.SshegoSystemMutexPort)
 	fmt.Fprintf(fd, "EMBEDDED_SSHD_COMMAND_XPORT=\"%s\"\n", c.SshegoSystemMutexPortString)
 
+	fmt.Fprintf(fd, "#\n# auth config\n#\n")
 	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_TOTP=\"%s\"\n",
 		boolToString(c.SkipTOTP))
 	fmt.Fprintf(fd, "AUTH_OPTION_SKIP_PASSPHRASE=\"%s\"\n",

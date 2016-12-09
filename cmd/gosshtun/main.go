@@ -33,9 +33,14 @@ func main() {
 	cfg.KnownHosts = h
 
 	if cfg.WriteConfigOut != "" {
-		o, err := os.Create(cfg.WriteConfigOut)
-		if err != nil {
-			panic(err)
+		var o io.WriteCloser
+		if cfg.WriteConfigOut == "-" {
+			o = os.Stdout
+		} else {
+			o, err = os.Create(cfg.WriteConfigOut)
+			if err != nil {
+				panic(err)
+			}
 		}
 		err = cfg.SaveConfig(o)
 		if err != nil {
@@ -63,7 +68,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	select {}
+	if !cfg.WriteConfigOnly {
+		select {}
+	}
 }
 
 func panicOn(err error) {
