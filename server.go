@@ -781,6 +781,11 @@ func (a *PerAttempt) SetupAuthRequirements() {
 	}
 }
 
+// see vendor/golang.org/x/crypto/ssh/kex.go
+const (
+	kexAlgoCurve25519SHA256 = "curve25519-sha256@libssh.org"
+)
+
 // SetTripleConfig establishes an a.State.Config that requires
 // *both* public key and one-time password validation.
 func (a *PerAttempt) SetTripleConfig() {
@@ -788,6 +793,7 @@ func (a *PerAttempt) SetTripleConfig() {
 		PublicKeyCallback:           a.PublicKeyCallback,
 		KeyboardInteractiveCallback: a.KeyboardInteractiveCallback,
 		AuthLogCallback:             a.AuthLogCallback,
+		Config:                      ssh.Config{KeyExchanges: []string{kexAlgoCurve25519SHA256}},
 	}
 	a.Config.AddHostKey(a.State.HostKey)
 }
