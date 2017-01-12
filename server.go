@@ -793,7 +793,9 @@ func (a *PerAttempt) SetTripleConfig() {
 		PublicKeyCallback:           a.PublicKeyCallback,
 		KeyboardInteractiveCallback: a.KeyboardInteractiveCallback,
 		AuthLogCallback:             a.AuthLogCallback,
-		Config:                      ssh.Config{KeyExchanges: []string{kexAlgoCurve25519SHA256}},
+		Config: ssh.Config{
+			KeyExchanges: []string{kexAlgoCurve25519SHA256}},
+		ServerVersion: "SSH-2.0-OpenSSH_6.9",
 	}
 	a.Config.AddHostKey(a.State.HostKey)
 }
