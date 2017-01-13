@@ -68,7 +68,13 @@ func handleChannel(newChannel ssh.NewChannel) {
 	// channel type of "session". The spec also describes
 	// "x11", "direct-tcpip" and "forwarded-tcpip"
 	// channel types.
-	if t := newChannel.ChannelType(); t != "session" {
+	t := newChannel.ChannelType()
+
+	if t == "direct-tcpip" {
+		handleDirectTcp(newChannel)
+	}
+
+	if t != "session" {
 		newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", t))
 		return
 	}

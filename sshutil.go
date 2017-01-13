@@ -155,7 +155,9 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort uint64, passphrase string, toptUrl string) error {
+func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort uint64, passphrase string, toptUrl string) (*ssh.Client, error) {
+
+	var sshClientConn *ssh.Client
 
 	p("SSHConnect sees sshdHost:port = %s:%v", sshdHost, sshdPort)
 
@@ -249,25 +251,25 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, err := ssh.Dial("tcp", hostport, cliCfg)
+		sshClientConn, err = ssh.Dial("tcp", hostport, cliCfg)
 		if err != nil {
-			return fmt.Errorf("sshConnect() failed at dial to '%s': '%s' ", hostport, err.Error())
+			return nil, fmt.Errorf("sshConnect() failed at dial to '%s': '%s' ", hostport, err.Error())
 		}
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
 			err = cfg.StartupReverseListener(sshClientConn)
 			if err != nil {
-				return fmt.Errorf("StartupReverseListener failed: %s", err)
+				return nil, fmt.Errorf("StartupReverseListener failed: %s", err)
 			}
 		}
 		if cfg.LocalToRemote.Listen.Addr != "" {
 			err = cfg.StartupForwardListener(sshClientConn)
 			if err != nil {
-				return fmt.Errorf("StartupFowardListener failed: %s", err)
+				return nil, fmt.Errorf("StartupFowardListener failed: %s", err)
 			}
 		}
 	}
-	return nil
+	return sshClientConn, nil
 }
 
 // StartupForwardListener is called when a forward tunnel is the
