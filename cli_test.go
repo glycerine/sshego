@@ -111,7 +111,9 @@ func Test201ClientDirectSSH(t *testing.T) {
 			// This produces direct-tcpip forwarding -- in other
 			// words we talk to the server at dest via the sshd,
 			// but no other port is opened and so we have
-			// exclusive access.
+			// exclusive access. This prevents other users and
+			// their processes on this localhost from also
+			// using the ssh connection (i.e. without authenticating).
 			channelToTcpServer, err := sshClientConn.Dial("tcp", dest)
 			panicOn(err)
 
