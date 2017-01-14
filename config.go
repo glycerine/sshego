@@ -75,6 +75,8 @@ type SshegoConfig struct {
 	SkipRSA        bool
 
 	BitLenRSAkeys int
+
+	DirectTcp bool
 }
 
 func NewSshegoConfig() *SshegoConfig {

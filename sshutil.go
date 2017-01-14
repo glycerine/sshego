@@ -209,7 +209,10 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		go cfg.Esshd.Start()
 	}
 
-	if cfg.RemoteToLocal.Listen.Addr != "" || cfg.LocalToRemote.Listen.Addr != "" {
+	if cfg.DirectTcp ||
+		cfg.RemoteToLocal.Listen.Addr != "" ||
+		cfg.LocalToRemote.Listen.Addr != "" {
+
 		useRSA := true
 		var privkey ssh.Signer
 		var err error

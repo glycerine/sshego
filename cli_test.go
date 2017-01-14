@@ -99,23 +99,23 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		if true {
 			// where do we setup the forwarding to tcpSrvPort?
-			// we don't right now, we just use the sshClientConn in a Dial() operation afterwards.
+			// we don't right now, we just use the sshClientConn in
+			// a Dial() operation afterwards.
 
-			sshClientConn, err := s.cliCfg.SSHConnect(s.cliCfg.KnownHosts, s.mylogin, s.rsaPath,
-				s.srvCfg.EmbeddedSSHd.Host, s.srvCfg.EmbeddedSSHd.Port, s.pw, s.totp)
-			//pp("err is %#v, conn=%#v", err, sshClientConn)
-			// should have succeeded in logging in
+			dc := DialConfig{
+				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
+				Mylogin:              s.mylogin,
+				RsaPath:              s.rsaPath,
+				Totp:                 s.totp,
+				Pw:                   s.pw,
+				Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
+				Sshdport:             s.srvCfg.EmbeddedSSHd.Port,
+				DownstreamHostPort:   dest,
+				TofuAddIfNotKnown:    true,
+			}
+
+			channelToTcpServer, _, err := dc.Dial()
 			cv.So(err, cv.ShouldBeNil)
-
-			// Here is how to dial over an encrypted ssh channel.
-			// This produces direct-tcpip forwarding -- in other
-			// words we talk to the server at dest via the sshd,
-			// but no other port is opened and so we have
-			// exclusive access. This prevents other users and
-			// their processes on this localhost from also
-			// using the ssh connection (i.e. without authenticating).
-			channelToTcpServer, err := sshClientConn.Dial("tcp", dest)
-			panicOn(err)
 
 			m, err := channelToTcpServer.Write([]byte(confirmationPayload))
 			panicOn(err)
