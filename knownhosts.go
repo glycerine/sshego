@@ -51,7 +51,7 @@ type ServerPubKey struct {
 	// reading ~/.ssh/known_hosts
 	Markers                  string
 	Hostnames                string
-	SplitHostnames           []string
+	SplitHostnames           map[string]bool
 	Keytype                  string
 	Base64EncodededPublicKey string
 	Comment                  string
@@ -250,6 +250,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			Base64EncodededPublicKey: splt[b+2],
 			Comment:                  comment,
 			Port:                     "22",
+			SplitHostnames:           make(map[string]bool),
 		}
 		hosts := strings.Split(pubkey.Hostnames, ",")
 
@@ -271,7 +272,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 				pubkey.Port = hostport[1]
 			}
 			pubkey.Hostname = hst + ":" + pubkey.Port
-			pubkey.SplitHostnames = append(pubkey.SplitHostnames, pubkey.Hostname)
+			pubkey.SplitHostnames[pubkey.Hostname] = true
 		}
 
 		// b) each individual name
@@ -315,7 +316,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			se := string(ssh.MarshalAuthorizedKey(xkey))
 
 			ourpubkey.LineInFileOneBased = i + 1
-			/* don't resolve now, this is slow:
+			/* don't resolve now, this may be slow:
 			ourpubkey.remote, err = net.ResolveTCPAddr("tcp", ourpubkey.Hostname+":"+ourpubkey.Port)
 			if err != nil {
 				log.Printf("warning: ignoring entry known_hosts file '%s' on line %v: '%s' we find the following error: could not resolve the hostname '%s'. detailed error: '%s'", path, i+1, lines[i], ourpubkey.Hostname, err)
@@ -323,8 +324,17 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			*/
 			ourpubkey.AlreadySaved = true
 			ourpubkey.HumanKey = se
-			h.Hosts[se] = &ourpubkey
-			//pp("saved known hosts: key '%s' -> value: %#v\n", se, ourpubkey)
+			// check for existing that we need to combine...
+			prior, already := h.Hosts[se]
+			if !already {
+				h.Hosts[se] = &ourpubkey
+				//pp("saved known hosts: key '%s' -> value: %#v\n", se, ourpubkey)
+			} else {
+				// need to combine under this key...
+				pp("have prior entry for se='%s': %#v\n", se, prior)
+				prior.AddHostPort(ourpubkey.Hostname)
+				prior.AlreadySaved = true // reading from file, all are saved already.
+			}
 		}
 	}
 
@@ -353,10 +363,33 @@ func (s *KnownHosts) saveSshKnownHosts() error {
 		if v.AlreadySaved {
 			continue
 		}
-		hostname := v.Hostname
-		if v.Port != "22" {
-			hostname = "[" + hostname + "]:" + v.Port
+
+		hostname := ""
+		if len(v.SplitHostnames) == 1 {
+			hn := v.Hostname
+			hp := strings.Split(hostname, ":")
+			if hp[1] != "22" {
+				hn = "[" + hp[0] + "]:" + hp[1]
+			}
+			hostname = hn
+		} else {
+			// put all hostnames under this one key.
+			k := 0
+			for tmp := range v.SplitHostnames {
+				hp := strings.Split(tmp, ":")
+				if len(hp) != 2 {
+					panic(fmt.Sprintf("must be 2 parts here, but we got '%s'", tmp))
+				}
+				hn := "[" + hp[0] + "]:" + hp[1]
+				if k == 0 {
+					hostname = hn
+				} else {
+					hostname += "," + hn
+				}
+				k++
+			}
 		}
+
 		_, err = fmt.Fprintf(f, "%s %s %s %s\n",
 			hostname,
 			v.Keytype,
@@ -378,4 +411,12 @@ func base64ofPublicKey(key ssh.PublicKey) string {
 	e.Close()
 	return b.String()
 
+}
+
+func (prior *ServerPubKey) AddHostPort(hp string) {
+	_, already2 := prior.SplitHostnames[hp]
+	prior.SplitHostnames[hp] = true
+	if !already2 {
+		prior.AlreadySaved = false
+	}
 }

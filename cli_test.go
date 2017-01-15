@@ -98,10 +98,6 @@ func Test201ClientDirectSSH(t *testing.T) {
 		}
 
 		if true {
-			// where do we setup the forwarding to tcpSrvPort?
-			// we don't right now, we just use the sshClientConn in
-			// a Dial() operation afterwards.
-
 			dc := DialConfig{
 				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
 				Mylogin:              s.mylogin,

@@ -115,11 +115,14 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		if record.Hostname != hostname {
 			// check all the SplitHostnames before failing
 			found := false
-			for i := range record.SplitHostnames {
-				if record.SplitHostnames[i] == hostname {
+			for hn := range record.SplitHostnames {
+				if hn == hostname {
 					found = true
 					break
 				}
+			}
+			if addIfNotKnown {
+				goto AddNeeded
 			}
 			if !found {
 				err := fmt.Errorf("hostname mismatch for key '%s': record.Hostname:'%v' in records, hostname:'%s' supplied now. record.SplitHostnames = '%#v", strPubBytes, record.Hostname, hostname, record.SplitHostnames)
@@ -136,6 +139,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		return KnownOK, record, nil
 	}
 
+AddNeeded:
 	if addIfNotKnown {
 		record = &ServerPubKey{
 			Hostname: hostname,
@@ -148,11 +152,20 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 			Base64EncodededPublicKey: base64ofPublicKey(key),
 			Comment: fmt.Sprintf("added_by_sshego_on_%v",
 				time.Now().Format(time.RFC3339)),
-			//pubBytes
 		}
 
-		h.Hosts[strPubBytes] = record
-		h.Sync()
+		// host with same key may show up under an IP address and
+		// a FQHN, so combine under the key if we see that.
+		prior, already := h.Hosts[strPubBytes]
+		if !already {
+			h.Hosts[strPubBytes] = record
+			h.Sync()
+		} else {
+			// two or more names under the same key.
+			pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
+			prior.AddHostPort(hostname)
+			h.Sync()
+		}
 		if allowOneshotConnect {
 			return KnownOK, record, nil
 		}
