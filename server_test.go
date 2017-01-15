@@ -182,7 +182,7 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 	cfg.BitLenRSAkeys = 1024 // faster for testing
 
 	var err error
-	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath, "")
+	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath, KHJson)
 	panicOn(err)
 
 	// get a bunch of distinct ports, all different.

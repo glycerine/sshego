@@ -41,10 +41,8 @@ func (ki *kiCliHelp) helper(user string, instruction string, questions []string,
 	return answers, nil
 }
 
-func defaultFileFormat() string {
-	// either ".gob.snappy" or ".json.snappy" or "ssh_known_hosts"
-	return ".json.snappy"
-	//return ".gob.snappy"
+func defaultFileFormat() KnownHostsPersistFormat {
+	return KHJson
 }
 
 // HostState recognizes host keys are legitimate or
@@ -94,7 +92,7 @@ func (s HostState) String() string {
 func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.PublicKey, pubBytes []byte, addIfNotKnown bool, allowOneshotConnect bool) (HostState, *ServerPubKey, error) {
 	strPubBytes := string(pubBytes)
 
-	p("in HostAlreadyKnown... starting.")
+	p("in HostAlreadyKnown... starting. looking up by strPubBytes = '%s'", strPubBytes)
 
 	record, ok := h.Hosts[strPubBytes]
 	if ok {
@@ -115,9 +113,19 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 			return KnownOK, record, nil
 		}
 		if record.Hostname != hostname {
-			err := fmt.Errorf("hostname mismatch for key '%s': record.Hostname:'%v' in records, hostname:'%s' supplied now", strPubBytes, record.Hostname, hostname)
-			//fmt.Printf("\n in HostAlreadyKnown, returning KnownRecordMismatch: '%s'", err)
-			return KnownRecordMismatch, record, err
+			// check all the SplitHostnames before failing
+			found := false
+			for i := range record.SplitHostnames {
+				if record.SplitHostnames[i] == hostname {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err := fmt.Errorf("hostname mismatch for key '%s': record.Hostname:'%v' in records, hostname:'%s' supplied now. record.SplitHostnames = '%#v", strPubBytes, record.Hostname, hostname, record.SplitHostnames)
+				//fmt.Printf("\n in HostAlreadyKnown, returning KnownRecordMismatch: '%s'", err)
+				return KnownRecordMismatch, record, err
+			}
 		}
 		p("in HostAlreadyKnown, returning KnownOK.")
 		if addIfNotKnown {

@@ -93,12 +93,14 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	var err error
+	//pp("DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 	if dc.KnownHosts == nil {
-		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, "ssh_known_hosts")
-		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
+		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, KHSsh)
 		if err != nil {
 			return nil, nil, err
 		}
+		//pp("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
+		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 
 	if dc.TofuAddIfNotKnown {

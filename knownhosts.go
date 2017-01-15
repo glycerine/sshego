@@ -25,9 +25,10 @@ type KnownHosts struct {
 	// FilepathPrefix doesn't have the .json.snappy suffix on it.
 	FilepathPrefix string
 
-	// PersistFormat doubles as the file suffix as well as
-	// the format indicator
-	PersistFormat string
+	PersistFormatSuffix string
+
+	// PersistFormat is the format indicator
+	PersistFormat KnownHostsPersistFormat
 
 	// NoSave means we don't touch the files we read from
 	NoSave bool
@@ -50,6 +51,7 @@ type ServerPubKey struct {
 	// reading ~/.ssh/known_hosts
 	Markers                  string
 	Hostnames                string
+	SplitHostnames           []string
 	Keytype                  string
 	Base64EncodededPublicKey string
 	Comment                  string
@@ -60,6 +62,14 @@ type ServerPubKey struct {
 	AlreadySaved bool
 }
 
+type KnownHostsPersistFormat int
+
+const (
+	KHJson KnownHostsPersistFormat = 0
+	KHGob  KnownHostsPersistFormat = 1
+	KHSsh  KnownHostsPersistFormat = 2
+)
+
 // NewKnownHosts creats a new KnownHosts structure.
 // filepathPrefix does not include the
 // PersistFormat suffix. If filepathPrefix + defaultFileFormat()
@@ -69,37 +79,45 @@ type ServerPubKey struct {
 // The returned KnownHosts will remember the
 // filepathPrefix for future saves.
 //
-func NewKnownHosts(filepathPrefix, persistFormat string) (*KnownHosts, error) {
-
-	if persistFormat == "" {
-		persistFormat = defaultFileFormat()
-	}
+func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts, error) {
+	//pp("NewKnownHosts called")
 
 	h := &KnownHosts{
-		PersistFormat: persistFormat,
+		PersistFormat: format,
 	}
 
-	fn := filepathPrefix + h.PersistFormat
+	h.FilepathPrefix = filepath
+	fn := filepath
+	switch format {
+	case KHJson:
+		h.PersistFormatSuffix = ".json.snappy"
+	case KHGob:
+		h.PersistFormatSuffix = ".gob.snappy"
+	}
+	fn += h.PersistFormatSuffix
 
 	var err error
 	if fileExists(fn) {
-		//fmt.Printf("fn '%s' exists in NewKnownHosts()\n", fn)
+		//fmt.Printf("fn '%s' exists in NewKnownHosts(). format = %v\n", fn, format)
 
-		switch persistFormat {
-		case ".json.snappy":
+		switch format {
+		case KHJson:
 			err = h.readJSONSnappy(fn)
 			if err != nil {
 				return nil, err
 			}
-		case ".gob.snappy":
+		case KHGob:
 			err = h.readGobSnappy(fn)
 			if err != nil {
 				return nil, err
 			}
-		case "ssh_known_hosts":
-			h, err = LoadSshKnownHosts(filepathPrefix)
+		case KHSsh:
+			h, err = LoadSshKnownHosts(fn)
+			if err != nil {
+				return nil, err
+			}
 		default:
-			return nil, fmt.Errorf("unknown persistence format: %v", persistFormat)
+			return nil, fmt.Errorf("unknown persistence format: %v", format)
 		}
 
 		//fmt.Printf("after reading from file, h = '%#v'\n", h)
@@ -109,7 +127,6 @@ func NewKnownHosts(filepathPrefix, persistFormat string) (*KnownHosts, error) {
 		//fmt.Printf("making h.Hosts in NewKnownHosts()\n")
 		h.Hosts = make(map[string]*ServerPubKey)
 	}
-	h.FilepathPrefix = filepathPrefix
 
 	return h, nil
 }
@@ -144,15 +161,15 @@ func KnownHostsEqual(a, b *KnownHosts) (bool, error) {
 // file h.FilepathPrefix + h.PersistFormat (for json/gob); to
 // just h.FilepathPrefix for "ssh_known_hosts" format.
 func (h *KnownHosts) Sync() (err error) {
-	fn := h.FilepathPrefix + h.PersistFormat
+	fn := h.FilepathPrefix + h.PersistFormatSuffix
 	switch h.PersistFormat {
-	case ".json.snappy":
+	case KHJson:
 		err = h.saveJSONSnappy(fn)
 		panicOn(err)
-	case ".gob.snappy":
+	case KHGob:
 		err = h.saveGobSnappy(fn)
 		panicOn(err)
-	case "ssh_known_hosts":
+	case KHSsh:
 		err = h.saveSshKnownHosts()
 		panicOn(err)
 	default:
@@ -172,11 +189,12 @@ func (h *KnownHosts) Close() {
 // section of http://manpages.ubuntu.com/manpages/zesty/en/man8/sshd.8.html
 // or the local sshd(8) man page.
 func LoadSshKnownHosts(path string) (*KnownHosts, error) {
+	//pp("top of LoadSshKnownHosts for path = '%s'", path)
 
 	h := &KnownHosts{
 		Hosts:          make(map[string]*ServerPubKey),
 		FilepathPrefix: path,
-		PersistFormat:  "ssh_known_hosts",
+		PersistFormat:  KHSsh,
 	}
 
 	if !fileExists(path) {
@@ -202,7 +220,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			continue
 		}
 		splt := strings.Split(line, " ")
-		//p("for line i = %v, splt = %#v\n", i, splt)
+		//pp("for line i = %v, splt = %#v\n", i, splt)
 		n := len(splt)
 		if n < 3 || n > 5 {
 			return nil, fmt.Errorf("known_hosts file '%s' did not have 3/4/5 fields on line %v: '%s'", path, i+1, lines[i])
@@ -234,17 +252,40 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			Port:                     "22",
 		}
 		hosts := strings.Split(pubkey.Hostnames, ",")
+
+		// 2 passes: first fill all the SplitHostnames, then each indiv.
+
+		// a) fill all the SplitHostnames
+		for k := range hosts {
+			hst := hosts[k]
+			//pp("processing hst = '%s'\n", hst)
+			if hst[0] == '[' {
+				hst = hst[1:]
+				hst = killRightBracket.Replace(hst)
+				//pp("after killing [], hst = '%s'\n", hst)
+			}
+			hostport := strings.Split(hst, ":")
+			//p("hostport = '%#v'\n", hostport)
+			if len(hostport) > 1 {
+				hst = hostport[0]
+				pubkey.Port = hostport[1]
+			}
+			pubkey.Hostname = hst + ":" + pubkey.Port
+			pubkey.SplitHostnames = append(pubkey.SplitHostnames, pubkey.Hostname)
+		}
+
+		// b) each individual name
 		for k := range hosts {
 
 			// copy pubkey so we can modify
 			ourpubkey := pubkey
 
 			hst := hosts[k]
-			//p("processing hst = '%s'\n", hst)
+			//pp("processing hst = '%s'\n", hst)
 			if hst[0] == '[' {
 				hst = hst[1:]
 				hst = killRightBracket.Replace(hst)
-				//p("after killing [], hst = '%s'\n", hst)
+				//pp("after killing [], hst = '%s'\n", hst)
 			}
 			hostport := strings.Split(hst, ":")
 			//p("hostport = '%#v'\n", hostport)
@@ -252,7 +293,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 				hst = hostport[0]
 				ourpubkey.Port = hostport[1]
 			}
-			ourpubkey.Hostname = hst
+			ourpubkey.Hostname = hst + ":" + ourpubkey.Port
 
 			// unbase64 the public key to get []byte, the string() that
 			// to get the key of h.Hosts
@@ -261,18 +302,29 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			expand := make([]byte, expandedMaxSize)
 			n, err := base64.StdEncoding.Decode(expand, []byte(ourpubkey.Base64EncodededPublicKey))
 			if err != nil {
-				return nil, fmt.Errorf("error: known_hosts file '%s' on line %v: '%s' we find the following error: could not base64 decode the public key field. detailed error: '%s'", path, i+1, lines[i], err)
+				log.Printf("warning: ignoring entry in known_hosts file '%s' on line %v: '%s' we find the following error: could not base64 decode the public key field. detailed error: '%s'", path, i+1, lines[i], err)
+				continue
 			}
 			expand = expand[:n]
-			se := string(expand)
-			ourpubkey.LineInFileOneBased = i + 1
-			ourpubkey.remote, err = net.ResolveTCPAddr("tcp", ourpubkey.Hostname)
+
+			xkey, err := ssh.ParsePublicKey(expand)
 			if err != nil {
-				return nil, fmt.Errorf("error: known_hosts file '%s' on line %v: '%s' we find the following error: could not resolve the hostname '%s'. detailed error: '%s'", path, i+1, lines[i], ourpubkey.Hostname, err)
+				log.Printf("warning: ignoring entry in known_hosts file '%s' on line %v: '%s' we find the following error: could not ssh.ParsePublicKey(). detailed error: '%s'", path, i+1, lines[i], err)
+				continue
 			}
+			se := string(ssh.MarshalAuthorizedKey(xkey))
+
+			ourpubkey.LineInFileOneBased = i + 1
+			/* don't resolve now, this is slow:
+			ourpubkey.remote, err = net.ResolveTCPAddr("tcp", ourpubkey.Hostname+":"+ourpubkey.Port)
+			if err != nil {
+				log.Printf("warning: ignoring entry known_hosts file '%s' on line %v: '%s' we find the following error: could not resolve the hostname '%s'. detailed error: '%s'", path, i+1, lines[i], ourpubkey.Hostname, err)
+			}
+			*/
 			ourpubkey.AlreadySaved = true
 			ourpubkey.HumanKey = se
 			h.Hosts[se] = &ourpubkey
+			//pp("saved known hosts: key '%s' -> value: %#v\n", se, ourpubkey)
 		}
 	}
 
