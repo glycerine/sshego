@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -178,6 +179,11 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg := NewSshegoConfig()
 	cfg.origdir, cfg.tempdir = MakeAndMoveToTempDir() // cd to tempdir
+
+	// copy in a 3 host fake known hosts
+	exec.Command("cp", cfg.origdir+"/testdata/*", cfg.tempdir+"/").Run()
+
+	cfg.ClientKnownHostsPath = cfg.tempdir + "/fake_known_hosts_without_b"
 
 	cfg.BitLenRSAkeys = 1024 // faster for testing
 

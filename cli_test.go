@@ -37,34 +37,12 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		tcpSrvLsn, tcpSrvPort := getAvailPort()
 
-		go func() {
-			tcpServerConn, err := tcpSrvLsn.Accept()
-			panicOn(err)
-			pp("%v", tcpServerConn)
-
-			b := make([]byte, payloadByteCount)
-			n, err := tcpServerConn.Read(b)
-			panicOn(err)
-			if n != payloadByteCount {
-				panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))
-			}
-			saw := string(b)
-
-			if saw != confirmationPayload {
-				panic(fmt.Errorf("expected '%s', but saw '%s'", confirmationPayload, saw))
-			}
-
-			pp("success! server got expected confirmation payload of '%s'", saw)
-
-			// reply back
-			n, err = tcpServerConn.Write([]byte(confirmationReply))
-			panicOn(err)
-			if n != payloadByteCount {
-				panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
-			}
-			//tcpServerConn.Close()
-			close(serverDone)
-		}()
+		startBackgroundTestTcpServer(
+			serverDone,
+			payloadByteCount,
+			confirmationPayload,
+			confirmationReply,
+			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer()
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
@@ -73,30 +51,10 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		// below over SSH should be equivalent of the following
 		// non-encrypted ping/pong.
+
 		if false {
-			conn, err := net.Dial("tcp", dest)
-			panicOn(err)
-			m, err := conn.Write([]byte(confirmationPayload))
-			panicOn(err)
-			if m != payloadByteCount {
-				panic("too short a write!")
-			}
-
-			// check reply
-			rep := make([]byte, payloadByteCount)
-			m, err = conn.Read(rep)
-			panicOn(err)
-			if m != payloadByteCount {
-				panic("too short a reply!")
-			}
-			srep := string(rep)
-			if srep != confirmationReply {
-				panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
-			}
-			pp("reply success! we got the expected srep reply '%s'", srep)
-			conn.Close()
+			unencPingPong(dest, confirmationPayload, confirmationReply, payloadByteCount)
 		}
-
 		if true {
 			dc := DialConfig{
 				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
@@ -119,27 +77,11 @@ func Test201ClientDirectSSH(t *testing.T) {
 			channelToTcpServer, _, err = dc.Dial()
 			cv.So(err, cv.ShouldBeNil)
 
-			m, err := channelToTcpServer.Write([]byte(confirmationPayload))
-			panicOn(err)
-			if m != len(confirmationPayload) {
-				panic("too short a write!")
-			}
-
-			// check reply
-			rep := make([]byte, payloadByteCount)
-			m, err = channelToTcpServer.Read(rep)
-			panicOn(err)
-			if m != payloadByteCount {
-				panic("too short a reply!")
-			}
-			srep := string(rep)
-			if srep != confirmationReply {
-				panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
-			}
-			pp("reply success! we got the expected srep reply '%s'", srep)
-
+			verifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 			channelToTcpServer.Close()
 		}
+		// tcp-server should have exited because it got the expected
+		// message and replied with the agreed upon reply and then exited.
 		<-serverDone
 
 		// done with testing, cleanup
@@ -210,4 +152,80 @@ func randomString(n int) string {
 		s[i] = a
 	}
 	return string(s)
+}
+
+func unencPingPong(dest, confirmationPayload, confirmationReply string, payloadByteCount int) {
+	conn, err := net.Dial("tcp", dest)
+	panicOn(err)
+	m, err := conn.Write([]byte(confirmationPayload))
+	panicOn(err)
+	if m != payloadByteCount {
+		panic("too short a write!")
+	}
+
+	// check reply
+	rep := make([]byte, payloadByteCount)
+	m, err = conn.Read(rep)
+	panicOn(err)
+	if m != payloadByteCount {
+		panic("too short a reply!")
+	}
+	srep := string(rep)
+	if srep != confirmationReply {
+		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
+	}
+	pp("reply success! we got the expected srep reply '%s'", srep)
+	conn.Close()
+}
+
+func verifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmationPayload, confirmationReply string, payloadByteCount int) {
+	m, err := channelToTcpServer.Write([]byte(confirmationPayload))
+	panicOn(err)
+	if m != len(confirmationPayload) {
+		panic("too short a write!")
+	}
+
+	// check reply
+	rep := make([]byte, payloadByteCount)
+	m, err = channelToTcpServer.Read(rep)
+	panicOn(err)
+	if m != payloadByteCount {
+		panic("too short a reply!")
+	}
+	srep := string(rep)
+	if srep != confirmationReply {
+		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
+	}
+	pp("reply success! we got the expected srep reply '%s'", srep)
+}
+
+func startBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
+	go func() {
+		tcpServerConn, err := tcpSrvLsn.Accept()
+		panicOn(err)
+		pp("%v", tcpServerConn)
+
+		b := make([]byte, payloadByteCount)
+		n, err := tcpServerConn.Read(b)
+		panicOn(err)
+		if n != payloadByteCount {
+			panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))
+		}
+		saw := string(b)
+
+		if saw != confirmationPayload {
+			panic(fmt.Errorf("expected '%s', but saw '%s'", confirmationPayload, saw))
+		}
+
+		pp("success! server got expected confirmation payload of '%s'", saw)
+
+		// reply back
+		n, err = tcpServerConn.Write([]byte(confirmationReply))
+		panicOn(err)
+		if n != payloadByteCount {
+			panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
+		}
+		//tcpServerConn.Close()
+		close(serverDone)
+	}()
 }
