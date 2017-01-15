@@ -291,7 +291,7 @@ func (s *KnownHosts) saveSshKnownHosts() error {
 	exec.Command("mv", fn+".prev", fn+".prev.prev").Run()
 	exec.Command("cp", "-p", fn, fn+".prev").Run()
 
-	f, err := os.OpenFile(fn, os.O_APPEND|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return fmt.Errorf("could not open file '%s' for appending: '%s'", fn, err)
 	}

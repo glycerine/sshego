@@ -62,6 +62,10 @@ type DialConfig struct {
 	// key. This prevents MITM after the
 	// first contact if the DialConfig is reused.
 	TofuAddIfNotKnown bool
+
+	// DoNotUpdateSshKnownHosts prevents writing
+	// to the file given by ClientKnownHostsPath, if true.
+	DoNotUpdateSshKnownHosts bool
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -90,7 +94,8 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	var err error
 	if dc.KnownHosts == nil {
-		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, "")
+		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, "ssh_known_hosts")
+		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 		if err != nil {
 			return nil, nil, err
 		}
