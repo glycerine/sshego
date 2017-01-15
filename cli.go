@@ -90,7 +90,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	var err error
 	if dc.KnownHosts == nil {
-		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath)
+		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, "")
 		if err != nil {
 			return nil, nil, err
 		}

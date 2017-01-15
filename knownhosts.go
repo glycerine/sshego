@@ -1,12 +1,17 @@
 package sshego
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
+	"os/exec"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // KnownHosts represents in Hosts a hash map of host identifier (ip or name)
@@ -23,6 +28,9 @@ type KnownHosts struct {
 	// PersistFormat doubles as the file suffix as well as
 	// the format indicator
 	PersistFormat string
+
+	// NoSave means we don't touch the files we read from
+	NoSave bool
 }
 
 // ServerPubKey stores the RSA public keys for a particular known server. This
@@ -47,6 +55,9 @@ type ServerPubKey struct {
 	Comment                  string
 	Port                     string
 	LineInFileOneBased       int
+
+	// if AlreadySaved, then we don't need to append.
+	AlreadySaved bool
 }
 
 // NewKnownHosts creats a new KnownHosts structure.
@@ -58,30 +69,37 @@ type ServerPubKey struct {
 // The returned KnownHosts will remember the
 // filepathPrefix for future saves.
 //
-func NewKnownHosts(filepathPrefix string) (*KnownHosts, error) {
+func NewKnownHosts(filepathPrefix, persistFormat string) (*KnownHosts, error) {
+
+	if persistFormat == "" {
+		persistFormat = defaultFileFormat()
+	}
 
 	h := &KnownHosts{
-		PersistFormat: defaultFileFormat(),
+		PersistFormat: persistFormat,
 	}
 
 	fn := filepathPrefix + h.PersistFormat
 
+	var err error
 	if fileExists(fn) {
 		//fmt.Printf("fn '%s' exists in NewKnownHosts()\n", fn)
 
-		switch h.PersistFormat {
+		switch persistFormat {
 		case ".json.snappy":
-			err := h.readJSONSnappy(fn)
+			err = h.readJSONSnappy(fn)
 			if err != nil {
 				return nil, err
 			}
 		case ".gob.snappy":
-			err := h.readGobSnappy(fn)
+			err = h.readGobSnappy(fn)
 			if err != nil {
 				return nil, err
 			}
+		case "ssh_known_hosts":
+			h, err = LoadSshKnownHosts(filepathPrefix)
 		default:
-			return nil, fmt.Errorf("unknown persistence format: %v", h.PersistFormat)
+			return nil, fmt.Errorf("unknown persistence format: %v", persistFormat)
 		}
 
 		//fmt.Printf("after reading from file, h = '%#v'\n", h)
@@ -122,19 +140,25 @@ func KnownHostsEqual(a, b *KnownHosts) (bool, error) {
 	return true, nil
 }
 
-// Sync writes the contents of the KnownHosts structure to the file h.FilepathPrefix + h.PersistFormat.
-func (h *KnownHosts) Sync() {
+// Sync writes the contents of the KnownHosts structure to the
+// file h.FilepathPrefix + h.PersistFormat (for json/gob); to
+// just h.FilepathPrefix for "ssh_known_hosts" format.
+func (h *KnownHosts) Sync() (err error) {
 	fn := h.FilepathPrefix + h.PersistFormat
 	switch h.PersistFormat {
 	case ".json.snappy":
-		err := h.saveJSONSnappy(fn)
+		err = h.saveJSONSnappy(fn)
 		panicOn(err)
 	case ".gob.snappy":
-		err := h.saveGobSnappy(fn)
+		err = h.saveGobSnappy(fn)
+		panicOn(err)
+	case "ssh_known_hosts":
+		err = h.saveSshKnownHosts()
 		panicOn(err)
 	default:
 		panic(fmt.Sprintf("unknown persistence format: %v", h.PersistFormat))
 	}
+	return
 }
 
 // Close cleans up and prepares for shutdown. It calls h.Sync() to write
@@ -241,17 +265,65 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			}
 			expand = expand[:n]
 			se := string(expand)
-			ourpubkey.HumanKey = se
 			ourpubkey.LineInFileOneBased = i + 1
-
 			ourpubkey.remote, err = net.ResolveTCPAddr("tcp", ourpubkey.Hostname)
 			if err != nil {
 				return nil, fmt.Errorf("error: known_hosts file '%s' on line %v: '%s' we find the following error: could not resolve the hostname '%s'. detailed error: '%s'", path, i+1, lines[i], ourpubkey.Hostname, err)
 			}
-			//ourpubkey.key = ssh.PublicKey()
+			ourpubkey.AlreadySaved = true
+			ourpubkey.HumanKey = se
 			h.Hosts[se] = &ourpubkey
 		}
 	}
 
 	return h, nil
+}
+
+func (s *KnownHosts) saveSshKnownHosts() error {
+
+	if s.NoSave {
+		return nil
+	}
+
+	fn := s.FilepathPrefix
+
+	// backups
+	exec.Command("mv", fn+".prev", fn+".prev.prev").Run()
+	exec.Command("cp", "-p", fn, fn+".prev").Run()
+
+	f, err := os.OpenFile(fn, os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		return fmt.Errorf("could not open file '%s' for appending: '%s'", fn, err)
+	}
+	defer f.Close()
+
+	for _, v := range s.Hosts {
+		if v.AlreadySaved {
+			continue
+		}
+		hostname := v.Hostname
+		if v.Port != "22" {
+			hostname = "[" + hostname + "]:" + v.Port
+		}
+		_, err = fmt.Fprintf(f, "%s %s %s %s\n",
+			hostname,
+			v.Keytype,
+			v.Base64EncodededPublicKey,
+			v.Comment)
+		if err != nil {
+			return fmt.Errorf("could not append to file '%s': '%s'", fn, err)
+		}
+		v.AlreadySaved = true
+	}
+
+	return nil
+}
+
+func base64ofPublicKey(key ssh.PublicKey) string {
+	b := &bytes.Buffer{}
+	e := base64.NewEncoder(base64.StdEncoding, b)
+	e.Write(key.Marshal())
+	e.Close()
+	return b.String()
+
 }

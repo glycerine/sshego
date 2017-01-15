@@ -42,7 +42,7 @@ func (ki *kiCliHelp) helper(user string, instruction string, questions []string,
 }
 
 func defaultFileFormat() string {
-	// either ".gob.snappy" or ".json.snappy"
+	// either ".gob.snappy" or ".json.snappy" or "ssh_known_hosts"
 	return ".json.snappy"
 	//return ".gob.snappy"
 }
@@ -134,6 +134,13 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 			remote:   remote,
 			//key:      key,
 			HumanKey: strPubBytes,
+
+			// if we are adding to an SSH_KNOWN_HOSTS file, we need these:
+			Keytype:                  key.Type(),
+			Base64EncodededPublicKey: base64ofPublicKey(key),
+			Comment: fmt.Sprintf("added_by_sshego_on_%v",
+				time.Now().Format(time.RFC3339)),
+			//pubBytes
 		}
 
 		h.Hosts[strPubBytes] = record
