@@ -105,12 +105,17 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		if strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") {
 			// no host checking when coming from localhost
 			p("in HostAlreadyKnown, no host checking when coming from localhost, returning KnownOK")
+			/*
+				if addIfNotKnown {
+					msg := fmt.Errorf("error: flag -new given but not needed. Re-run without -new. No host checking on localhost/127.0.0.1. We saw hostname: '%s'", hostname)
+					p(msg.Error())
+					return KnownOK, record, msg
+				}
+				return KnownOK, record, nil
+			*/
 			if addIfNotKnown {
-				msg := fmt.Errorf("error: flag -new given but not needed. Re-run without -new")
-				p(msg.Error())
-				return KnownOK, record, msg
+				return h.AddNeeded(addIfNotKnown, allowOneshotConnect, hostname, remote, strPubBytes, key, record)
 			}
-			return KnownOK, record, nil
 		}
 		if record.Hostname != hostname {
 			// check all the SplitHostnames before failing
@@ -121,8 +126,9 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 					break
 				}
 			}
+
 			if addIfNotKnown {
-				goto AddNeeded
+				return h.AddNeeded(addIfNotKnown, allowOneshotConnect, hostname, remote, strPubBytes, key, record)
 			}
 			if !found {
 				err := fmt.Errorf("hostname mismatch for key '%s': record.Hostname:'%v' in records, hostname:'%s' supplied now. record.SplitHostnames = '%#v", strPubBytes, record.Hostname, hostname, record.SplitHostnames)
@@ -139,46 +145,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		return KnownOK, record, nil
 	}
 
-AddNeeded:
-	if addIfNotKnown {
-		record = &ServerPubKey{
-			Hostname: hostname,
-			remote:   remote,
-			//key:      key,
-			HumanKey: strPubBytes,
-
-			// if we are adding to an SSH_KNOWN_HOSTS file, we need these:
-			Keytype:                  key.Type(),
-			Base64EncodededPublicKey: base64ofPublicKey(key),
-			Comment: fmt.Sprintf("added_by_sshego_on_%v",
-				time.Now().Format(time.RFC3339)),
-			SplitHostnames: make(map[string]bool),
-		}
-		pp("hostname = '%v'", hostname)
-		record.AddHostPort(hostname)
-
-		// host with same key may show up under an IP address and
-		// a FQHN, so combine under the key if we see that.
-		prior, already := h.Hosts[strPubBytes]
-		if !already {
-			pp("completely new host:port = '%v' -> record: '%#v'", strPubBytes, record)
-			h.Hosts[strPubBytes] = record
-			h.Sync()
-		} else {
-			// two or more names under the same key.
-			//pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
-			prior.AddHostPort(hostname)
-			h.Sync()
-		}
-		if allowOneshotConnect {
-			return KnownOK, record, nil
-		}
-		msg := fmt.Errorf("good: added previously unknown sshd host '%v' with the -new flag. Re-run without -new (or setting TofuAddIfNotKnown=false) now", remote)
-		return AddedNew, record, msg
-	}
-
-	p("at end of HostAlreadyKnown, returning Unknown.")
-	return Unknown, record, nil
+	return h.AddNeeded(addIfNotKnown, allowOneshotConnect, hostname, remote, strPubBytes, key, record)
 }
 
 // SSHConnect is the main entry point for the gosshtun library,
@@ -444,4 +411,46 @@ func (cfg *SshegoConfig) StartNewReverse(sshClientConn *ssh.Client, fromRemote n
 	rev := &Reverse{shovelPair: sp}
 	sp.Start(fromRemote, channelToLocalFwd, "fromRemoter<-channelToLocalFwd", "channelToLocalFwd<-fromRemote")
 	return rev, nil
+}
+
+func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname string, remote net.Addr, strPubBytes string, key ssh.PublicKey, record *ServerPubKey) (HostState, *ServerPubKey, error) {
+	if addIfNotKnown {
+		record := &ServerPubKey{
+			Hostname: hostname,
+			remote:   remote,
+			//key:      key,
+			HumanKey: strPubBytes,
+
+			// if we are adding to an SSH_KNOWN_HOSTS file, we need these:
+			Keytype:                  key.Type(),
+			Base64EncodededPublicKey: base64ofPublicKey(key),
+			Comment: fmt.Sprintf("added_by_sshego_on_%v",
+				time.Now().Format(time.RFC3339)),
+			SplitHostnames: make(map[string]bool),
+		}
+		//pp("hostname = '%v'", hostname)
+		record.AddHostPort(hostname)
+
+		// host with same key may show up under an IP address and
+		// a FQHN, so combine under the key if we see that.
+		prior, already := h.Hosts[strPubBytes]
+		if !already {
+			//pp("completely new host:port = '%v' -> record: '%#v'", strPubBytes, record)
+			h.Hosts[strPubBytes] = record
+			h.Sync()
+		} else {
+			// two or more names under the same key.
+			//pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
+			prior.AddHostPort(hostname)
+			h.Sync()
+		}
+		if allowOneshotConnect {
+			return KnownOK, record, nil
+		}
+		msg := fmt.Errorf("good: added previously unknown sshd host '%v' with the -new flag. Re-run without -new (or setting TofuAddIfNotKnown=false) now", remote)
+		return AddedNew, record, msg
+	}
+
+	p("at end of HostAlreadyKnown/AddNeeded, returning Unknown.")
+	return Unknown, record, nil
 }

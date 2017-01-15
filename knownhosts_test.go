@@ -168,7 +168,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer()
-		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		//defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
 		s.forTestingUpdateServerHostKey(s.srvCfg.tempdir + "/testdata/id_rsa_b")
@@ -289,7 +289,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 			fmt.Printf("entry.SplitHostnames['%v'] is present\n", k)
 		}
 
-		<-serverDone
+		//<-serverDone
 
 		// done with testing, cleanup
 		s.srvCfg.Esshd.Stop()
