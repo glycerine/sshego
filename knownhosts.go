@@ -80,7 +80,7 @@ const (
 // filepathPrefix for future saves.
 //
 func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts, error) {
-	pp("NewKnownHosts called, with filepath = '%s', format='%v'", filepath, format)
+	p("NewKnownHosts called, with filepath = '%s', format='%v'", filepath, format)
 
 	h := &KnownHosts{
 		PersistFormat: format,
@@ -266,7 +266,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 				//pp("after killing [], hst = '%s'\n", hst)
 			}
 			hostport := strings.Split(hst, ":")
-			//p("hostport = '%#v'\n", hostport)
+			//pp("hostport = '%#v'\n", hostport)
 			if len(hostport) > 1 {
 				hst = hostport[0]
 				pubkey.Port = hostport[1]
@@ -367,7 +367,8 @@ func (s *KnownHosts) saveSshKnownHosts() error {
 		hostname := ""
 		if len(v.SplitHostnames) == 1 {
 			hn := v.Hostname
-			hp := strings.Split(hostname, ":")
+			hp := strings.Split(hn, ":")
+			//pp("hn='%v', hp='%#v'", hn, hp)
 			if hp[1] != "22" {
 				hn = "[" + hp[0] + "]:" + hp[1]
 			}
@@ -414,6 +415,7 @@ func base64ofPublicKey(key ssh.PublicKey) string {
 }
 
 func (prior *ServerPubKey) AddHostPort(hp string) {
+	//pp("AddHostPort called with hp = '%v'", hp)
 	_, already2 := prior.SplitHostnames[hp]
 	prior.SplitHostnames[hp] = true
 	if !already2 {

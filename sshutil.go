@@ -106,7 +106,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 			// no host checking when coming from localhost
 			p("in HostAlreadyKnown, no host checking when coming from localhost, returning KnownOK")
 			if addIfNotKnown {
-				msg := fmt.Errorf("error: flag -new given but not needed; re-run without -new")
+				msg := fmt.Errorf("error: flag -new given but not needed. Re-run without -new")
 				p(msg.Error())
 				return KnownOK, record, msg
 			}
@@ -132,7 +132,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		}
 		p("in HostAlreadyKnown, returning KnownOK.")
 		if addIfNotKnown {
-			msg := fmt.Errorf("error: flag -new given but not needed; re-run without -new : this is important to prevent MITM attacks; TofuAddIfNotKnown must be false once the server/host is known.")
+			msg := fmt.Errorf("error: flag -new given but not needed. Re-run without -new : this is important to prevent MITM attacks; TofuAddIfNotKnown must be false once the server/host is known.")
 			p(msg.Error())
 			return KnownOK, record, msg
 		}
@@ -152,12 +152,16 @@ AddNeeded:
 			Base64EncodededPublicKey: base64ofPublicKey(key),
 			Comment: fmt.Sprintf("added_by_sshego_on_%v",
 				time.Now().Format(time.RFC3339)),
+			SplitHostnames: make(map[string]bool),
 		}
+		pp("hostname = '%v'", hostname)
+		record.AddHostPort(hostname)
 
 		// host with same key may show up under an IP address and
 		// a FQHN, so combine under the key if we see that.
 		prior, already := h.Hosts[strPubBytes]
 		if !already {
+			pp("completely new host:port = '%v' -> record: '%#v'", strPubBytes, record)
 			h.Hosts[strPubBytes] = record
 			h.Sync()
 		} else {
