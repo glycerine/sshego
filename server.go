@@ -94,7 +94,7 @@ func NewPerAttempt(s *AuthState, cfg *SshegoConfig) *PerAttempt {
 // PerAttempt gets a pointer to one of these.
 // Currently assumes only one user.
 type AuthState struct {
-	HostKey *ssh.Signer
+	HostKey ssh.Signer
 	OneTime *TOTP
 
 	AuthorizedKeysMap map[string]bool
@@ -302,30 +302,13 @@ func (e *Esshd) Start() {
 	go func() {
 		p("StartEmbeddedSSHd")
 
-		/*
-			// most of this is per user, so it has
-			// to wait until we have a login and a
-			// username at hand.
-
-			var w = &TOTP{}
-			fn := "example.otp"
-			err := w.LoadFromFile(fn)
-			if err != nil {
-				w, err = NewTOTP("alice@example.com", "example.com")
-				if err != nil {
-					panic(err)
-				}
-				w.SaveToFile(fn)
-			}
-			p("our time-based-OTP is '%s'", w)
-		*/
+		// most of the auth state is per user, so it has
+		// to wait until we have a login and a
+		// username at hand.
 		a := NewAuthState(nil)
-		a.HostKey = &(e.cfg.HostDb.hostSshSigner)
 
-		// exposed key has been published publically
-		// to github; do not use in production!
-		//	err = a.LoadHostKey("id_rsa_hostkey_exposed")
-		//	panicOn(err)
+		// we copy the host key here to avoid data races.
+		a.HostKey = e.cfg.HostDb.hostSshSigner
 
 		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be
@@ -796,7 +779,7 @@ func (a *PerAttempt) SetTripleConfig() {
 			KeyExchanges: []string{kexAlgoCurve25519SHA256}},
 		ServerVersion: "SSH-2.0-OpenSSH_6.9",
 	}
-	a.Config.AddHostKey(*a.State.HostKey)
+	a.Config.AddHostKey(a.State.HostKey)
 }
 
 //func StartServer() {
@@ -819,7 +802,7 @@ func (a *AuthState) LoadHostKey(path string) error {
 			path, err)
 	}
 
-	a.HostKey = &private
+	a.HostKey = private
 	return nil
 }
 
