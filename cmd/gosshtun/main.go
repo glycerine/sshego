@@ -29,7 +29,8 @@ func main() {
 		log.Fatalf("%s command line flag error: '%s'", ProgramName, err)
 	}
 	//p("cfg = %#v", cfg)
-	h := tun.NewKnownHosts(cfg.ClientKnownHostsPath)
+	h, err := tun.NewKnownHosts(cfg.ClientKnownHostsPath, tun.KHJson)
+	panicOn(err)
 	cfg.KnownHosts = h
 
 	if cfg.WriteConfigOut != "" {
@@ -59,7 +60,7 @@ func main() {
 	passphrase := ""
 	totpUrl := ""
 
-	err = cfg.SSHConnect(h, cfg.Username, cfg.PrivateKeyPath,
+	_, err = cfg.SSHConnect(h, cfg.Username, cfg.PrivateKeyPath,
 		cfg.SSHdServer.Host, cfg.SSHdServer.Port, passphrase, totpUrl)
 	if err != nil {
 		fmt.Println(err.Error())
