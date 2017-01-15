@@ -53,10 +53,11 @@ func Test302ReadKnownHosts(t *testing.T) {
 			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer()
-		//defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
+		pp("just prior to manual NewKnownHosts call")
 		cliKnownHosts, err := NewKnownHosts(s.cliCfg.ClientKnownHostsPath, KHSsh)
 		panicOn(err)
 

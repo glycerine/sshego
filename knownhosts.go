@@ -80,7 +80,7 @@ const (
 // filepathPrefix for future saves.
 //
 func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts, error) {
-	pp("NewKnownHosts called, with filepatwh = '%s'", filepath)
+	pp("NewKnownHosts called, with filepath = '%s', format='%v'", filepath, format)
 
 	h := &KnownHosts{
 		PersistFormat: format,
@@ -98,7 +98,7 @@ func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts
 
 	var err error
 	if fileExists(fn) {
-		//fmt.Printf("fn '%s' exists in NewKnownHosts(). format = %v\n", fn, format)
+		fmt.Printf("fn '%s' exists in NewKnownHosts(). format = %v\n", fn, format)
 
 		switch format {
 		case KHJson:
@@ -123,8 +123,8 @@ func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts
 		//fmt.Printf("after reading from file, h = '%#v'\n", h)
 
 	} else {
-		//fmt.Printf("fn '%s' does not exist already in NewKnownHosts()\n", fn)
-		//fmt.Printf("making h.Hosts in NewKnownHosts()\n")
+		fmt.Printf("fn '%s' does not exist already in NewKnownHosts()\n", fn)
+		fmt.Printf("making h.Hosts in NewKnownHosts()\n")
 		h.Hosts = make(map[string]*ServerPubKey)
 	}
 

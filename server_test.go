@@ -181,15 +181,33 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 	cfg.origdir, cfg.tempdir = MakeAndMoveToTempDir() // cd to tempdir
 
 	// copy in a 3 host fake known hosts
-	exec.Command("cp", cfg.origdir+"/testdata/*", cfg.tempdir+"/").Run()
+	err := exec.Command("cp", "-rp", cfg.origdir+"/testdata", cfg.tempdir+"/").Run()
+	panicOn(err)
 
-	cfg.ClientKnownHostsPath = cfg.tempdir + "/fake_known_hosts_without_b"
+	cfg.ClientKnownHostsPath = cfg.tempdir + "/testdata/fake_known_hosts_without_b"
+
+	// poll until the copy has actually finished
+	tries := 40
+	pause := 1e0 * time.Millisecond
+	found := false
+	i := 0
+	for ; i < tries; i++ {
+		if fileExists(cfg.ClientKnownHostsPath) {
+			found = true
+			break
+		}
+		time.Sleep(pause)
+	}
+	if !found {
+		panic(fmt.Sprintf("could not locate copied file '%s' after %v tries with %v sleep between each try.", cfg.ClientKnownHostsPath, tries, pause))
+	}
+	pp("good: we found '%s' after %v sleeps", cfg.ClientKnownHostsPath, i)
 
 	cfg.BitLenRSAkeys = 1024 // faster for testing
 
-	var err error
-	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath, KHJson)
+	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath, KHSsh)
 	panicOn(err)
+	//old: cfg.ClientKnownHostsPath = cfg.tempdir + "/client_known_hosts"
 
 	// get a bunch of distinct ports, all different.
 	sshdLsn, sshdLsnPort := getAvailPort()             // sshd local listen
@@ -238,7 +256,6 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 	cfg.RemoteToLocal.Remote.Addr = fmt.Sprintf("127.0.0.1:%v", revTargetLsnPort)
 	cfg.RemoteToLocal.Remote.ParseAddr()
 
-	cfg.ClientKnownHostsPath = cfg.tempdir + "/client_known_hosts"
 	cfg.EmbeddedSSHdHostDbPath = cfg.tempdir + "/server_hostdb"
 
 	// temp, let compile
