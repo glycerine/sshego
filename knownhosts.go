@@ -80,7 +80,7 @@ const (
 // filepathPrefix for future saves.
 //
 func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts, error) {
-	//pp("NewKnownHosts called")
+	pp("NewKnownHosts called, with filepatwh = '%s'", filepath)
 
 	h := &KnownHosts{
 		PersistFormat: format,
