@@ -31,6 +31,8 @@ type Esshd struct {
 	delUserReq           chan *User
 	replyWithDeletedDone chan bool
 
+	updateHostKey chan ssh.Signer
+
 	mut           sync.Mutex
 	stopRequested bool
 
@@ -61,6 +63,7 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 		replyWithCreatedUser: make(chan *User),
 		delUserReq:           make(chan *User),
 		replyWithDeletedDone: make(chan bool),
+		updateHostKey:        make(chan ssh.Signer),
 	}
 	err := srv.cfg.NewHostDb()
 	panicOn(err)
@@ -307,8 +310,10 @@ func (e *Esshd) Start() {
 		// username at hand.
 		a := NewAuthState(nil)
 
-		// we copy the host key here to avoid data races.
+		// we copy the host key here to avoid a data race later.
+		e.cfg.HostDb.saveMut.Lock()
 		a.HostKey = e.cfg.HostDb.hostSshSigner
+		e.cfg.HostDb.saveMut.Unlock()
 
 		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be
@@ -366,6 +371,10 @@ func (e *Esshd) Start() {
 						close(e.Done)
 						return
 					}
+
+				case newSigner := <-e.updateHostKey:
+					p("we got newSigner")
+					a.HostKey = newSigner
 
 				default:
 					// no stop request, keep looping

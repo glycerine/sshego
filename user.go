@@ -253,7 +253,12 @@ func (h *HostDb) adoptNewHostKeyFromPath(path string) (ssh.PublicKey, error) {
 		return nil, fmt.Errorf("error in adoptNewHostKeyFromPath: loading"+
 			" path '%s' with LoadRSAPrivateKey() resulted in error '%v'", path, err)
 	}
+
+	// avoid data race:
+	h.saveMut.Lock()
 	h.hostSshSigner = sshPrivKey
+	h.saveMut.Unlock()
+
 	h.HostPrivateKeyPath = path
 	return sshPrivKey.PublicKey(), nil
 }

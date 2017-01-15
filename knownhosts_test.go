@@ -63,6 +63,9 @@ func Test302ReadKnownHosts(t *testing.T) {
 		sbPubKey := string(ssh.MarshalAuthorizedKey(bPubKey))
 		fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
 
+		// also have to update the Esshd auth state on the update channel:
+		s.srvCfg.Esshd.updateHostKey <- s.srvCfg.HostDb.hostSshSigner
+
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
 		pp("just prior to manual NewKnownHosts call")
