@@ -331,7 +331,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 				//pp("saved known hosts: key '%s' -> value: %#v\n", se, ourpubkey)
 			} else {
 				// need to combine under this key...
-				pp("have prior entry for se='%s': %#v\n", se, prior)
+				//pp("have prior entry for se='%s': %#v\n", se, prior)
 				prior.AddHostPort(ourpubkey.Hostname)
 				prior.AlreadySaved = true // reading from file, all are saved already.
 			}

@@ -132,7 +132,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		}
 		p("in HostAlreadyKnown, returning KnownOK.")
 		if addIfNotKnown {
-			msg := fmt.Errorf("error: flag -new given but not needed; re-run without -new")
+			msg := fmt.Errorf("error: flag -new given but not needed; re-run without -new : this is important to prevent MITM attacks; TofuAddIfNotKnown must be false once the server/host is known.")
 			p(msg.Error())
 			return KnownOK, record, msg
 		}
@@ -162,14 +162,14 @@ AddNeeded:
 			h.Sync()
 		} else {
 			// two or more names under the same key.
-			pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
+			//pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
 			prior.AddHostPort(hostname)
 			h.Sync()
 		}
 		if allowOneshotConnect {
 			return KnownOK, record, nil
 		}
-		msg := fmt.Errorf("good: add previously unknown sshd host '%v' with the -new flag. Re-run without -new now", remote)
+		msg := fmt.Errorf("good: added previously unknown sshd host '%v' with the -new flag. Re-run without -new (or setting TofuAddIfNotKnown=false) now", remote)
 		return AddedNew, record, msg
 	}
 

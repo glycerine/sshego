@@ -110,7 +110,13 @@ func Test201ClientDirectSSH(t *testing.T) {
 				TofuAddIfNotKnown:    true,
 			}
 
+			// first time we add the server key
 			channelToTcpServer, _, err := dc.Dial()
+			cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
+
+			// second time we connect based on that server key
+			dc.TofuAddIfNotKnown = false
+			channelToTcpServer, _, err = dc.Dial()
 			cv.So(err, cv.ShouldBeNil)
 
 			m, err := channelToTcpServer.Write([]byte(confirmationPayload))

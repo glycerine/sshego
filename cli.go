@@ -103,9 +103,9 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 
-	if dc.TofuAddIfNotKnown {
-		cfg.allowOneshotConnect = true
-	}
+	//	if dc.TofuAddIfNotKnown {
+	//		cfg.allowOneshotConnect = true
+	//	}
 
 	var sshClientConn *ssh.Client
 	sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
