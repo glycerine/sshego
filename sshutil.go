@@ -132,7 +132,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		record = &ServerPubKey{
 			Hostname: hostname,
 			remote:   remote,
-			//Key:      key,
+			//key:      key,
 			HumanKey: strPubBytes,
 		}
 
@@ -165,10 +165,11 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 
 		pubBytes := ssh.MarshalAuthorizedKey(key)
+		fingerprint := ssh.FingerprintSHA256(key)
 
 		hostStatus, spubkey, err := h.HostAlreadyKnown(hostname, remote, key, pubBytes, cfg.AddIfNotKnown, cfg.allowOneshotConnect)
-		p("in hostKeyCallback(), hostStatus: '%s', hostname='%s', remote='%s', key.Type='%s'  key.Marshal='%s'\n", hostStatus, hostname, remote, key.Type(), pubBytes)
-
+		log.Printf("SshegoConfig.SSHConnect(): in hostKeyCallback(), hostStatus: '%s', hostname='%s', remote='%s', key.Type='%s'  server.host.pub.key='%s' and host-key sha256.fingerprint='%s'\n", hostStatus, hostname, remote, key.Type(), pubBytes, fingerprint)
+		log.Printf("server '%s' has host-key sha256.fingerprint='%s'", hostname, fingerprint)
 		h.curStatus = hostStatus
 		h.curHost = spubkey
 

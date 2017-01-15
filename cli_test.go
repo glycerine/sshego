@@ -106,7 +106,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
 				Mylogin:              s.mylogin,
 				RsaPath:              s.rsaPath,
-				Totp:                 s.totp,
+				TotpUrl:              s.totp,
 				Pw:                   s.pw,
 				Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
 				Sshdport:             s.srvCfg.EmbeddedSSHd.Port,

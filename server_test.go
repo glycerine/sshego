@@ -135,6 +135,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		_, err = cliCfg.SSHConnect(cliCfg.KnownHosts, mylogin, rsaPath,
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp)
 		cv.So(err.Error(), cv.ShouldEqual, "StartupReverseListener failed: ssh: tcpip-forward request denied by peer")
+		fmt.Printf("\n excellent: as expected, err was '%s'\n", err)
 
 		// done with testing, cleanup
 		srvCfg.Esshd.Stop()
@@ -180,7 +181,9 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg.BitLenRSAkeys = 1024 // faster for testing
 
-	cfg.KnownHosts = NewKnownHosts(cfg.ClientKnownHostsPath)
+	var err error
+	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath)
+	panicOn(err)
 
 	// get a bunch of distinct ports, all different.
 	sshdLsn, sshdLsnPort := getAvailPort()             // sshd local listen

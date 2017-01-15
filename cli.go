@@ -2,7 +2,6 @@ package sshego
 
 import (
 	"net"
-	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -33,7 +32,7 @@ type DialConfig struct {
 	RsaPath string
 
 	// the time-based one-time password configuration
-	Totp string
+	TotpUrl string
 
 	// Pw is the passphrase
 	Pw string
@@ -48,7 +47,7 @@ type DialConfig struct {
 	DownstreamHostPort string
 
 	// TofuAddIfNotKnown, for maximum security,
-	// should be left false and
+	// should be always left false and
 	// the host key database should be configured
 	// manually. If true, the client trusts the server's
 	// provided key and stores it, which creates
@@ -89,35 +88,28 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.BitLenRSAkeys = 4096
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
-	if dc.KnownHosts == nil {
-		dc.KnownHosts = NewKnownHosts(dc.ClientKnownHostsPath)
-	}
-
-	tryCount := 1
-	if dc.TofuAddIfNotKnown {
-		// need 2nd pass to actually connect; first pass
-		// we cache the server key, 2nd time we actually connect.
-		tryCount = 2
-	}
-
-	var sshClientConn *ssh.Client
 	var err error
-	for i := 0; i < tryCount; i++ {
-		sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
-			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.Totp)
-		//pp("sshClientConn = %#v", sshClientConn)
-		if err != nil && strings.Contains(err.Error(), "Re-run without -new now") {
-			if cfg.AddIfNotKnown {
-				cfg.AddIfNotKnown = false
-				dc.TofuAddIfNotKnown = false
-				continue
-			}
+	if dc.KnownHosts == nil {
+		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath)
+		if err != nil {
 			return nil, nil, err
 		}
 	}
+
+	if dc.TofuAddIfNotKnown {
+		cfg.allowOneshotConnect = true
+	}
+
+	var sshClientConn *ssh.Client
+	sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
+		dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
 	if err != nil {
 		return nil, nil, err
 	}
+	cfg.allowOneshotConnect = false
+	cfg.AddIfNotKnown = false
+	dc.TofuAddIfNotKnown = false
+
 	// Here is how to dial over an encrypted ssh channel.
 	// This produces direct-tcpip forwarding -- in other
 	// words we talk to the server at dest via the sshd,
