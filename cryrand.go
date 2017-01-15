@@ -31,3 +31,11 @@ func CryptoRandBytes(n int) []byte {
 func getNewPasswordStarter() string {
 	return dict.GetNewPasswordStarter() + " "
 }
+
+func CryptoRandNonNegInt(n int64) int64 {
+	x := CryptoRandInt64()
+	if x < 0 {
+		x = -x
+	}
+	return x % n
+}

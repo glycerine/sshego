@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"golang.org/x/crypto/ssh"
+
 	cv "github.com/glycerine/goconvey/convey"
 )
 
@@ -55,11 +57,19 @@ func Test302ReadKnownHosts(t *testing.T) {
 		s := makeTestSshClientAndServer()
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
+		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
+		bPubKey, err := s.srvCfg.HostDb.adoptNewHostKeyFromPath(s.srvCfg.tempdir + "/testdata/id_rsa_b")
+		panicOn(err)
+		sbPubKey := string(ssh.MarshalAuthorizedKey(bPubKey))
+		fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
+
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
 		pp("just prior to manual NewKnownHosts call")
 		cliKnownHosts, err := NewKnownHosts(s.cliCfg.ClientKnownHostsPath, KHSsh)
 		panicOn(err)
+
+		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 3)
 
 		// verify that read of known hosts lacks B
 		_, ok := cliKnownHosts.Hosts["ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC9hxNTsXHBIuWdc0SZAwN6Bytwr5vCB2K7rf5yVoC5YX5Hb08c25Xd5sGhehAj8RXooNxCa62mDnk/ACcByDa35gv3HyDqm1kmFLNvM/OcNNmK2FCuIdwKG7QWjmZwIwS3eCudJjDGR3qUTUzZbLpV80eZ0WxYE/CbZdb9gx6lNSAWx+ZaeGTt9M0sD5AfEHSxg2lJFaA5pa0Zaaq4QoultLtfisEnTHKCprjRc9RHuZ0l4kwi2eLtBdMmvR3Guk+wrd/qy6+S2zqn4WMDgE50VE6B6ODXN5nsFGrKfqx4mRD3dic28j1rJ7JVkc8sz8/tI+Mr4onomLZftbAFa5dwdiXtqDbOJlxe4sd4oVDImpocAtk+aIqupqN+Sc0JxCGlNvo5eKdNBZP7u/9UC7eee7Y7lHYRmhzoC7FSzFL1/mGgVxrEljcp8UZ1OD47Aq0XYvJA+5MAElbgWrK+M+EMwOGA85qQES5xtvfyVlnNvked6GQlfEuckM6H5bQCIdGkeuJ/+eWWW0rXNVkYHwA4EdiIaAXya4pO439kZfip/gWFF4mazHKCYOQAKndusFSOvxyWOTY/EbSrI7BYoYwm1WR75q7OozJTYP0V3UO+lQ+0/RgSh2uEqyfqB+EMZlATWBl3QnjxKHm7R0dVPnk9qpsjlVXGgGCCWn1UVHKq8w==\n"]
@@ -88,6 +98,19 @@ func Test302ReadKnownHosts(t *testing.T) {
 		// first time we add the server key
 		channelToTcpServer, _, err := dc.Dial()
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
+
+		fmt.Printf("\n now host key B should be known.\n")
+		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 4)
+
+		// show the hosts:
+		i := 0
+		for k := range cliKnownHosts.Hosts {
+			fmt.Printf("%v: we known about host k = '%v'\n", i, k)
+			i++
+		}
+
+		_, ok = cliKnownHosts.Hosts["ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC9hxNTsXHBIuWdc0SZAwN6Bytwr5vCB2K7rf5yVoC5YX5Hb08c25Xd5sGhehAj8RXooNxCa62mDnk/ACcByDa35gv3HyDqm1kmFLNvM/OcNNmK2FCuIdwKG7QWjmZwIwS3eCudJjDGR3qUTUzZbLpV80eZ0WxYE/CbZdb9gx6lNSAWx+ZaeGTt9M0sD5AfEHSxg2lJFaA5pa0Zaaq4QoultLtfisEnTHKCprjRc9RHuZ0l4kwi2eLtBdMmvR3Guk+wrd/qy6+S2zqn4WMDgE50VE6B6ODXN5nsFGrKfqx4mRD3dic28j1rJ7JVkc8sz8/tI+Mr4onomLZftbAFa5dwdiXtqDbOJlxe4sd4oVDImpocAtk+aIqupqN+Sc0JxCGlNvo5eKdNBZP7u/9UC7eee7Y7lHYRmhzoC7FSzFL1/mGgVxrEljcp8UZ1OD47Aq0XYvJA+5MAElbgWrK+M+EMwOGA85qQES5xtvfyVlnNvked6GQlfEuckM6H5bQCIdGkeuJ/+eWWW0rXNVkYHwA4EdiIaAXya4pO439kZfip/gWFF4mazHKCYOQAKndusFSOvxyWOTY/EbSrI7BYoYwm1WR75q7OozJTYP0V3UO+lQ+0/RgSh2uEqyfqB+EMZlATWBl3QnjxKHm7R0dVPnk9qpsjlVXGgGCCWn1UVHKq8w==\n"]
+		cv.So(ok, cv.ShouldBeTrue)
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false

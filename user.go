@@ -231,17 +231,31 @@ func (h *HostDb) loadOrCreate() error {
 		}
 	}
 	h.loadedFromDisk = true
+
 	if fileExists(h.HostPrivateKeyPath) {
-		sshPrivKey, err := LoadRSAPrivateKey(h.HostPrivateKeyPath)
+		_, err := h.adoptNewHostKeyFromPath(h.HostPrivateKeyPath)
 		if err != nil {
 			return err
 		}
-		h.hostSshSigner = sshPrivKey
 	} else {
 		panic(fmt.Sprintf("missing h.HostPrivateKeyPath='%s'", h.HostPrivateKeyPath))
 	}
-
 	return nil
+}
+
+func (h *HostDb) adoptNewHostKeyFromPath(path string) (ssh.PublicKey, error) {
+	if !fileExists(path) {
+		return nil, fmt.Errorf("error in adoptNewHostKeyFromPath: path '%s' does not exist", path)
+	}
+
+	sshPrivKey, err := LoadRSAPrivateKey(path)
+	if err != nil {
+		return nil, fmt.Errorf("error in adoptNewHostKeyFromPath: loading"+
+			" path '%s' with LoadRSAPrivateKey() resulted in error '%v'", path, err)
+	}
+	h.hostSshSigner = sshPrivKey
+	h.HostPrivateKeyPath = path
+	return sshPrivKey.PublicKey(), nil
 }
 
 func ScryptHash(password string) []byte {

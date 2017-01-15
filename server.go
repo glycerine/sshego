@@ -7,7 +7,6 @@ import (
 	"image/png"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"sync"
@@ -95,7 +94,7 @@ func NewPerAttempt(s *AuthState, cfg *SshegoConfig) *PerAttempt {
 // PerAttempt gets a pointer to one of these.
 // Currently assumes only one user.
 type AuthState struct {
-	HostKey ssh.Signer
+	HostKey *ssh.Signer
 	OneTime *TOTP
 
 	AuthorizedKeysMap map[string]bool
@@ -321,7 +320,7 @@ func (e *Esshd) Start() {
 			p("our time-based-OTP is '%s'", w)
 		*/
 		a := NewAuthState(nil)
-		a.HostKey = e.cfg.HostDb.hostSshSigner
+		a.HostKey = &(e.cfg.HostDb.hostSshSigner)
 
 		// exposed key has been published publically
 		// to github; do not use in production!
@@ -344,7 +343,7 @@ func (e *Esshd) Start() {
 			k++
 			// crude but effective rate login rate limiting:
 			// limit attempts to 1 per second.
-			// TODO: notice bad login IPs and if too many, block the IP.
+			// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
 			if k > 1 {
 				time.Sleep(500 * time.Millisecond)
 			}
@@ -797,7 +796,7 @@ func (a *PerAttempt) SetTripleConfig() {
 			KeyExchanges: []string{kexAlgoCurve25519SHA256}},
 		ServerVersion: "SSH-2.0-OpenSSH_6.9",
 	}
-	a.Config.AddHostKey(a.State.HostKey)
+	a.Config.AddHostKey(*a.State.HostKey)
 }
 
 //func StartServer() {
@@ -820,14 +819,14 @@ func (a *AuthState) LoadHostKey(path string) error {
 			path, err)
 	}
 
-	a.HostKey = private
+	a.HostKey = &private
 	return nil
 }
 
 // wait between 1-2 seconds
 func wait() {
 	// 1000 - 2000 millisecond
-	n := 1000 + rand.Intn(1000)
+	n := 1000 + CryptoRandNonNegInt(1000)
 	time.Sleep(time.Millisecond * time.Duration(n))
 }
 

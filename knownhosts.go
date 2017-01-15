@@ -296,7 +296,7 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 			}
 			ourpubkey.Hostname = hst + ":" + ourpubkey.Port
 
-			// unbase64 the public key to get []byte, the string() that
+			// unbase64 the public key to get []byte, then string() that
 			// to get the key of h.Hosts
 			pub := []byte(ourpubkey.Base64EncodededPublicKey)
 			expandedMaxSize := base64.StdEncoding.DecodedLen(len(pub))
