@@ -30,8 +30,8 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		// generate a random payload for the client to send to the server.
 		payloadByteCount := 50
-		confirmationPayload := randomString(payloadByteCount)
-		confirmationReply := randomString(payloadByteCount)
+		confirmationPayload := RandomString(payloadByteCount)
+		confirmationReply := RandomString(payloadByteCount)
 
 		serverDone := make(chan bool)
 
@@ -135,23 +135,6 @@ func makeTestSshClientAndServer() *setup {
 		totp:    totp,
 		pw:      pw,
 	}
-}
-
-var ch = []byte("0123456789abcdefghijklmnopqrstuvwxyz")
-
-func randomString(n int) string {
-	s := make([]byte, n)
-	m := int64(len(ch))
-	for i := 0; i < n; i++ {
-		r := CryptoRandInt64()
-		if r < 0 {
-			r = -r
-		}
-		k := r % m
-		a := ch[k]
-		s[i] = a
-	}
-	return string(s)
 }
 
 func unencPingPong(dest, confirmationPayload, confirmationReply string, payloadByteCount int) {

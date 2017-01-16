@@ -39,3 +39,20 @@ func CryptoRandNonNegInt(n int64) int64 {
 	}
 	return x % n
 }
+
+var ch = []byte("0123456789abcdefghijklmnopqrstuvwxyz")
+
+func RandomString(n int) string {
+	s := make([]byte, n)
+	m := int64(len(ch))
+	for i := 0; i < n; i++ {
+		r := CryptoRandInt64()
+		if r < 0 {
+			r = -r
+		}
+		k := r % m
+		a := ch[k]
+		s[i] = a
+	}
+	return string(s)
+}

@@ -88,11 +88,12 @@ func NewSshegoConfig() *SshegoConfig {
 
 // AddrHostPort is used to specify tunnel endpoints.
 type AddrHostPort struct {
-	Title    string
-	Addr     string
-	Host     string
-	Port     uint64
-	Required bool
+	Title          string
+	Addr           string
+	Host           string
+	Port           uint64
+	UnixDomainPath string
+	Required       bool
 }
 
 // ParseAddr fills Host and Port from Addr, breaking Addr apart at the ':'
@@ -117,9 +118,17 @@ func (a *AddrHostPort) ParseAddr() error {
 	} else {
 		//p("in ParseAddr(%s), host is '%v'", a.Title, host)
 	}
-	a.Port, err = strconv.ParseUint(port, 10, 16)
-	if err != nil {
-		return fmt.Errorf("bad -%s port given; could not convert to integer: %s", a.Title, err)
+	if len(port) == 0 {
+		return fmt.Errorf("empty -%s port; no port found in '%s'", a.Title, a.Addr)
+	}
+	if port[0] == '/' {
+		a.UnixDomainPath = port
+	} else {
+		a.Port, err = strconv.ParseUint(port, 10, 16)
+		if err != nil {
+			return fmt.Errorf("bad -%s port given; could not convert "+
+				"to integer: %s", a.Title, err)
+		}
 	}
 	return nil
 }

@@ -40,8 +40,8 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// generate a random payload for the client to send to the server.
 		payloadByteCount := 50
-		confirmationPayload := randomString(payloadByteCount)
-		confirmationReply := randomString(payloadByteCount)
+		confirmationPayload := RandomString(payloadByteCount)
+		confirmationReply := RandomString(payloadByteCount)
 
 		serverDone := make(chan bool)
 
@@ -153,8 +153,8 @@ func Test303DedupKnownHosts(t *testing.T) {
 	cv.Convey("known hosts should be deduplicated and not add to the known hosts file every time the same server as before is contacted", t, func() {
 
 		payloadByteCount := 50
-		confirmationPayload := randomString(payloadByteCount)
-		confirmationReply := randomString(payloadByteCount)
+		confirmationPayload := RandomString(payloadByteCount)
+		confirmationReply := RandomString(payloadByteCount)
 
 		serverDone := make(chan bool)
 

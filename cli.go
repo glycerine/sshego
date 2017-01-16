@@ -124,6 +124,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	// exclusive access. This prevents other users and
 	// their processes on this localhost from also
 	// using the ssh connection (i.e. without authenticating).
-	nc, err := sshClientConn.Dial("tcp", dc.DownstreamHostPort)
+	domain := "tcp"
+	nc, err := sshClientConn.Dial(domain, dc.DownstreamHostPort)
 	return nc, sshClientConn, err
 }

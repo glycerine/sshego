@@ -318,7 +318,11 @@ func (e *Esshd) Start() {
 		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be
 		// accepted.
-		listener, err := net.Listen("tcp", e.cfg.EmbeddedSSHd.Addr)
+		domain := "tcp"
+		if e.cfg.EmbeddedSSHd.UnixDomainPath != "" {
+			domain = "unix"
+		}
+		listener, err := net.Listen(domain, e.cfg.EmbeddedSSHd.Addr)
 		if err != nil {
 			msg := fmt.Sprintf("failed to listen for connection on %v: %v",
 				e.cfg.EmbeddedSSHd.Addr, err)
