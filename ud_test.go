@@ -37,10 +37,10 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 		// below over SSH should be equivalent of the following
 		// non-encrypted ping/pong.
 
-		if true {
+		if false {
 			udUnencPingPong(udpath, confirmationPayload, confirmationReply, payloadByteCount)
 		}
-		if false {
+		if true {
 			dc := DialConfig{
 				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
 				Mylogin:              s.mylogin,
@@ -99,27 +99,6 @@ func udUnencPingPong(dest, confirmationPayload, confirmationReply string, payloa
 	pp("reply success! server back to -> client: we got the expected srep reply '%s'", srep)
 	conn.Close()
 }
-
-// func verifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmationPayload, confirmationReply string, payloadByteCount int) {
-// 	m, err := channelToTcpServer.Write([]byte(confirmationPayload))
-// 	panicOn(err)
-// 	if m != len(confirmationPayload) {
-// 		panic("too short a write!")
-// 	}
-
-// 	// check reply
-// 	rep := make([]byte, payloadByteCount)
-// 	m, err = channelToTcpServer.Read(rep)
-// 	panicOn(err)
-// 	if m != payloadByteCount {
-// 		panic("too short a reply!")
-// 	}
-// 	srep := string(rep)
-// 	if srep != confirmationReply {
-// 		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
-// 	}
-// 	pp("reply success! we got the expected srep reply '%s'", srep)
-// }
 
 func startBackgroundTestUnixDomainServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string) (udpath string) {
 
