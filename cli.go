@@ -135,6 +135,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	var host string
 	if strings.HasSuffix(hp, ":-2") {
 		tryUnixDomain = true
+		host = hp[:len(hp)-3]
 	} else {
 		host, _, err = net.SplitHostPort(hp)
 	}
