@@ -124,18 +124,24 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	// their processes on this localhost from also
 	// using the ssh connection (i.e. without authenticating).
 
-	host, _, err := net.SplitHostPort(dc.DownstreamHostPort)
+	hp := strings.Trim(dc.DownstreamHostPort, "\n\r\t ")
 	tryUnixDomain := false
+	var host string
+	if strings.HasSuffix(hp, ":-2") {
+		tryUnixDomain = true
+	} else {
+		host, _, err = net.SplitHostPort(hp)
+	}
 	if err != nil {
 		if strings.Contains(err.Error(), "missing port in address") {
 			// probably unix-domain
 			tryUnixDomain = true
-			host = dc.DownstreamHostPort
+			host = hp
 		} else {
 			log.Printf("error from net.SplitHostPort on '%s': '%v'",
-				dc.DownstreamHostPort, err)
+				hp, err)
 			return nil, nil, fmt.Errorf("error from net.SplitHostPort "+
-				"on '%s': '%v'", dc.DownstreamHostPort, err)
+				"on '%s': '%v'", hp, err)
 		}
 	}
 	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
@@ -144,6 +150,6 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 		//pp("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}
-	nc, err := sshClientConn.Dial("tcp", dc.DownstreamHostPort)
+	nc, err := sshClientConn.Dial("tcp", hp)
 	return nc, sshClientConn, err
 }
