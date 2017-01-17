@@ -77,6 +77,8 @@ type SshegoConfig struct {
 	BitLenRSAkeys int
 
 	DirectTcp bool
+
+	testingModeNoWait bool
 }
 
 func NewSshegoConfig() *SshegoConfig {

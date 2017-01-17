@@ -43,6 +43,7 @@ func handleDirectTcp(newChannel ssh.NewChannel) {
 		addr := fmt.Sprintf("%s:%d", p.Rhost, p.Rport)
 		if port == minus2_uint32 {
 			// unix domain request
+			pp("direct.go has unix domain forwarding request")
 			targetConn, err = net.Dial("unix", host)
 		} else {
 			targetConn, err = net.Dial("tcp", targetAddr)

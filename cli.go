@@ -1,6 +1,8 @@
 package sshego
 
 import (
+	"fmt"
+	"log"
 	"net"
 
 	"golang.org/x/crypto/ssh"
@@ -103,10 +105,6 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 
-	//	if dc.TofuAddIfNotKnown {
-	//		cfg.allowOneshotConnect = true
-	//	}
-
 	var sshClientConn *ssh.Client
 	sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
 		dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
@@ -124,6 +122,20 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	// exclusive access. This prevents other users and
 	// their processes on this localhost from also
 	// using the ssh connection (i.e. without authenticating).
+
+	_, port, err := net.SplitHostPort(dc.DownstreamHostPort)
+	if err != nil {
+		log.Printf("error from net.SplitHostPort on '%s': '%v'",
+			dc.DownstreamHostPort, err)
+		return nil, nil, fmt.Errorf("error from net.SplitHostPort "+
+			"on '%s': '%v'", dc.DownstreamHostPort, err)
+	}
+	if len(port) > 0 && port[0] == '/' {
+		// a unix-domain socket request
+		nc, err := DialRemoteUnixDomain(sshClientConn, port)
+		pp("DialRemoteUnixDomain had error '%v'", err)
+		return nc, sshClientConn, err
+	}
 	nc, err := sshClientConn.Dial("tcp", dc.DownstreamHostPort)
 	return nc, sshClientConn, err
 }

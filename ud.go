@@ -1,7 +1,9 @@
 package sshego
 
 import (
+	"errors"
 	"net"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -43,21 +45,54 @@ func DialRemoteUnixDomain(c *ssh.Client, udpath string) (net.Conn, error) {
 		IP:   net.IPv4zero,
 		Port: 0,
 	}
-	ch, err := dialDirect(c, net.IPv4zero.String(), 0, udpath, 0)
+	ch, err := dialDirect(c, net.IPv4zero.String(), 0, udpath, -2)
 	if err != nil {
 		return nil, err
 	}
-	return &tcpChanConn{
+	return &unixDomainChanConn{
 		Channel: ch,
 		laddr:   zeroAddr,
 		raddr:   zeroAddr,
 	}, nil
 }
 
-// tcpChanConn fulfills the net.Conn interface without
+// unixDomainChanConn fulfills the net.Conn interface without
 // the tcpChan having to hold laddr or raddr directly.
 // From golang.org/x/crypto/ssh/tcpip.go
-type tcpChanConn struct {
+type unixDomainChanConn struct {
 	ssh.Channel
 	laddr, raddr net.Addr
+}
+
+// LocalAddr returns the local network address.
+func (t *unixDomainChanConn) LocalAddr() net.Addr {
+	return t.laddr
+}
+
+// RemoteAddr returns the remote network address.
+func (t *unixDomainChanConn) RemoteAddr() net.Addr {
+	return t.raddr
+}
+
+// SetDeadline sets the read and write deadlines associated
+// with the connection.
+func (t *unixDomainChanConn) SetDeadline(deadline time.Time) error {
+	if err := t.SetReadDeadline(deadline); err != nil {
+		return err
+	}
+	return t.SetWriteDeadline(deadline)
+}
+
+// SetReadDeadline sets the read deadline.
+// A zero value for t means Read will not time out.
+// After the deadline, the error from Read will implement net.Error
+// with Timeout() == true.
+func (t *unixDomainChanConn) SetReadDeadline(deadline time.Time) error {
+	return errors.New("ssh: unixDomainChanConn: deadline not supported")
+}
+
+// SetWriteDeadline exists to satisfy the net.Conn interface
+// but is not implemented by this type.  It always returns an error.
+func (t *unixDomainChanConn) SetWriteDeadline(deadline time.Time) error {
+	return errors.New("ssh: unixDomainChanConn: deadline not supported")
 }
