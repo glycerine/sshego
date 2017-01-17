@@ -112,7 +112,7 @@ func (h *HostDb) generateHostKey() error {
 	path := h.privpath()
 	bits := h.cfg.BitLenRSAkeys // default 4096
 
-	fmt.Printf("\n bits = %v\n", bits)
+	p("\n bits = %v\n", bits)
 	host, _ := os.Hostname()
 	_, signer, err := GenRSAKeyPair(path, bits, host)
 	if err != nil {
