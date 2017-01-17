@@ -105,7 +105,7 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 		mylogin)
 	myemail, err = reader.ReadString('\n')
 	panicOn(err)
-	myemail = strings.Trim(myemail, "\n\r")
+	myemail = strings.Trim(myemail, "\n\r\t ")
 	ok, err = cfg.HostDb.ValidEmail(myemail)
 	if !ok {
 		fmt.Printf("\n%s\n", err)
@@ -115,7 +115,7 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 	fmt.Printf("\n'%s' should be a valid email, but may be fake if you insist.\n\nIf this email is real, we can backup the passphrase you will create in the next step. This convenience feature is optional, but strongly recommended.  The RSA key and One-time-password secret will not be sent by email, but their locations on disk will be noted for ease of retreival.\n\nDo you want to backup the passphase to email '%s'? [y/n]:", myemail, myemail)
 	yn, err := reader.ReadString('\n')
 	panicOn(err)
-	yn = strings.ToLower(strings.Trim(yn, "\n\r"))
+	yn = strings.ToLower(strings.Trim(yn, "\n\r\t "))
 	sendEmail := false
 	if yn == "y" || yn == "yes" {
 		sendEmail = true
@@ -129,7 +129,7 @@ func addUserAndExit(cfg *tun.SshegoConfig) {
 	fmt.Printf("\nCorresponding to '%s'/'%s', enter the first and last name (e.g. 'John Q. Smith'). This helps identify the account during maintenance. First and last name:\n", mylogin, myemail)
 	fullname, err = reader.ReadString('\n')
 	panicOn(err)
-	fullname = strings.Trim(fullname, "\n\r")
+	fullname = strings.Trim(fullname, "\n\r\t ")
 
 	var pw string
 	if !cfg.SkipPassphrase {
