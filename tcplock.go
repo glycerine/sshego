@@ -14,7 +14,7 @@ type TcpPort struct {
 }
 
 var ErrCouldNotAquirePort = fmt.Errorf("could not acquire " +
-	"our port before the deadline")
+	"our -xport before the deadline")
 
 func (t *TcpPort) Lock(limitMsec int) error {
 
@@ -36,7 +36,7 @@ func (t *TcpPort) Lock(limitMsec int) error {
 		}
 		time.Sleep(10 * time.Millisecond)
 		if !deadline.IsZero() && time.Now().After(deadline) {
-			return ErrCouldNotAquirePort
+			return fmt.Errorf("-xport error: could not acquire our -xport before the deadline, for -xport %v", addr)
 		}
 	}
 	t.mux.Lock()
