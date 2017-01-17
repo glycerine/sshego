@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -123,16 +124,23 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	// their processes on this localhost from also
 	// using the ssh connection (i.e. without authenticating).
 
-	_, port, err := net.SplitHostPort(dc.DownstreamHostPort)
+	host, _, err := net.SplitHostPort(dc.DownstreamHostPort)
+	tryUnixDomain := false
 	if err != nil {
-		log.Printf("error from net.SplitHostPort on '%s': '%v'",
-			dc.DownstreamHostPort, err)
-		return nil, nil, fmt.Errorf("error from net.SplitHostPort "+
-			"on '%s': '%v'", dc.DownstreamHostPort, err)
+		if strings.Contains(err.Error(), "missing port in address") {
+			// probably unix-domain
+			tryUnixDomain = true
+			host = dc.DownstreamHostPort
+		} else {
+			log.Printf("error from net.SplitHostPort on '%s': '%v'",
+				dc.DownstreamHostPort, err)
+			return nil, nil, fmt.Errorf("error from net.SplitHostPort "+
+				"on '%s': '%v'", dc.DownstreamHostPort, err)
+		}
 	}
-	if len(port) > 0 && port[0] == '/' {
+	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
 		// a unix-domain socket request
-		nc, err := DialRemoteUnixDomain(sshClientConn, port)
+		nc, err := DialRemoteUnixDomain(sshClientConn, host)
 		//pp("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}

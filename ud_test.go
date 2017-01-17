@@ -32,7 +32,8 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 		s := makeTestSshClientAndServer()
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
-		dest := fmt.Sprintf("127.0.0.1:%v", udpath)
+		//		dest := fmt.Sprintf("127.0.0.1:%v", udpath)
+		dest := udpath
 
 		// below over SSH should be equivalent of the following
 		// non-encrypted ping/pong.
