@@ -24,6 +24,10 @@ than OpenVPN.
 In any case, you should realize that this is only an ssh
 client, and not an sshd server daemon. It is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
+If you only trust the user running your application and
+not your entire host, you can further restrict access
+by using either DialConfig.Dial() for a direct-tcpip connection, or
+by using the unix-domain-socket support.
 
 For example,
 
