@@ -75,9 +75,9 @@ given the first time.
         (forward tunnel) We listen on this host:port locally,
         securely tunnel that traffic to sshd, then send it
         cleartext to -remote. The forward tunnel is active
-        if and only if -listen is given.  If port starts with
+        if and only if -listen is given.  If host starts with
         a '/' then we treat it as the path to a unix-domain
-        socket to listen on.
+        socket to listen on; set port to -2.
   -new
         allow connecting to a new sshd host key, and store it
         for future reference. Otherwise prevent MITM attacks by
@@ -90,9 +90,9 @@ given the first time.
         (forward tunnel) After traversing the secured forward
         tunnel, -listen traffic flows in cleartext from the
         sshd to this host:port. The foward tunnel is active
-        only if -listen is given too.  If port starts with
+        only if -listen is given too.  If host starts with
         a '/' then we treat it as the path to a unix-domain
-        socket to forward to.
+        socket to forward to; set port to -2.
   -revfwd string
         (reverse tunnel) The gosshtun application will receive
         securely tunneled connections from -revlisten on the
