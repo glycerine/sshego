@@ -79,6 +79,8 @@ type SshegoConfig struct {
 	DirectTcp bool
 
 	testingModeNoWait bool
+
+	ShowVersion bool
 }
 
 func NewSshegoConfig() *SshegoConfig {
@@ -174,7 +176,7 @@ func (c *SshegoConfig) DefineFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&c.SkipPassphrase, "skip-pass", false, "(under -esshd and -adduser) skip passphrase authentication requirement.")
 	fs.BoolVar(&c.SkipRSA, "skip-rsa", false, "(under -esshd and -adduser) skip RSA key authentication requirement.")
 	fs.IntVar(&c.BitLenRSAkeys, "bits", 4096, "(under -adduser and for new host keys) number of bits in the generated RSA keys. note the one-time wait to generate: 10000 bits would offer terrific security, but will take between 1-8 minutes to generate such a key.")
-
+	fs.BoolVar(&c.ShowVersion, "version", false, "show the code version")
 	c.MailCfg.DefineFlags(fs)
 
 	c.SSHdServer.Title = "sshd"

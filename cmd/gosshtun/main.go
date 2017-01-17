@@ -24,6 +24,10 @@ func main() {
 	cfg := tun.NewSshegoConfig()
 	cfg.DefineFlags(myflags)
 	err := myflags.Parse(os.Args[1:])
+	if cfg.ShowVersion {
+		fmt.Printf("\n%v\n", tun.SourceVersion())
+		os.Exit(0)
+	}
 	err = cfg.ValidateConfig()
 	if err != nil {
 		log.Fatalf("%s command line flag error: '%s'", ProgramName, err)

@@ -303,7 +303,7 @@ func (e *Esshd) Start() {
 	// for network commands...
 
 	go func() {
-		p("StartEmbeddedSSHd")
+		log.Printf("Esshd.Start() called. %s", SourceVersion())
 
 		// most of the auth state is per user, so it has
 		// to wait until we have a login and a

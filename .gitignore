@@ -29,3 +29,6 @@ _testmain.go
 
 cmd/manual-test-client/manual-test-client
 cmd/manual-test-recv/manual-test-recv
+cmd/manual-unixdomain-client/manual-unixdomain-client
+cmd/manual-unixdomain-recv/manual-unixdomain-recv
+gitcommit.go
