@@ -69,6 +69,8 @@ type DialConfig struct {
 	// DoNotUpdateSshKnownHosts prevents writing
 	// to the file given by ClientKnownHostsPath, if true.
 	DoNotUpdateSshKnownHosts bool
+
+	Verbose bool
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -95,14 +97,18 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.BitLenRSAkeys = 4096
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
+	cfg.Debug = dc.Verbose
+	if !Verbose {
+		Verbose = dc.Verbose
+	}
 	var err error
-	//pp("DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
+	p("DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 	if dc.KnownHosts == nil {
 		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, KHSsh)
 		if err != nil {
 			return nil, nil, err
 		}
-		//pp("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
+		p("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 
@@ -147,7 +153,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
 		// a unix-domain socket request
 		nc, err := DialRemoteUnixDomain(sshClientConn, host)
-		//pp("DialRemoteUnixDomain had error '%v'", err)
+		p("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}
 	nc, err := sshClientConn.Dial("tcp", hp)
