@@ -133,7 +133,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	if len(port) > 0 && port[0] == '/' {
 		// a unix-domain socket request
 		nc, err := DialRemoteUnixDomain(sshClientConn, port)
-		pp("DialRemoteUnixDomain had error '%v'", err)
+		//pp("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}
 	nc, err := sshClientConn.Dial("tcp", dc.DownstreamHostPort)
