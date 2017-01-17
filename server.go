@@ -331,6 +331,8 @@ func (e *Esshd) Start() {
 			return
 		}
 		var k int64
+		p("info: Essh.Start() in server.go: listening on "+
+			"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 		for {
 			k++
 			// crude but effective rate login rate limiting:
@@ -387,6 +389,9 @@ func (e *Esshd) Start() {
 				}
 				continue
 			}
+			p("info: Essh.Start() in server.go: accepted new connection on "+
+				"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
+
 			attempt := NewPerAttempt(a, e.cfg)
 			attempt.SetupAuthRequirements()
 
