@@ -100,17 +100,26 @@ secure your (e.g. mysql, postgres, other cleartext) traffic. As
 many connections as you need will be multiplexed over the
 same ssh tunnel.
 
-# granularity of access
+# grain of access
 
 If you don't trust the other users on the host where your
 process is running, you can also use sshego to (a) secure a direct
 TCP connection (see DialConfig.Dial() and the example in cli_test.go; https://github.com/glycerine/sshego/blob/master/cli_test.go#L72);
 or (b) forward via a file-system secured unix-domain sockets.
+
 The first option (a) would disallow any other process (even
-under the same user) from using
-your connection, and the second (b) would disallow any other user from
-accessing your tunnel, so long as you use the file-system permissions
+under the same user) from multiplexing 
+your original connection, and the second (b) would disallow
+any other user from accessing your tunnel, so long as
+you use the file-system permissions
 to make the unix-domain socket path inaccessible to others.
+
+In either case, note that keys are by default stored
+on disk under the user's $HOME/.ssh folder, so as usual that
+folder should not be readable by others. Using a direct
+connection as in (a) in no way prevents you from starting
+another process (from the same executable or another) that
+reads the same keys and starts its own direct tcp connection.
 
 # theory of operation
 
