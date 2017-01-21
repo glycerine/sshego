@@ -100,6 +100,18 @@ secure your (e.g. mysql, postgres, other cleartext) traffic. As
 many connections as you need will be multiplexed over the
 same ssh tunnel.
 
+# granuality of access
+
+If you don't trust the other users on the host where your
+process is running, you can also use sshego to (a) secure a direct
+TCP connection (see DialConfig.Dial() and the example in cli_test.go; https://github.com/glycerine/sshego/blob/master/cli_test.go#L72);
+or (b) forward via a file-system secured unix-domain sockets.
+The first option (a) would disallow any other process (even
+under the same user) from using
+your connection, and the second (b) would disallow any other user from
+accessing your tunnel, so long as you use the file-system permissions
+to make the unix-domain socket path inaccessible to others.
+
 # theory of operation
 
 `gosshtun` and `sshego` will check the sshd server's host key. We prevent MITM attacks
