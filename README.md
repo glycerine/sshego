@@ -100,7 +100,7 @@ secure your (e.g. mysql, postgres, other cleartext) traffic. As
 many connections as you need will be multiplexed over the
 same ssh tunnel.
 
-# granuality of access
+# granularity of access
 
 If you don't trust the other users on the host where your
 process is running, you can also use sshego to (a) secure a direct
