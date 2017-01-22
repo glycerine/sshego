@@ -21,9 +21,11 @@ type channelOpenDirectMsg struct {
 }
 
 const minus2_uint32 uint32 = 0xFFFFFFFE
+const minus10_uint32 uint32 = 0xFFFFFFF6
 
 // server side: handle channel type "direct-tcpip"  - RFC 4254 7.2
-func handleDirectTcp(newChannel ssh.NewChannel) {
+// ca can be nil.
+func handleDirectTcp(newChannel ssh.NewChannel, ca *ConnectionAlert) {
 	//pp("handleDirectTcp called!")
 
 	p := &channelOpenDirectMsg{}
@@ -41,11 +43,24 @@ func handleDirectTcp(newChannel ssh.NewChannel) {
 		var targetConn net.Conn
 		var err error
 		addr := fmt.Sprintf("%s:%d", p.Rhost, p.Rport)
-		if port == minus2_uint32 {
+		switch port {
+		case minus2_uint32:
 			// unix domain request
 			pp("direct.go has unix domain forwarding request")
 			targetConn, err = net.Dial("unix", host)
-		} else {
+		case 1:
+			pp("direct.go has port 1 forwarding request. ca = %#v", ca)
+			if ca != nil && ca.PortOne != nil {
+				pp("handleDirectTcp sees a port one request with a live ca.PortOne")
+				select {
+				case ca.PortOne <- ch:
+				case <-ca.ShutDown:
+				}
+				return
+			}
+			panic("wat?")
+			fallthrough
+		default:
 			targetConn, err = net.Dial("tcp", targetAddr)
 		}
 		if err != nil {

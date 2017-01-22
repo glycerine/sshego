@@ -44,7 +44,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer()
+		s := makeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
@@ -86,12 +86,12 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		// done with testing, cleanup
 		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Done
+		<-s.srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }
 
-func makeTestSshClientAndServer() *setup {
+func makeTestSshClientAndServer(startEsshd bool) *setup {
 	srvCfg, r1 := genTestConfig()
 	cliCfg, r2 := genTestConfig()
 
@@ -100,17 +100,11 @@ func makeTestSshClientAndServer() *setup {
 	r1()
 	r2()
 	srvCfg.NewEsshd()
-	srvCfg.Esshd.Start()
+	if startEsshd {
+		srvCfg.Esshd.Start()
+	}
 	// create a new acct
-	mylogin := "bob"
-	myemail := "bob@example.com"
-	fullname := "Bob Fakey McFakester"
-	pw := fmt.Sprintf("%x", string(CryptoRandBytes(30)))
-
-	p("srvCfg.HostDb = %#v", srvCfg.HostDb)
-	toptPath, _, rsaPath, err := srvCfg.HostDb.AddUser(
-		mylogin, myemail, pw, "gosshtun", fullname)
-
+	mylogin, toptPath, rsaPath, pw, err := createNewAccount(srvCfg)
 	panicOn(err)
 
 	// allow server to be discovered
@@ -173,7 +167,7 @@ func verifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 	m, err = channelToTcpServer.Read(rep)
 	panicOn(err)
 	if m != payloadByteCount {
-		panic("too short a reply!")
+		panic(fmt.Sprintf("too short a reply! m = %v, expected %v. rep = '%v'", m, payloadByteCount, string(rep)))
 	}
 	srep := string(rep)
 	if srep != confirmationReply {
@@ -184,9 +178,11 @@ func verifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 
 func startBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
 	go func() {
+		pp("startBackgroundTestTcpServer() about to call Accept().")
 		tcpServerConn, err := tcpSrvLsn.Accept()
 		panicOn(err)
-		pp("%v", tcpServerConn)
+		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
+			tcpServerConn)
 
 		b := make([]byte, payloadByteCount)
 		n, err := tcpServerConn.Read(b)
@@ -211,4 +207,17 @@ func startBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, co
 		//tcpServerConn.Close()
 		close(serverDone)
 	}()
+}
+
+func createNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw string, err error) {
+
+	mylogin = "bob"
+	myemail := "bob@example.com"
+	fullname := "Bob Fakey McFakester"
+	pw = fmt.Sprintf("%x", string(CryptoRandBytes(30)))
+
+	pp("srvCfg.HostDb = %#v", srvCfg.HostDb)
+	toptPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
+		mylogin, myemail, pw, "gosshtun", fullname)
+	return
 }

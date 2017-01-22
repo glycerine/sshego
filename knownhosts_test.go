@@ -54,7 +54,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer()
+		s := makeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
@@ -130,7 +130,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// done with testing, cleanup
 		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Done
+		<-s.srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 
 	})
@@ -167,7 +167,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer()
+		s := makeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
@@ -251,7 +251,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// s2 server will be on a new port, so that is enough to
 		// check that dedup happened.
-		s2 := makeTestSshClientAndServer()
+		s2 := makeTestSshClientAndServer(true)
 		defer TempDirCleanup(s2.srvCfg.origdir, s2.srvCfg.tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
@@ -291,7 +291,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// done with testing, cleanup
 		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Done
+		<-s.srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 
 	})

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glycerine/idem"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"github.com/tinylib/msgp/msgp"
@@ -23,8 +24,7 @@ import (
 // running from inside this libary.
 type Esshd struct {
 	cfg                  *SshegoConfig
-	Done                 chan bool
-	reqStop              chan bool
+	Halt                 idem.Halter
 	addUserToDatabase    chan *User
 	replyWithCreatedUser chan *User
 
@@ -33,22 +33,15 @@ type Esshd struct {
 
 	updateHostKey chan ssh.Signer
 
-	mut           sync.Mutex
-	stopRequested bool
+	mut sync.Mutex
 
 	cr *CommandRecv
 }
 
-func (e *Esshd) Stop() {
-	e.mut.Lock()
-	if e.stopRequested {
-		e.mut.Unlock()
-		return
-	}
-	e.stopRequested = true
-	e.mut.Unlock()
-	close(e.reqStop)
-	<-e.Done
+func (e *Esshd) Stop() error {
+	e.Halt.ReqStop.Close()
+	<-e.Halt.Done.Chan
+	return nil
 }
 
 // NewEsshd sets cfg.Esshd with a newly
@@ -57,8 +50,7 @@ func (e *Esshd) Stop() {
 func (cfg *SshegoConfig) NewEsshd() *Esshd {
 	srv := &Esshd{
 		cfg:                  cfg,
-		Done:                 make(chan bool),
-		reqStop:              make(chan bool),
+		Halt:                 *idem.NewHalter(),
 		addUserToDatabase:    make(chan *User),
 		replyWithCreatedUser: make(chan *User),
 		delUserReq:           make(chan *User),
@@ -293,6 +285,7 @@ func (cr *CommandRecv) Start() error {
 }
 
 func (e *Esshd) Start() {
+	p("Start for Esshd called.")
 
 	e.cr = e.NewCommandRecv()
 	err := e.cr.Start()
@@ -353,30 +346,30 @@ func (e *Esshd) Start() {
 				// 'accept tcp 127.0.0.1:54796: i/o timeout'
 				// p("simple timeout err: '%v'", err)
 				select {
-				case <-e.reqStop:
-					close(e.Done)
+				case <-e.Halt.ReqStop.Chan:
+					e.Halt.Done.Close()
 					return
 				case u := <-e.addUserToDatabase:
-					p("recived on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
+					p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
 					_, _, _, err = e.cfg.HostDb.finishUserBuildout(u)
 					panicOn(err)
 					select {
 					case e.replyWithCreatedUser <- u:
 						p("sent: e.replyWithCreatedUser <- u")
-					case <-e.reqStop:
-						close(e.Done)
+					case <-e.Halt.ReqStop.Chan:
+						e.Halt.Done.Close()
 						return
 					}
 
 				case u := <-e.delUserReq:
-					p("recived on e.delUserReq: '%v'", u.MyLogin)
+					p("received on e.delUserReq: '%v'", u.MyLogin)
 					err = e.cfg.HostDb.DelUser(u.MyLogin)
 					ok := (err == nil)
 
 					select {
 					case e.replyWithDeletedDone <- ok:
-					case <-e.reqStop:
-						close(e.Done)
+					case <-e.Halt.ReqStop.Chan:
+						e.Halt.Done.Close()
 						return
 					}
 
@@ -405,12 +398,12 @@ func (e *Esshd) Start() {
 			// important than concurrency of login processing.
 			// After login we let connections proceed freely
 			// and in parallel.
-			attempt.PerConnection(nConn)
+			attempt.PerConnection(nConn, nil)
 		}
 	}()
 }
 
-func (a *PerAttempt) PerConnection(nConn net.Conn) {
+func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	p("Accept has returned an nConn... doing handshake")
 
@@ -419,8 +412,9 @@ func (a *PerAttempt) PerConnection(nConn net.Conn) {
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, a.Config)
 	if err != nil {
-		log.Printf("failed to handshake: %v", err)
-		return
+		msg := fmt.Errorf("failed to handshake: %v", err)
+		log.Printf(msg.Error())
+		return msg
 	}
 
 	p("done with handshake")
@@ -429,9 +423,24 @@ func (a *PerAttempt) PerConnection(nConn net.Conn) {
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests
-	go ssh.DiscardRequests(reqs)
+	go a.discardRequests(reqs)
 	// Accept all channels
-	go handleChannels(chans)
+	go a.handleChannels(chans, ca)
+
+	return nil
+}
+
+func (a *PerAttempt) discardRequests(in <-chan *ssh.Request) {
+	for {
+		select {
+		case req := <-in:
+			if req.WantReply {
+				req.Reply(false, nil)
+			}
+		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
+			return
+		}
+	}
 }
 
 type TOTP struct {
@@ -558,15 +567,6 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 	// should not be!
 	if a.cfg.SkipPassphrase && a.cfg.SkipTOTP {
 		panic("should not be in the KeyboardInteractiveCallback at all!")
-		/*
-			a.OneTimeOK = true
-			if a.cfg.SkipRSA || a.PublicKeyOK {
-				a.NoteLogin(user, now, conn)
-				return nil, nil
-			}
-			p("RSA still required and not met, yet.")
-			return nil, keyFail
-		*/
 	}
 
 	firstPassOK := false

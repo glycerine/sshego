@@ -26,7 +26,7 @@ func Test101StartupAndShutdown(t *testing.T) {
 		cfg.NewEsshd()
 		cfg.Esshd.Start()
 		cfg.Esshd.Stop()
-		<-cfg.Esshd.Done
+		<-cfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }
@@ -140,7 +140,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 		// done with testing, cleanup
 		srvCfg.Esshd.Stop()
-		<-srvCfg.Esshd.Done
+		<-srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }

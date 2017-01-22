@@ -56,14 +56,30 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func handleChannels(chans <-chan ssh.NewChannel) {
+type ConnectionAlert struct {
+	PortOne  chan ssh.Channel
+	ShutDown chan bool
+}
+
+func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionAlert) {
 	// Service the incoming Channel channel in go routine
-	for newChannel := range chans {
-		go handleChannel(newChannel)
+	var shut chan bool
+	if ca != nil {
+		shut = ca.ShutDown
+	}
+	for {
+		select {
+		case newChannel := <-chans:
+			go a.handleChannel(newChannel, ca)
+		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
+			return
+		case <-shut:
+			return
+		}
 	}
 }
 
-func handleChannel(newChannel ssh.NewChannel) {
+func (a *PerAttempt) handleChannel(newChannel ssh.NewChannel, ca *ConnectionAlert) {
 	// Since we're handling a shell, we expect a
 	// channel type of "session". The spec also describes
 	// "x11", "direct-tcpip" and "forwarded-tcpip"
@@ -71,7 +87,7 @@ func handleChannel(newChannel ssh.NewChannel) {
 	t := newChannel.ChannelType()
 
 	if t == "direct-tcpip" {
-		handleDirectTcp(newChannel)
+		handleDirectTcp(newChannel, ca)
 	}
 
 	if t != "session" {

@@ -29,7 +29,7 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 			confirmationReply)
 		defer os.Remove(udpath)
 
-		s := makeTestSshClientAndServer()
+		s := makeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
 
 		dest := udpath
@@ -71,7 +71,7 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 
 		// done with testing, cleanup
 		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Done
+		<-s.srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }
@@ -109,7 +109,6 @@ func startBackgroundTestUnixDomainServer(serverDone chan bool, payloadByteCount 
 	go func() {
 		udServerConn, err := lsn.Accept()
 		panicOn(err)
-		pp("%v", udServerConn)
 
 		b := make([]byte, payloadByteCount)
 		n, err := udServerConn.Read(b)
