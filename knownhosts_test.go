@@ -45,9 +45,9 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		serverDone := make(chan bool)
 
-		tcpSrvLsn, tcpSrvPort := getAvailPort()
+		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
-		startBackgroundTestTcpServer(
+		StartBackgroundTestTcpServer(
 			serverDone,
 			payloadByteCount,
 			confirmationPayload,
@@ -121,7 +121,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 		channelToTcpServer, _, err = dc.Dial()
 		cv.So(err, cv.ShouldBeNil)
 
-		verifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
+		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 		channelToTcpServer.Close()
 
 		// tcp-server should have exited because it got the expected
@@ -158,9 +158,9 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		serverDone := make(chan bool)
 
-		tcpSrvLsn, tcpSrvPort := getAvailPort()
+		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
-		startBackgroundTestTcpServer(
+		StartBackgroundTestTcpServer(
 			serverDone,
 			payloadByteCount,
 			confirmationPayload,
@@ -221,7 +221,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		channelToTcpServer, _, err = dc.Dial()
 		cv.So(err, cv.ShouldBeNil)
 
-		verifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
+		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 		channelToTcpServer.Close()
 
 		// tcp-server should have exited because it got the expected
@@ -234,9 +234,9 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		serverDone = make(chan bool)
 
-		tcpSrvLsn, tcpSrvPort = getAvailPort()
+		tcpSrvLsn, tcpSrvPort = GetAvailPort()
 
-		startBackgroundTestTcpServer(
+		StartBackgroundTestTcpServer(
 			serverDone,
 			payloadByteCount,
 			confirmationPayload,

@@ -3,7 +3,6 @@ package sshego
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
@@ -35,9 +34,9 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		serverDone := make(chan bool)
 
-		tcpSrvLsn, tcpSrvPort := getAvailPort()
+		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
-		startBackgroundTestTcpServer(
+		StartBackgroundTestTcpServer(
 			serverDone,
 			payloadByteCount,
 			confirmationPayload,
@@ -53,7 +52,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 		// non-encrypted ping/pong.
 
 		if false {
-			unencPingPong(dest, confirmationPayload, confirmationReply, payloadByteCount)
+			UnencPingPong(dest, confirmationPayload, confirmationReply, payloadByteCount)
 		}
 		if true {
 			dc := DialConfig{
@@ -77,7 +76,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 			channelToTcpServer, _, err = dc.Dial()
 			cv.So(err, cv.ShouldBeNil)
 
-			verifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
+			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 			channelToTcpServer.Close()
 		}
 		// tcp-server should have exited because it got the expected
@@ -104,7 +103,7 @@ func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 		srvCfg.Esshd.Start()
 	}
 	// create a new acct
-	mylogin, toptPath, rsaPath, pw, err := createNewAccount(srvCfg)
+	mylogin, toptPath, rsaPath, pw, err := TestCreateNewAccount(srvCfg)
 	panicOn(err)
 
 	// allow server to be discovered
@@ -129,95 +128,4 @@ func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 		Totp:    totp,
 		Pw:      pw,
 	}
-}
-
-func unencPingPong(dest, confirmationPayload, confirmationReply string, payloadByteCount int) {
-	conn, err := net.Dial("tcp", dest)
-	panicOn(err)
-	m, err := conn.Write([]byte(confirmationPayload))
-	panicOn(err)
-	if m != payloadByteCount {
-		panic("too short a write!")
-	}
-
-	// check reply
-	rep := make([]byte, payloadByteCount)
-	m, err = conn.Read(rep)
-	panicOn(err)
-	if m != payloadByteCount {
-		panic("too short a reply!")
-	}
-	srep := string(rep)
-	if srep != confirmationReply {
-		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
-	}
-	pp("reply success! we got the expected srep reply '%s'", srep)
-	conn.Close()
-}
-
-func verifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmationPayload, confirmationReply string, payloadByteCount int) {
-	m, err := channelToTcpServer.Write([]byte(confirmationPayload))
-	panicOn(err)
-	if m != len(confirmationPayload) {
-		panic("too short a write!")
-	}
-
-	// check reply
-	rep := make([]byte, payloadByteCount)
-	m, err = channelToTcpServer.Read(rep)
-	panicOn(err)
-	if m != payloadByteCount {
-		panic(fmt.Sprintf("too short a reply! m = %v, expected %v. rep = '%v'", m, payloadByteCount, string(rep)))
-	}
-	srep := string(rep)
-	if srep != confirmationReply {
-		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
-	}
-	pp("reply success! we got the expected srep reply '%s'", srep)
-}
-
-func startBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
-	go func() {
-		pp("startBackgroundTestTcpServer() about to call Accept().")
-		tcpServerConn, err := tcpSrvLsn.Accept()
-		panicOn(err)
-		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
-			tcpServerConn)
-
-		b := make([]byte, payloadByteCount)
-		n, err := tcpServerConn.Read(b)
-		panicOn(err)
-		if n != payloadByteCount {
-			panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))
-		}
-		saw := string(b)
-
-		if saw != confirmationPayload {
-			panic(fmt.Errorf("expected '%s', but saw '%s'", confirmationPayload, saw))
-		}
-
-		pp("success! server got expected confirmation payload of '%s'", saw)
-
-		// reply back
-		n, err = tcpServerConn.Write([]byte(confirmationReply))
-		panicOn(err)
-		if n != payloadByteCount {
-			panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
-		}
-		//tcpServerConn.Close()
-		close(serverDone)
-	}()
-}
-
-func createNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw string, err error) {
-
-	mylogin = "bob"
-	myemail := "bob@example.com"
-	fullname := "Bob Fakey McFakester"
-	pw = fmt.Sprintf("%x", string(CryptoRandBytes(30)))
-
-	pp("srvCfg.HostDb = %#v", srvCfg.HostDb)
-	toptPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
-		mylogin, myemail, pw, "gosshtun", fullname)
-	return
 }

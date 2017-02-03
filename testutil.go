@@ -45,13 +45,13 @@ func GenTestConfig() (c *SshegoConfig, releasePorts func()) {
 	//old: cfg.ClientKnownHostsPath = cfg.Tempdir + "/client_known_hosts"
 
 	// get a bunch of distinct ports, all different.
-	sshdLsn, sshdLsnPort := getAvailPort()             // sshd local listen
-	sshdTargetLsn, sshdTargetLsnPort := getAvailPort() // target for client, sshd
-	xportLsn, xport := getAvailPort()                  // xport
-	fwdStartLsn, fwdStartLsnPort := getAvailPort()     // fwdStart
-	fwdTargetLsn, fwdTargetLsnPort := getAvailPort()   // fwdTarget
-	revStartLsn, revStartLsnPort := getAvailPort()     // revStart
-	revTargetLsn, revTargetLsnPort := getAvailPort()   // revTarget
+	sshdLsn, sshdLsnPort := GetAvailPort()             // sshd local listen
+	sshdTargetLsn, sshdTargetLsnPort := GetAvailPort() // target for client, sshd
+	xportLsn, xport := GetAvailPort()                  // xport
+	fwdStartLsn, fwdStartLsnPort := GetAvailPort()     // fwdStart
+	fwdTargetLsn, fwdTargetLsnPort := GetAvailPort()   // fwdTarget
+	revStartLsn, revStartLsnPort := GetAvailPort()     // revStart
+	revTargetLsn, revTargetLsnPort := GetAvailPort()   // revTarget
 
 	// racy, but rare: somebody else could grab this port
 	// after our Close() and before we can grab it again.
@@ -135,12 +135,12 @@ func TempDirCleanup(origdir string, tmpdir string) {
 	fmt.Printf("\n TempDirCleanup of '%s' done.\n", tmpdir)
 }
 
-// getAvailPort asks the OS for an unused port,
+// GetAvailPort asks the OS for an unused port,
 // returning a bound net.Listener and the port number
 // to which it is bound. The caller should
 // Close() the listener when it is done with
 // the port.
-func getAvailPort() (net.Listener, int) {
+func GetAvailPort() (net.Listener, int) {
 	lsn, _ := net.Listen("tcp", ":0")
 	r := lsn.Addr()
 	return lsn, r.(*net.TCPAddr).Port
@@ -151,7 +151,7 @@ func getAvailPort() (net.Listener, int) {
 // Otherwise it returns the number of tries it took.
 // Between attempts we wait 'dur' time before trying
 // again.
-func waitUntilAddrAvailable(addr string, dur time.Duration, tries int) int {
+func WaitUntilAddrAvailable(addr string, dur time.Duration, tries int) int {
 	for i := 0; i < tries; i++ {
 		var isbound bool
 		isbound = IsAlreadyBound(addr)
@@ -173,4 +173,95 @@ func IsAlreadyBound(addr string) bool {
 	}
 	ln.Close()
 	return false
+}
+
+func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmationPayload, confirmationReply string, payloadByteCount int) {
+	m, err := channelToTcpServer.Write([]byte(confirmationPayload))
+	panicOn(err)
+	if m != len(confirmationPayload) {
+		panic("too short a write!")
+	}
+
+	// check reply
+	rep := make([]byte, payloadByteCount)
+	m, err = channelToTcpServer.Read(rep)
+	panicOn(err)
+	if m != payloadByteCount {
+		panic(fmt.Sprintf("too short a reply! m = %v, expected %v. rep = '%v'", m, payloadByteCount, string(rep)))
+	}
+	srep := string(rep)
+	if srep != confirmationReply {
+		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
+	}
+	pp("reply success! we got the expected srep reply '%s'", srep)
+}
+
+func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
+	go func() {
+		pp("startBackgroundTestTcpServer() about to call Accept().")
+		tcpServerConn, err := tcpSrvLsn.Accept()
+		panicOn(err)
+		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
+			tcpServerConn)
+
+		b := make([]byte, payloadByteCount)
+		n, err := tcpServerConn.Read(b)
+		panicOn(err)
+		if n != payloadByteCount {
+			panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))
+		}
+		saw := string(b)
+
+		if saw != confirmationPayload {
+			panic(fmt.Errorf("expected '%s', but saw '%s'", confirmationPayload, saw))
+		}
+
+		pp("success! server got expected confirmation payload of '%s'", saw)
+
+		// reply back
+		n, err = tcpServerConn.Write([]byte(confirmationReply))
+		panicOn(err)
+		if n != payloadByteCount {
+			panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
+		}
+		//tcpServerConn.Close()
+		close(serverDone)
+	}()
+}
+
+func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw string, err error) {
+
+	mylogin = "bob"
+	myemail := "bob@example.com"
+	fullname := "Bob Fakey McFakester"
+	pw = fmt.Sprintf("%x", string(CryptoRandBytes(30)))
+
+	pp("srvCfg.HostDb = %#v", srvCfg.HostDb)
+	toptPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
+		mylogin, myemail, pw, "gosshtun", fullname)
+	return
+}
+
+func UnencPingPong(dest, confirmationPayload, confirmationReply string, payloadByteCount int) {
+	conn, err := net.Dial("tcp", dest)
+	panicOn(err)
+	m, err := conn.Write([]byte(confirmationPayload))
+	panicOn(err)
+	if m != payloadByteCount {
+		panic("too short a write!")
+	}
+
+	// check reply
+	rep := make([]byte, payloadByteCount)
+	m, err = conn.Read(rep)
+	panicOn(err)
+	if m != payloadByteCount {
+		panic("too short a reply!")
+	}
+	srep := string(rep)
+	if srep != confirmationReply {
+		panic(fmt.Errorf("saw '%s' but expected '%s'", srep, confirmationReply))
+	}
+	pp("reply success! we got the expected srep reply '%s'", srep)
+	conn.Close()
 }

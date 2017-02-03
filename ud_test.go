@@ -62,7 +62,7 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 			channelToTcpServer, _, err = dc.Dial()
 			cv.So(err, cv.ShouldBeNil)
 
-			verifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
+			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 			channelToTcpServer.Close()
 		}
 		// tcp-server should have exited because it got the expected

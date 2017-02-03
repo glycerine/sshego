@@ -146,7 +146,7 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 		defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 
 		bs := NewBasicServer(cfg)
-		mylogin, _, rsaPath, _, err := createNewAccount(cfg)
+		mylogin, _, rsaPath, _, err := TestCreateNewAccount(cfg)
 		panicOn(err)
 
 		blsn, err := bs.Listen(cfg.EmbeddedSSHd.Addr)
