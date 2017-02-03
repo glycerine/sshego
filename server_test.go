@@ -6,10 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
-	"os"
 	"strings"
 	"testing"
-	"time"
 
 	cv "github.com/glycerine/goconvey/convey"
 	"golang.org/x/crypto/ssh"
@@ -142,76 +140,6 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		<-srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
-}
-
-func MakeAndMoveToTempDir() (origdir string, tmpdir string) {
-
-	// make new temp dir
-	var err error
-	origdir, err = os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	tmpdir, err = ioutil.TempDir(origdir, "temp.sshego.test.dir")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Chdir(tmpdir)
-	if err != nil {
-		panic(err)
-	}
-
-	return origdir, tmpdir
-}
-
-func TempDirCleanup(origdir string, tmpdir string) {
-	// cleanup
-	os.Chdir(origdir)
-	err := os.RemoveAll(tmpdir)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("\n TempDirCleanup of '%s' done.\n", tmpdir)
-}
-
-// getAvailPort asks the OS for an unused port,
-// returning a bound net.Listener and the port number
-// to which it is bound. The caller should
-// Close() the listener when it is done with
-// the port.
-func getAvailPort() (net.Listener, int) {
-	lsn, _ := net.Listen("tcp", ":0")
-	r := lsn.Addr()
-	return lsn, r.(*net.TCPAddr).Port
-}
-
-// waitUntilAddrAvailable returns -1 if the addr was
-// alays unavailable after tries sleeps of dur time.
-// Otherwise it returns the number of tries it took.
-// Between attempts we wait 'dur' time before trying
-// again.
-func waitUntilAddrAvailable(addr string, dur time.Duration, tries int) int {
-	for i := 0; i < tries; i++ {
-		var isbound bool
-		isbound = IsAlreadyBound(addr)
-		if isbound {
-			time.Sleep(dur)
-		} else {
-			fmt.Printf("\n took %v %v sleeps for address '%v' to become available.\n", i, dur, addr)
-			return i
-		}
-	}
-	return -1
-}
-
-func IsAlreadyBound(addr string) bool {
-
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return true
-	}
-	ln.Close()
-	return false
 }
 
 // from ~/go/src/golang.org/x/crypto/ssh/testdata_test.go : init() function.
