@@ -55,10 +55,10 @@ func Test302ReadKnownHosts(t *testing.T) {
 			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		bPubKey, err := s.srvCfg.HostDb.adoptNewHostKeyFromPath(s.srvCfg.tempdir + "/testdata/id_rsa_b")
+		bPubKey, err := s.srvCfg.HostDb.adoptNewHostKeyFromPath(s.srvCfg.Tempdir + "/testdata/id_rsa_b")
 		panicOn(err)
 		sbPubKey := string(ssh.MarshalAuthorizedKey(bPubKey))
 		fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
@@ -168,10 +168,10 @@ func Test303DedupKnownHosts(t *testing.T) {
 			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		s.forTestingUpdateServerHostKey(s.srvCfg.tempdir + "/testdata/id_rsa_b")
+		s.forTestingUpdateServerHostKey(s.srvCfg.Tempdir + "/testdata/id_rsa_b")
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
@@ -252,10 +252,10 @@ func Test303DedupKnownHosts(t *testing.T) {
 		// s2 server will be on a new port, so that is enough to
 		// check that dedup happened.
 		s2 := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s2.srvCfg.origdir, s2.srvCfg.tempdir)
+		defer TempDirCleanup(s2.srvCfg.Origdir, s2.srvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		s2.forTestingUpdateServerHostKey(s2.srvCfg.tempdir + "/testdata/id_rsa_b")
+		s2.forTestingUpdateServerHostKey(s2.srvCfg.Tempdir + "/testdata/id_rsa_b")
 
 		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 4)
 

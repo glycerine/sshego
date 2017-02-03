@@ -118,7 +118,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cfg.allowOneshotConnect = false
+	cfg.TestAllowOneshotConnect = false
 	cfg.AddIfNotKnown = false
 	dc.TofuAddIfNotKnown = false
 

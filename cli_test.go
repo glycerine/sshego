@@ -45,7 +45,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 			tcpSrvLsn)
 
 		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
@@ -109,7 +109,7 @@ func makeTestSshClientAndServer(startEsshd bool) *setup {
 
 	// allow server to be discovered
 	cliCfg.AddIfNotKnown = true
-	cliCfg.allowOneshotConnect = true
+	cliCfg.TestAllowOneshotConnect = true
 
 	totpUrl, err := ioutil.ReadFile(toptPath)
 	panicOn(err)

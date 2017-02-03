@@ -30,7 +30,7 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 		defer os.Remove(udpath)
 
 		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.origdir, s.srvCfg.tempdir)
+		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
 
 		dest := udpath
 

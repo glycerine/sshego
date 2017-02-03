@@ -161,7 +161,7 @@ func (b *BasicListener) Accept() (net.Conn, error) {
 		// limit attempts to 1 per second.
 		// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
 		if k > 1 {
-			if !e.cfg.testingModeNoWait {
+			if !e.cfg.TestingModeNoWait {
 				time.Sleep(500 * time.Millisecond)
 			}
 		}

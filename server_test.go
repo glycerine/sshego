@@ -22,7 +22,7 @@ func Test101StartupAndShutdown(t *testing.T) {
 	cv.Convey("The -esshd embedded SSHd goroutine should start and stop when requested.", t, func() {
 		cfg, r1 := genTestConfig()
 		r1() // release the held-open ports.
-		defer TempDirCleanup(cfg.origdir, cfg.tempdir)
+		defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 		cfg.NewEsshd()
 		cfg.Esshd.Start()
 		cfg.Esshd.Stop()
@@ -42,7 +42,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		// must release them for use below.
 		r1()
 		r2()
-		defer TempDirCleanup(srvCfg.origdir, srvCfg.tempdir)
+		defer TempDirCleanup(srvCfg.Origdir, srvCfg.Tempdir)
 		srvCfg.NewEsshd()
 		srvCfg.Esshd.Start()
 		// create a new acct
@@ -57,9 +57,9 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 		cv.So(err, cv.ShouldBeNil)
 
-		cv.So(strings.HasPrefix(toptPath, srvCfg.tempdir), cv.ShouldBeTrue)
-		cv.So(strings.HasPrefix(qrPath, srvCfg.tempdir), cv.ShouldBeTrue)
-		cv.So(strings.HasPrefix(rsaPath, srvCfg.tempdir), cv.ShouldBeTrue)
+		cv.So(strings.HasPrefix(toptPath, srvCfg.Tempdir), cv.ShouldBeTrue)
+		cv.So(strings.HasPrefix(qrPath, srvCfg.Tempdir), cv.ShouldBeTrue)
+		cv.So(strings.HasPrefix(rsaPath, srvCfg.Tempdir), cv.ShouldBeTrue)
 
 		pp("toptPath = %v", toptPath)
 		pp("qrPath = %v", qrPath)
@@ -71,7 +71,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 		// allow server to be discovered
 		cliCfg.AddIfNotKnown = true
-		cliCfg.allowOneshotConnect = true
+		cliCfg.TestAllowOneshotConnect = true
 
 		totpUrl, err := ioutil.ReadFile(toptPath)
 		panicOn(err)
@@ -178,14 +178,14 @@ func TempDirCleanup(origdir string, tmpdir string) {
 func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg := NewSshegoConfig()
-	cfg.origdir, cfg.tempdir = MakeAndMoveToTempDir() // cd to tempdir
-	cfg.testingModeNoWait = true
+	cfg.Origdir, cfg.Tempdir = MakeAndMoveToTempDir() // cd to tempdir
+	cfg.TestingModeNoWait = true
 
 	// copy in a 3 host fake known hosts
-	err := exec.Command("cp", "-rp", cfg.origdir+"/testdata", cfg.tempdir+"/").Run()
+	err := exec.Command("cp", "-rp", cfg.Origdir+"/testdata", cfg.Tempdir+"/").Run()
 	panicOn(err)
 
-	cfg.ClientKnownHostsPath = cfg.tempdir + "/testdata/fake_known_hosts_without_b"
+	cfg.ClientKnownHostsPath = cfg.Tempdir + "/testdata/fake_known_hosts_without_b"
 
 	// poll until the copy has actually finished
 	tries := 40
@@ -208,7 +208,7 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg.KnownHosts, err = NewKnownHosts(cfg.ClientKnownHostsPath, KHSsh)
 	panicOn(err)
-	//old: cfg.ClientKnownHostsPath = cfg.tempdir + "/client_known_hosts"
+	//old: cfg.ClientKnownHostsPath = cfg.Tempdir + "/client_known_hosts"
 
 	// get a bunch of distinct ports, all different.
 	sshdLsn, sshdLsnPort := getAvailPort()             // sshd local listen
@@ -257,7 +257,7 @@ func genTestConfig() (c *SshegoConfig, releasePorts func()) {
 	cfg.RemoteToLocal.Remote.Addr = fmt.Sprintf("127.0.0.1:%v", revTargetLsnPort)
 	cfg.RemoteToLocal.Remote.ParseAddr()
 
-	cfg.EmbeddedSSHdHostDbPath = cfg.tempdir + "/server_hostdb"
+	cfg.EmbeddedSSHdHostDbPath = cfg.Tempdir + "/server_hostdb"
 
 	// temp, let compile
 	_, _ = sshdLsn, sshdLsnPort

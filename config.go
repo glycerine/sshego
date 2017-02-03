@@ -49,12 +49,25 @@ type SshegoConfig struct {
 	SshegoSystemMutexPortString string
 	SshegoSystemMutexPort       int
 
-	// testing support
-	origdir, tempdir string
-
 	MailCfg MailgunConfig
 
-	// allowOneshotConnect is
+	// allow less than 3FA
+	// Not recommended, but possible.
+	SkipTOTP       bool
+	SkipPassphrase bool
+	SkipRSA        bool
+
+	BitLenRSAkeys int
+
+	DirectTcp   bool
+	ShowVersion bool
+
+	//
+	// ==== testing support ====
+	//
+	Origdir, Tempdir string
+
+	// TestAllowOneshotConnect is
 	// a convenience for testing.
 	//
 	// If we discover and add a new
@@ -66,21 +79,9 @@ type SshegoConfig struct {
 	// teach users safe run
 	// practices, but under test
 	// it is just annoying.
-	allowOneshotConnect bool
+	TestAllowOneshotConnect bool
 
-	// allow less than 3FA
-	// Not recommended, but possible.
-	SkipTOTP       bool
-	SkipPassphrase bool
-	SkipRSA        bool
-
-	BitLenRSAkeys int
-
-	DirectTcp bool
-
-	testingModeNoWait bool
-
-	ShowVersion bool
+	TestingModeNoWait bool
 }
 
 func NewSshegoConfig() *SshegoConfig {

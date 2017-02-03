@@ -332,7 +332,7 @@ func (e *Esshd) Start() {
 			// limit attempts to 1 per second.
 			// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
 			if k > 1 {
-				if !e.cfg.testingModeNoWait {
+				if !e.cfg.TestingModeNoWait {
 					time.Sleep(500 * time.Millisecond)
 				}
 			}
@@ -546,7 +546,7 @@ const gauthChallenge = "google-authenticator-code: "
 func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
 	p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
-	if !a.cfg.testingModeNoWait {
+	if !a.cfg.TestingModeNoWait {
 		// no matter what happens, temper DDOS/many fast login attemps by
 		// waiting 1-2 seconds before replying.
 		defer wait()
@@ -658,7 +658,7 @@ func (a *PerAttempt) AuthLogCallback(conn ssh.ConnMetadata, method string, err e
 func (a *PerAttempt) PublicKeyCallback(c ssh.ConnMetadata, providedPubKey ssh.PublicKey) (perm *ssh.Permissions, rerr error) {
 	p("PublicKeyCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
-	if !a.cfg.testingModeNoWait {
+	if !a.cfg.TestingModeNoWait {
 		defer wait()
 	}
 	unknown := fmt.Errorf("unknown public key for %q", c.User())
