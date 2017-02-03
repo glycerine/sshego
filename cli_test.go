@@ -2,7 +2,6 @@ package sshego
 
 import (
 	"fmt"
-	"io/ioutil"
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
@@ -88,44 +87,4 @@ func Test201ClientDirectSSH(t *testing.T) {
 		<-s.SrvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
-}
-
-func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
-	srvCfg, r1 := GenTestConfig()
-	cliCfg, r2 := GenTestConfig()
-
-	// now that we have all different ports, we
-	// must release them for use below.
-	r1()
-	r2()
-	srvCfg.NewEsshd()
-	if startEsshd {
-		srvCfg.Esshd.Start()
-	}
-	// create a new acct
-	mylogin, toptPath, rsaPath, pw, err := TestCreateNewAccount(srvCfg)
-	panicOn(err)
-
-	// allow server to be discovered
-	cliCfg.AddIfNotKnown = true
-	cliCfg.TestAllowOneshotConnect = true
-
-	totpUrl, err := ioutil.ReadFile(toptPath)
-	panicOn(err)
-	totp := string(totpUrl)
-
-	// tell the client not to run an esshd
-	cliCfg.EmbeddedSSHd.Addr = ""
-	//cliCfg.LocalToRemote.Listen.Addr = ""
-	//rev := cliCfg.RemoteToLocal.Listen.Addr
-	cliCfg.RemoteToLocal.Listen.Addr = ""
-
-	return &TestSetup{
-		CliCfg:  cliCfg,
-		SrvCfg:  srvCfg,
-		Mylogin: mylogin,
-		RsaPath: rsaPath,
-		Totp:    totp,
-		Pw:      pw,
-	}
 }
