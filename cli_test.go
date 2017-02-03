@@ -9,13 +9,13 @@ import (
 	cv "github.com/glycerine/goconvey/convey"
 )
 
-type setup struct {
-	cliCfg  *SshegoConfig
-	srvCfg  *SshegoConfig
-	mylogin string
-	rsaPath string
-	totp    string
-	pw      string
+type TestSetup struct {
+	CliCfg  *SshegoConfig
+	SrvCfg  *SshegoConfig
+	Mylogin string
+	RsaPath string
+	Totp    string
+	Pw      string
 }
 
 func Test201ClientDirectSSH(t *testing.T) {
@@ -44,8 +44,8 @@ func Test201ClientDirectSSH(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
+		s := MakeTestSshClientAndServer(true)
+		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
@@ -57,13 +57,13 @@ func Test201ClientDirectSSH(t *testing.T) {
 		}
 		if true {
 			dc := DialConfig{
-				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
-				Mylogin:              s.mylogin,
-				RsaPath:              s.rsaPath,
-				TotpUrl:              s.totp,
-				Pw:                   s.pw,
-				Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
-				Sshdport:             s.srvCfg.EmbeddedSSHd.Port,
+				ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
+				Mylogin:              s.Mylogin,
+				RsaPath:              s.RsaPath,
+				TotpUrl:              s.Totp,
+				Pw:                   s.Pw,
+				Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
+				Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 				DownstreamHostPort:   dest,
 				TofuAddIfNotKnown:    true,
 			}
@@ -85,15 +85,15 @@ func Test201ClientDirectSSH(t *testing.T) {
 		<-serverDone
 
 		// done with testing, cleanup
-		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Halt.Done.Chan
+		s.SrvCfg.Esshd.Stop()
+		<-s.SrvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }
 
-func makeTestSshClientAndServer(startEsshd bool) *setup {
-	srvCfg, r1 := genTestConfig()
-	cliCfg, r2 := genTestConfig()
+func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
+	srvCfg, r1 := GenTestConfig()
+	cliCfg, r2 := GenTestConfig()
 
 	// now that we have all different ports, we
 	// must release them for use below.
@@ -121,13 +121,13 @@ func makeTestSshClientAndServer(startEsshd bool) *setup {
 	//rev := cliCfg.RemoteToLocal.Listen.Addr
 	cliCfg.RemoteToLocal.Listen.Addr = ""
 
-	return &setup{
-		cliCfg:  cliCfg,
-		srvCfg:  srvCfg,
-		mylogin: mylogin,
-		rsaPath: rsaPath,
-		totp:    totp,
-		pw:      pw,
+	return &TestSetup{
+		CliCfg:  cliCfg,
+		SrvCfg:  srvCfg,
+		Mylogin: mylogin,
+		RsaPath: rsaPath,
+		Totp:    totp,
+		Pw:      pw,
 	}
 }
 

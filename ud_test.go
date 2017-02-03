@@ -29,8 +29,8 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 			confirmationReply)
 		defer os.Remove(udpath)
 
-		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
+		s := MakeTestSshClientAndServer(true)
+		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		dest := udpath
 
@@ -42,13 +42,13 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 		}
 		if true {
 			dc := DialConfig{
-				ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
-				Mylogin:              s.mylogin,
-				RsaPath:              s.rsaPath,
-				TotpUrl:              s.totp,
-				Pw:                   s.pw,
-				Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
-				Sshdport:             s.srvCfg.EmbeddedSSHd.Port,
+				ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
+				Mylogin:              s.Mylogin,
+				RsaPath:              s.RsaPath,
+				TotpUrl:              s.Totp,
+				Pw:                   s.Pw,
+				Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
+				Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 				DownstreamHostPort:   dest,
 				TofuAddIfNotKnown:    true,
 			}
@@ -70,8 +70,8 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 		<-serverDone
 
 		// done with testing, cleanup
-		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Halt.Done.Chan
+		s.SrvCfg.Esshd.Stop()
+		<-s.SrvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }

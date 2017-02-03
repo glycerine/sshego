@@ -54,22 +54,22 @@ func Test302ReadKnownHosts(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
+		s := MakeTestSshClientAndServer(true)
+		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		bPubKey, err := s.srvCfg.HostDb.adoptNewHostKeyFromPath(s.srvCfg.Tempdir + "/testdata/id_rsa_b")
+		bPubKey, err := s.SrvCfg.HostDb.adoptNewHostKeyFromPath(s.SrvCfg.Tempdir + "/testdata/id_rsa_b")
 		panicOn(err)
 		sbPubKey := string(ssh.MarshalAuthorizedKey(bPubKey))
 		fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
 
 		// also have to update the Esshd auth state on the update channel:
-		s.srvCfg.Esshd.updateHostKey <- s.srvCfg.HostDb.hostSshSigner
+		s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.hostSshSigner
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
 		pp("just prior to manual NewKnownHosts call")
-		cliKnownHosts, err := NewKnownHosts(s.cliCfg.ClientKnownHostsPath, KHSsh)
+		cliKnownHosts, err := NewKnownHosts(s.CliCfg.ClientKnownHostsPath, KHSsh)
 		panicOn(err)
 
 		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 3)
@@ -86,14 +86,14 @@ func Test302ReadKnownHosts(t *testing.T) {
 		// non-encrypted ping/pong.
 
 		dc := DialConfig{
-			ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
+			ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
 			KnownHosts:           cliKnownHosts,
-			Mylogin:              s.mylogin,
-			RsaPath:              s.rsaPath,
-			TotpUrl:              s.totp,
-			Pw:                   s.pw,
-			Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
-			Sshdport:             s.srvCfg.EmbeddedSSHd.Port,
+			Mylogin:              s.Mylogin,
+			RsaPath:              s.RsaPath,
+			TotpUrl:              s.Totp,
+			Pw:                   s.Pw,
+			Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
+			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 		}
@@ -129,22 +129,22 @@ func Test302ReadKnownHosts(t *testing.T) {
 		<-serverDone
 
 		// done with testing, cleanup
-		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Halt.Done.Chan
+		s.SrvCfg.Esshd.Stop()
+		<-s.SrvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 
 	})
 }
 
-func (s *setup) forTestingUpdateServerHostKey(path string) (sbPubKey string) {
+func (s *TestSetup) forTestingUpdateServerHostKey(path string) (sbPubKey string) {
 
-	bPubKey, err := s.srvCfg.HostDb.adoptNewHostKeyFromPath(path)
+	bPubKey, err := s.SrvCfg.HostDb.adoptNewHostKeyFromPath(path)
 	panicOn(err)
 	sbPubKey = string(ssh.MarshalAuthorizedKey(bPubKey))
 	fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
 
 	// also have to update the Esshd auth state on the update channel:
-	s.srvCfg.Esshd.updateHostKey <- s.srvCfg.HostDb.hostSshSigner
+	s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.hostSshSigner
 	return
 }
 
@@ -167,16 +167,16 @@ func Test303DedupKnownHosts(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn)
 
-		s := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s.srvCfg.Origdir, s.srvCfg.Tempdir)
+		s := MakeTestSshClientAndServer(true)
+		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		s.forTestingUpdateServerHostKey(s.srvCfg.Tempdir + "/testdata/id_rsa_b")
+		s.forTestingUpdateServerHostKey(s.SrvCfg.Tempdir + "/testdata/id_rsa_b")
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
 		pp("just prior to manual NewKnownHosts call")
-		cliKnownHosts, err := NewKnownHosts(s.cliCfg.ClientKnownHostsPath, KHSsh)
+		cliKnownHosts, err := NewKnownHosts(s.CliCfg.ClientKnownHostsPath, KHSsh)
 		panicOn(err)
 
 		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 3)
@@ -193,14 +193,14 @@ func Test303DedupKnownHosts(t *testing.T) {
 		// non-encrypted ping/pong.
 
 		dc := DialConfig{
-			ClientKnownHostsPath: s.cliCfg.ClientKnownHostsPath,
+			ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
 			KnownHosts:           cliKnownHosts,
-			Mylogin:              s.mylogin,
-			RsaPath:              s.rsaPath,
-			TotpUrl:              s.totp,
-			Pw:                   s.pw,
-			Sshdhost:             s.srvCfg.EmbeddedSSHd.Host,
-			Sshdport:             s.srvCfg.EmbeddedSSHd.Port,
+			Mylogin:              s.Mylogin,
+			RsaPath:              s.RsaPath,
+			TotpUrl:              s.Totp,
+			Pw:                   s.Pw,
+			Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
+			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 		}
@@ -251,23 +251,23 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// s2 server will be on a new port, so that is enough to
 		// check that dedup happened.
-		s2 := makeTestSshClientAndServer(true)
-		defer TempDirCleanup(s2.srvCfg.Origdir, s2.srvCfg.Tempdir)
+		s2 := MakeTestSshClientAndServer(true)
+		defer TempDirCleanup(s2.SrvCfg.Origdir, s2.SrvCfg.Tempdir)
 
 		fmt.Printf("\n tell the server to represent itself as B so we can add its key\n")
-		s2.forTestingUpdateServerHostKey(s2.srvCfg.Tempdir + "/testdata/id_rsa_b")
+		s2.forTestingUpdateServerHostKey(s2.SrvCfg.Tempdir + "/testdata/id_rsa_b")
 
 		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 4)
 
 		dc2 := DialConfig{
-			ClientKnownHostsPath: s2.cliCfg.ClientKnownHostsPath,
+			ClientKnownHostsPath: s2.CliCfg.ClientKnownHostsPath,
 			KnownHosts:           cliKnownHosts,
-			Mylogin:              s2.mylogin,
-			RsaPath:              s2.rsaPath,
-			TotpUrl:              s2.totp,
-			Pw:                   s2.pw,
-			Sshdhost:             s2.srvCfg.EmbeddedSSHd.Host,
-			Sshdport:             s2.srvCfg.EmbeddedSSHd.Port,
+			Mylogin:              s2.Mylogin,
+			RsaPath:              s2.RsaPath,
+			TotpUrl:              s2.Totp,
+			Pw:                   s2.Pw,
+			Sshdhost:             s2.SrvCfg.EmbeddedSSHd.Host,
+			Sshdport:             s2.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 		}
@@ -290,8 +290,8 @@ func Test303DedupKnownHosts(t *testing.T) {
 		}
 
 		// done with testing, cleanup
-		s.srvCfg.Esshd.Stop()
-		<-s.srvCfg.Esshd.Halt.Done.Chan
+		s.SrvCfg.Esshd.Stop()
+		<-s.SrvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 
 	})

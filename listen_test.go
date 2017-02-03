@@ -12,7 +12,7 @@ import (
 func Test501BasicServerListenStartupAcceptAndShutdown(t *testing.T) {
 
 	cv.Convey("BasicServer should start and stop when requested-- in response to Listen() and Close() -- in place of Start() and Stop()", t, func() {
-		cfg, r1 := genTestConfig()
+		cfg, r1 := GenTestConfig()
 		r1() // release the held-open ports.
 		defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 		s := NewBasicServer(cfg)
@@ -44,7 +44,7 @@ func Test501BasicServerListenStartupAcceptAndShutdown(t *testing.T) {
 func Test502BasicServerListenStartupAndShutdown(t *testing.T) {
 
 	cv.Convey("BasicServer should start and stop when requested-- in response to Listen() and Close() -- even if not Accept()-ing yet.", t, func() {
-		cfg, r1 := genTestConfig()
+		cfg, r1 := GenTestConfig()
 		r1() // release the held-open ports.
 		defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 		s := NewBasicServer(cfg)
@@ -139,7 +139,7 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 
 		serverDone := make(chan bool)
 
-		cfg, r1 := genTestConfig()
+		cfg, r1 := GenTestConfig()
 		cfg.SkipTOTP = true
 		cfg.SkipPassphrase = true
 		r1() // release the held-open ports.
@@ -210,7 +210,7 @@ func Test505BasicServerInterruptsAcceptOnClose(t *testing.T) {
 
 	cv.Convey("BasicServer.Close() should interrupt a waiting Accept() call.",
 		t, func() {
-			cfg, r1 := genTestConfig()
+			cfg, r1 := GenTestConfig()
 			r1() // release the held-open ports.
 			defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 			s := NewBasicServer(cfg)

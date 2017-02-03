@@ -20,7 +20,7 @@ import (
 func Test101StartupAndShutdown(t *testing.T) {
 
 	cv.Convey("The -esshd embedded SSHd goroutine should start and stop when requested.", t, func() {
-		cfg, r1 := genTestConfig()
+		cfg, r1 := GenTestConfig()
 		r1() // release the held-open ports.
 		defer TempDirCleanup(cfg.Origdir, cfg.Tempdir)
 		cfg.NewEsshd()
@@ -35,8 +35,8 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 	cv.Convey("The -esshd should require triple auth: RSA key, password, and one-time-passowrd, not any (proper) subset of only two", t, func() {
 
-		srvCfg, r1 := genTestConfig()
-		cliCfg, r2 := genTestConfig()
+		srvCfg, r1 := GenTestConfig()
+		cliCfg, r2 := GenTestConfig()
 
 		// now that we have all different ports, we
 		// must release them for use below.
@@ -175,7 +175,7 @@ func TempDirCleanup(origdir string, tmpdir string) {
 	fmt.Printf("\n TempDirCleanup of '%s' done.\n", tmpdir)
 }
 
-func genTestConfig() (c *SshegoConfig, releasePorts func()) {
+func GenTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg := NewSshegoConfig()
 	cfg.Origdir, cfg.Tempdir = MakeAndMoveToTempDir() // cd to tempdir
