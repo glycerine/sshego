@@ -7,15 +7,6 @@ import (
 	cv "github.com/glycerine/goconvey/convey"
 )
 
-type TestSetup struct {
-	CliCfg  *SshegoConfig
-	SrvCfg  *SshegoConfig
-	Mylogin string
-	RsaPath string
-	Totp    string
-	Pw      string
-}
-
 func Test201ClientDirectSSH(t *testing.T) {
 
 	cv.Convey("Used as a library, sshego should allow a client to establish a tcp forwarded TCP connection throught the SSHd without opening a listening port (that is exposed to other users' processes) on the local host", t, func() {

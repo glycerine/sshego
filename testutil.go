@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+type TestSetup struct {
+	CliCfg  *SshegoConfig
+	SrvCfg  *SshegoConfig
+	Mylogin string
+	RsaPath string
+	Totp    string
+	Pw      string
+}
+
 func GenTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg := NewSshegoConfig()
