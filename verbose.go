@@ -7,7 +7,7 @@ import (
 
 // Verbose can be set to true for debug output. For production builds it
 // should be set to false, the default.
-var Verbose bool
+const Verbose bool = false
 
 // Ts gets the current timestamp for logging purposes.
 func ts() string {

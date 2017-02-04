@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // SshegoConfig is the top level, main config
@@ -82,6 +83,8 @@ type SshegoConfig struct {
 	TestAllowOneshotConnect bool
 
 	TestingModeNoWait bool
+
+	mut sync.Mutex
 }
 
 func NewSshegoConfig() *SshegoConfig {
@@ -198,9 +201,10 @@ func (c *SshegoConfig) ValidateConfig() error {
 		}
 	}
 
-	if c.Debug {
-		Verbose = true
-	}
+	// Verbose causes a data race, make it constant for now.
+	//	if c.Debug {
+	//      Verbose = true
+	//	}
 
 	var err error
 	err = c.LocalToRemote.Listen.ParseAddr()

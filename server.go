@@ -304,9 +304,11 @@ func (e *Esshd) Start() {
 		a := NewAuthState(nil)
 
 		// we copy the host key here to avoid a data race later.
-		e.cfg.HostDb.saveMut.Lock()
+		e.cfg.mut.Lock()
+		//e.cfg.HostDb.saveMut.Lock()
 		a.HostKey = e.cfg.HostDb.hostSshSigner
-		e.cfg.HostDb.saveMut.Unlock()
+		//e.cfg.HostDb.saveMut.Unlock()
+		e.cfg.mut.Unlock()
 
 		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be

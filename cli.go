@@ -98,9 +98,6 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	cfg.Debug = dc.Verbose
-	if !Verbose {
-		Verbose = dc.Verbose
-	}
 	var err error
 	p("DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 	if dc.KnownHosts == nil {
