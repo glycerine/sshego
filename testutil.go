@@ -239,8 +239,8 @@ func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, co
 }
 
 func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw string, err error) {
-	srvCfg.mut.Lock()
-	defer srvCfg.mut.Unlock()
+	srvCfg.Mut.Lock()
+	defer srvCfg.Mut.Unlock()
 	mylogin = "bob"
 	myemail := "bob@example.com"
 	fullname := "Bob Fakey McFakester"

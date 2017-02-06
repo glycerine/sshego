@@ -84,7 +84,7 @@ type SshegoConfig struct {
 
 	TestingModeNoWait bool
 
-	mut sync.Mutex
+	Mut sync.Mutex
 }
 
 func NewSshegoConfig() *SshegoConfig {
