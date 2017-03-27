@@ -58,12 +58,13 @@ type DialConfig struct {
 	//
 	// TOFU stands for Trust-On-First-Use.
 	//
-	// If set to true, Dial() will set TofuAddIfNotKnown back
-	// to false after storing the server (or
-	// attacker) provided key. The client can then retry the
-	// connection attempt with the newly stored
-	// key. This prevents MITM after the
-	// first contact if the DialConfig is reused.
+	// If set to true, Dial() will stoop
+	// after storing a new key, or error
+	// out if the key is already known.
+	// In either case, a 2nd attempt at
+	// Dial is required wherein on the
+	// TofuAddIfNotKnown is set to false.
+	//
 	TofuAddIfNotKnown bool
 
 	// DoNotUpdateSshKnownHosts prevents writing
@@ -72,7 +73,7 @@ type DialConfig struct {
 
 	Verbose bool
 
-	// test only
+	// test only; see SshegoConfig
 	TestAllowOneshotConnect bool
 }
 
@@ -123,9 +124,10 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cfg.TestAllowOneshotConnect = false
-	cfg.AddIfNotKnown = false
-	dc.TofuAddIfNotKnown = false
+	// enforce safe known-hosts hygene
+	//cfg.TestAllowOneshotConnect = false
+	//cfg.AddIfNotKnown = false
+	//dc.TofuAddIfNotKnown = false
 
 	// Here is how to dial over an encrypted ssh channel.
 	// This produces direct-tcpip forwarding -- in other

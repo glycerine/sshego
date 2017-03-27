@@ -69,7 +69,10 @@ func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionA
 	}
 	for {
 		select {
-		case newChannel := <-chans:
+		case newChannel, stillOpen := <-chans:
+			if !stillOpen {
+				return
+			}
 			go a.handleChannel(newChannel, ca)
 		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
 			return
@@ -80,6 +83,7 @@ func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionA
 }
 
 func (a *PerAttempt) handleChannel(newChannel ssh.NewChannel, ca *ConnectionAlert) {
+
 	// Since we're handling a shell, we expect a
 	// channel type of "session". The spec also describes
 	// "x11", "direct-tcpip" and "forwarded-tcpip"

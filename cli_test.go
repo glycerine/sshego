@@ -59,6 +59,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 			// first time we add the server key
 			channelToTcpServer, _, err := dc.Dial()
+			fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
 			cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 			// second time we connect based on that server key

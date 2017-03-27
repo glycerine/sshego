@@ -136,7 +136,5 @@ func (c *MailgunConfig) SendEmail(senderEmail, subject, plain, html, recipEmail 
 	m.AddRecipient(recipEmail)
 
 	_, id, err := mg.Send(m)
-	//fmt.Printf("debug: details of messagex:\n")
-	//goon.Dump(m)
 	return id, err
 }

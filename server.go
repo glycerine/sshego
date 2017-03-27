@@ -414,7 +414,7 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, a.Config)
 	if err != nil {
-		msg := fmt.Errorf("failed to handshake: %v", err)
+		msg := fmt.Errorf("did not handshake: %v", err)
 		log.Printf(msg.Error())
 		return msg
 	}

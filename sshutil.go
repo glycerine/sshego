@@ -258,7 +258,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		p("about to ssh.Dial hostport='%s'", hostport)
 		sshClientConn, err = ssh.Dial("tcp", hostport, cliCfg)
 		if err != nil {
-			return nil, fmt.Errorf("sshConnect() failed at dial to '%s': '%s' ", hostport, err.Error())
+			return nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
