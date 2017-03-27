@@ -436,7 +436,7 @@ func (a *PerAttempt) discardRequests(in <-chan *ssh.Request) {
 	for {
 		select {
 		case req := <-in:
-			if req.WantReply {
+			if req != nil && req.WantReply {
 				req.Reply(false, nil)
 			}
 		case <-a.cfg.Esshd.Halt.ReqStop.Chan:

@@ -95,6 +95,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 	p("in HostAlreadyKnown... starting. looking up by strPubBytes = '%s'", strPubBytes)
 
 	record, ok := h.Hosts[strPubBytes]
+	p("lookup of h.Hosts[strPubBytes] returned ok=%v, record=%#v", ok, record)
 	if ok {
 		if record.ServerBanned {
 			err := fmt.Errorf("the key '%s' has been marked as banned", strPubBytes)
@@ -158,7 +159,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 
 	var sshClientConn *ssh.Client
 
-	p("SSHConnect sees sshdHost:port = %s:%v", sshdHost, sshdPort)
+	p("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
 
 	// the callback just after key-exchange to validate server is here
 	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
@@ -415,6 +416,7 @@ func (cfg *SshegoConfig) StartNewReverse(sshClientConn *ssh.Client, fromRemote n
 }
 
 func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname string, remote net.Addr, strPubBytes string, key ssh.PublicKey, record *ServerPubKey) (HostState, *ServerPubKey, error) {
+	p("top of KnownHosts.AddNeeded(addIfNotKnown=%v, allowOneshotConnect=%v, hostname='%s', remote=%#v)", addIfNotKnown, allowOneshotConnect, hostname, remote)
 	if addIfNotKnown {
 		record := &ServerPubKey{
 			Hostname: hostname,

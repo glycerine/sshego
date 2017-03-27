@@ -60,7 +60,7 @@ type DialConfig struct {
 	//
 	// If set to true, Dial() will set TofuAddIfNotKnown back
 	// to false after storing the server (or
-	// attacker) provided key and retying the
+	// attacker) provided key. The client can then retry the
 	// connection attempt with the newly stored
 	// key. This prevents MITM after the
 	// first contact if the DialConfig is reused.
@@ -71,6 +71,9 @@ type DialConfig struct {
 	DoNotUpdateSshKnownHosts bool
 
 	Verbose bool
+
+	// test only
+	TestAllowOneshotConnect bool
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -98,8 +101,10 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	cfg.Debug = dc.Verbose
+	cfg.TestAllowOneshotConnect = dc.TestAllowOneshotConnect
 	var err error
-	p("DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
+
+	p("DialConfig.Dial: dc= %#v\n", dc)
 	if dc.KnownHosts == nil {
 		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, KHSsh)
 		if err != nil {
@@ -110,6 +115,9 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	}
 
 	var sshClientConn *ssh.Client
+	p("about to SSHConnect to dc.Sshdhost='%s'", dc.Sshdhost)
+	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
+
 	sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
 		dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
 	if err != nil {

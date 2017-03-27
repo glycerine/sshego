@@ -84,6 +84,10 @@ func (a *PerAttempt) handleChannel(newChannel ssh.NewChannel, ca *ConnectionAler
 	// channel type of "session". The spec also describes
 	// "x11", "direct-tcpip" and "forwarded-tcpip"
 	// channel types.
+	if newChannel == nil {
+		// can happen on shutdown
+		return
+	}
 	t := newChannel.ChannelType()
 
 	if t == "direct-tcpip" {
