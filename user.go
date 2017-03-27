@@ -2,7 +2,6 @@ package sshego
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -82,6 +81,8 @@ type HostDb struct {
 	saveMut sync.Mutex
 
 	userTcp TcpPort
+
+	boltdb *boltdb
 }
 
 func (cfg *SshegoConfig) NewHostDb() error {
@@ -125,6 +126,9 @@ func (h *HostDb) generateHostKey() error {
 func (h *HostDb) gendir() error {
 
 	path := h.cfg.EmbeddedSSHdHostDbPath
+	if fileExists(path) {
+		return nil
+	}
 	err := os.MkdirAll(path, 0777)
 	if err != nil {
 		return fmt.Errorf("HostDb: MkdirAll on '%s' failed: %v",
@@ -139,7 +143,7 @@ func makeway(path string) error {
 }
 
 func (h *HostDb) msgpath() string {
-	return h.cfg.EmbeddedSSHdHostDbPath + "/msgp"
+	return h.cfg.EmbeddedSSHdHostDbPath + "/msgp.boltdb"
 }
 
 func (h *HostDb) userpath(username string) string {
@@ -157,6 +161,24 @@ func (h *HostDb) toptpath(username string) string {
 const skiplock = false
 const lockit = true
 
+// always opens h.msgpath()
+func (h *HostDb) opendb() error {
+	if h.boltdb == nil {
+		err := h.gendir()
+		if err != nil {
+			return err
+		}
+
+		bolt, err := newBoltdb(h.msgpath())
+		if err != nil {
+			return fmt.Errorf("HostDb.save(): create newBoltdb at '%s' failed: %v",
+				h.msgpath(), err)
+		}
+		h.boltdb = bolt
+	}
+	return nil
+}
+
 // There should only one writer to disk at a time...
 // Let this be the main handshake/user auth goroutine
 // that listens for sshd connections.
@@ -166,39 +188,19 @@ func (h *HostDb) save(lock bool) error {
 		defer h.saveMut.Unlock()
 	}
 
-	err := h.gendir()
+	err := h.opendb()
+	if err != nil {
+		return fmt.Errorf("HostDb.save(): opendb() at path '%s' gave error '%v'",
+			h.msgpath(), err)
+	}
+
+	bts, err := h.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
-	bts, err := h.MarshalMsg(nil)
+	err = h.boltdb.writeKey(hostDbKey, bts)
 	if err != nil {
-		return fmt.Errorf("HostDb.Save MarshalMsg failed: %v", err)
-	}
-	path := h.msgpath()
-	newpath := fmt.Sprintf("%v.new.%v", path, CryptoRandInt64())
-
-	fd, err := os.Create(newpath)
-	if err != nil {
-		return fmt.Errorf("HostDb.Save: create '%s' failed: %v",
-			newpath, err)
-	}
-	defer fd.Close()
-	_, err = fd.Write(bts)
-	if err != nil {
-		return fmt.Errorf("HostDb.Save: writing User database to new file "+
-			"'%s' failed: %v", newpath, err)
-	}
-	err = fd.Close()
-	if err != nil {
-		return fmt.Errorf("HostDb.Save: closing User database "+
-			"written to new file "+
-			"'%s' failed: %v", newpath, err)
-	}
-	// replace old with new using 'mv'
-	err = os.Rename(newpath, path)
-	if err != nil {
-		return fmt.Errorf("HostDb.Save: moving new User database into place "+
-			"from '%s' to '%s' failed: %v", newpath, path, err)
+		return fmt.Errorf("HostDb.Save bolt.writeKey hostDbKey='%s' gave error = '%v'", string(hostDbKey), err)
 	}
 	return nil
 }
@@ -206,13 +208,15 @@ func (h *HostDb) save(lock bool) error {
 func (h *HostDb) loadOrCreate() error {
 
 	path := h.msgpath()
-	if fileExists(path) {
-		p("loadOrCreate, path = '%s' exists.", path)
-		by, err := ioutil.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("HostDb.Load: read of '%s' failed: %v",
-				path, err)
-		}
+
+	err := h.opendb()
+	if err != nil {
+		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
+			h.msgpath(), err)
+	}
+	by, err := h.boltdb.readKey(hostDbKey)
+
+	if len(by) > 0 {
 		_, err = h.UnmarshalMsg(by)
 		if err != nil {
 			return err
@@ -225,10 +229,13 @@ func (h *HostDb) loadOrCreate() error {
 		if err != nil {
 			return err
 		}
+
 		err = h.save(skiplock)
+
 		if err != nil {
-			return err
+			return fmt.Errorf("HostDb.Save MarshalMsg failed: %v", err)
 		}
+
 	}
 	h.loadedFromDisk = true
 

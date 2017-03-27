@@ -168,8 +168,9 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		fingerprint := ssh.FingerprintSHA256(key)
 
 		hostStatus, spubkey, err := h.HostAlreadyKnown(hostname, remote, key, pubBytes, cfg.AddIfNotKnown, cfg.TestAllowOneshotConnect)
-		log.Printf("SshegoConfig.SSHConnect(): in hostKeyCallback(), hostStatus: '%s', hostname='%s', remote='%s', key.Type='%s'  server.host.pub.key='%s' and host-key sha256.fingerprint='%s'\n", hostStatus, hostname, remote, key.Type(), pubBytes, fingerprint)
-		log.Printf("server '%s' has host-key sha256.fingerprint='%s'", hostname, fingerprint)
+		//log.Printf("SshegoConfig.SSHConnect(): in hostKeyCallback(), hostStatus: '%s', hostname='%s', remote='%s', key.Type='%s'  server.host.pub.key='%s' and host-key sha256.fingerprint='%s'\n", hostStatus, hostname, remote, key.Type(), pubBytes, fingerprint)
+		_ = fingerprint
+		//log.Printf("server '%s' has host-key sha256.fingerprint='%s'", hostname, fingerprint)
 		h.curStatus = hostStatus
 		h.curHost = spubkey
 
