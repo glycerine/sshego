@@ -435,7 +435,10 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 func (a *PerAttempt) discardRequests(in <-chan *ssh.Request) {
 	for {
 		select {
-		case req := <-in:
+		case req, stillOpen := <-in:
+			if !stillOpen {
+				return
+			}
 			if req != nil && req.WantReply {
 				req.Reply(false, nil)
 			}
