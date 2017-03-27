@@ -292,7 +292,7 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname string) (toptPat
 		return
 	}
 
-	pp("h = %#v", h)
+	//p("h = %#v", h)
 	_, ok := h.Users.Get2(mylogin)
 	if ok {
 		err = fmt.Errorf("user '%s' already exists; manually -deluser first!",
