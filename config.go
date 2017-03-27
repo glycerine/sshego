@@ -99,7 +99,7 @@ type AddrHostPort struct {
 	Title          string
 	Addr           string
 	Host           string
-	Port           uint64
+	Port           int64
 	UnixDomainPath string
 	Required       bool
 }
@@ -132,7 +132,8 @@ func (a *AddrHostPort) ParseAddr() error {
 	if port[0] == '/' {
 		a.UnixDomainPath = port
 	} else {
-		a.Port, err = strconv.ParseUint(port, 10, 16)
+		prt, err := strconv.ParseUint(port, 10, 16)
+		a.Port = int64(prt)
 		if err != nil {
 			return fmt.Errorf("bad -%s port given; could not convert "+
 				"to integer: %s", a.Title, err)

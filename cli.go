@@ -42,7 +42,7 @@ type DialConfig struct {
 
 	// which sshd to connect to, host and port.
 	Sshdhost string
-	Sshdport uint64
+	Sshdport int64
 
 	// DownstreamHostPort is the host:port string of
 	// the tcp address to which the sshd should forward
