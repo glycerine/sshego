@@ -126,7 +126,7 @@ func (h *HostDb) generateHostKey() error {
 func (h *HostDb) gendir() error {
 
 	path := h.cfg.EmbeddedSSHdHostDbPath
-	if fileExists(path) {
+	if dirExists(path) {
 		return nil
 	}
 	err := os.MkdirAll(path, 0777)
@@ -207,8 +207,6 @@ func (h *HostDb) save(lock bool) error {
 
 func (h *HostDb) loadOrCreate() error {
 
-	path := h.msgpath()
-
 	err := h.opendb()
 	if err != nil {
 		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
@@ -217,12 +215,14 @@ func (h *HostDb) loadOrCreate() error {
 	by, err := h.boltdb.readKey(hostDbKey)
 
 	if len(by) > 0 {
+
 		_, err = h.UnmarshalMsg(by)
 		if err != nil {
 			return err
 		}
 	} else {
-		p("loadOrCreate path = '%s' doesn't exist; make a host key...", path)
+
+		p("loadOrCreate path = '%s' doesn't exist; make a host key...", h.msgpath())
 
 		// no db, so make a host key
 		err := h.generateHostKey()
