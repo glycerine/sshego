@@ -270,7 +270,7 @@ func (cr *CommandRecv) Start() error {
 					// but now with fields filled in.
 					select {
 					case goback := <-cr.replyWithCreatedUser:
-						p("goback received!")
+						//p("goback received!")
 						writeBackHelper(goback, nConn)
 					case <-cr.reqStop:
 						close(cr.Done)
@@ -285,7 +285,7 @@ func (cr *CommandRecv) Start() error {
 }
 
 func (e *Esshd) Start() {
-	p("Start for Esshd called.")
+	//p("Start for Esshd called.")
 
 	e.cr = e.NewCommandRecv()
 	err := e.cr.Start()
@@ -310,7 +310,7 @@ func (e *Esshd) Start() {
 		//e.cfg.HostDb.saveMut.Unlock()
 		e.cfg.Mut.Unlock()
 
-		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
+		//p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be
 		// accepted.
 		domain := "tcp"
@@ -326,8 +326,8 @@ func (e *Esshd) Start() {
 			return
 		}
 		var k int64
-		p("info: Essh.Start() in server.go: listening on "+
-			"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
+		//p("info: Essh.Start() in server.go: listening on "+
+		//	"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 		for {
 			k++
 			// crude but effective rate login rate limiting:
@@ -352,19 +352,19 @@ func (e *Esshd) Start() {
 					e.Halt.Done.Close()
 					return
 				case u := <-e.addUserToDatabase:
-					p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
+					//p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
 					_, _, _, err = e.cfg.HostDb.finishUserBuildout(u)
 					panicOn(err)
 					select {
 					case e.replyWithCreatedUser <- u:
-						p("sent: e.replyWithCreatedUser <- u")
+						//p("sent: e.replyWithCreatedUser <- u")
 					case <-e.Halt.ReqStop.Chan:
 						e.Halt.Done.Close()
 						return
 					}
 
 				case u := <-e.delUserReq:
-					p("received on e.delUserReq: '%v'", u.MyLogin)
+					//p("received on e.delUserReq: '%v'", u.MyLogin)
 					err = e.cfg.HostDb.DelUser(u.MyLogin)
 					ok := (err == nil)
 
@@ -376,7 +376,7 @@ func (e *Esshd) Start() {
 					}
 
 				case newSigner := <-e.updateHostKey:
-					p("we got newSigner")
+					//p("we got newSigner")
 					a.HostKey = newSigner
 
 				default:
@@ -384,8 +384,8 @@ func (e *Esshd) Start() {
 				}
 				continue
 			}
-			p("info: Essh.Start() in server.go: accepted new connection on "+
-				"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
+			//p("info: Essh.Start() in server.go: accepted new connection on "+
+			//	"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 
 			attempt := NewPerAttempt(a, e.cfg)
 			attempt.SetupAuthRequirements()
@@ -407,7 +407,7 @@ func (e *Esshd) Start() {
 
 func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
-	p("Accept has returned an nConn... doing handshake")
+	//p("Accept has returned an nConn... doing handshake")
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
@@ -419,7 +419,7 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 		return msg
 	}
 
-	p("done with handshake")
+	//p("done with handshake")
 
 	log.Printf("New SSH connection from %s (%s)", sshConn.RemoteAddr(), sshConn.ClientVersion())
 
@@ -549,7 +549,7 @@ const passwordChallenge = "password: "
 const gauthChallenge = "google-authenticator-code: "
 
 func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
-	p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
+	//p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
 	if !a.cfg.TestingModeNoWait {
 		// no matter what happens, temper DDOS/many fast login attemps by
@@ -844,7 +844,7 @@ func wait() {
 
 // write NewUserReply + MarshalMsg(goback) back to our remote client
 func writeBackHelper(goback *User, nConn net.Conn) error {
-	p("top of writeBackHelper")
+	//p("top of writeBackHelper")
 	err := nConn.SetWriteDeadline(time.Now().Add(time.Second * 5))
 	panicOn(err)
 
