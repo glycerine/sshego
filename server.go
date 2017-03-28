@@ -310,7 +310,7 @@ func (e *Esshd) Start() {
 		//e.cfg.HostDb.saveMut.Unlock()
 		e.cfg.Mut.Unlock()
 
-		//p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
+		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
 		// Once a ServerConfig has been configured, connections can be
 		// accepted.
 		domain := "tcp"
@@ -687,6 +687,7 @@ func (a *PerAttempt) PublicKeyCallback(c ssh.ConnMetadata, providedPubKey ssh.Pu
 	if !foundUser {
 		log.Printf("unrecognized user '%s' from remoteAddr '%s' at %v",
 			mylogin, remoteAddr, now)
+		log.Printf("debug: my userdb is = '%s'\n", a.cfg.HostDb)
 		return nil, unknown
 	}
 	p("PublicKeyCallback sees login attempt for recognized user '%#v'", user)
