@@ -326,8 +326,8 @@ func (e *Esshd) Start() {
 			return
 		}
 		var k int64
-		//p("info: Essh.Start() in server.go: listening on "+
-		//	"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
+		p("info: Essh.Start() in server.go: listening on "+
+			"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 		for {
 			k++
 			// crude but effective rate login rate limiting:
