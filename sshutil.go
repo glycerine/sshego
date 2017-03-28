@@ -466,8 +466,12 @@ func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname
 func getCiphers() []string {
 	return []string{"aes128-gcm@openssh.com"}
 	/* available in golang.org/x/crypto/ssh :
-	   "aes128-ctr", "aes192-ctr", "aes256-ctr",
-	   "aes128-gcm@openssh.com",
-	   "arcfour256", "arcfour128",
+	time for 512MB from SanJose to Amazon EC2 N. Cali,
+		"aes128-gcm@openssh.com", 27 seconds, 27 seconds.
+		"arcfour256", 24.96 seconds, 31.5 seconds on retry.
+		"arcfour128", 30.6 seconds
+		"aes128-ctr", 33.4 seconds
+		"aes192-ctr", 33.5 seconds
+		"aes256-ctr", 34.5 seconds
 	*/
 }
