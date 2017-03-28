@@ -1,6 +1,9 @@
 package sshego
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 // atomic map from string to *User
 
@@ -40,4 +43,15 @@ func (m *AtomicUserMap) Del(key string) {
 	m.tex.Lock()
 	defer m.tex.Unlock()
 	delete(m.U, key)
+}
+
+func (m *AtomicUserMap) String() string {
+	m.tex.Lock()
+	defer m.tex.Unlock()
+	s := "{"
+	for k, v := range m.U {
+		s += fmt.Sprintf(`"%s":%s,\n`, k, v)
+	}
+	s += "}"
+	return s
 }

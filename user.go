@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/pquerna/otp"
+	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -59,6 +61,16 @@ type User struct {
 	mut sync.Mutex
 }
 
+func (u *User) String() string {
+	var buf bytes.Buffer
+	err := msgp.Encode(&buf, u)
+	panicOn(err)
+	var js bytes.Buffer
+	_, err = msgp.CopyToJSON(&js, &buf)
+	panicOn(err)
+	return js.String()
+}
+
 func NewUser() *User {
 	u := &User{
 		SeenPubKey: make(map[string]LoginRecord),
@@ -83,6 +95,10 @@ type HostDb struct {
 	userTcp TcpPort
 
 	boltdb *boltdb
+}
+
+func (h *HostDb) String() string {
+	return h.Users.String()
 }
 
 func (cfg *SshegoConfig) NewHostDb() error {
@@ -163,6 +179,7 @@ const lockit = true
 
 // always opens h.msgpath()
 func (h *HostDb) opendb() error {
+	p("h.opendb() called")
 	if h.boltdb == nil {
 		err := h.gendir()
 		if err != nil {
@@ -220,6 +237,7 @@ func (h *HostDb) loadOrCreate() error {
 		if err != nil {
 			return err
 		}
+		p("loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
 	} else {
 
 		p("loadOrCreate path = '%s' doesn't exist; make a host key...", h.msgpath())
