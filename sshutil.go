@@ -254,6 +254,9 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 			// handshake to validate the server's host key. A nil HostKeyCallback
 			// implies that all host keys are accepted.
 			HostKeyCallback: hostKeyCallback,
+			Config: ssh.Config{
+				Ciphers: getCiphers(),
+			},
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
@@ -457,4 +460,14 @@ func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname
 
 	p("at end of HostAlreadyKnown/AddNeeded, returning Unknown.")
 	return Unknown, record, nil
+}
+
+// client and server cipher chosen here.
+func getCiphers() []string {
+	return []string{"aes128-gcm@openssh.com"}
+	/* available in golang.org/x/crypto/ssh :
+	   "aes128-ctr", "aes192-ctr", "aes256-ctr",
+	   "aes128-gcm@openssh.com",
+	   "arcfour256", "arcfour128",
+	*/
 }

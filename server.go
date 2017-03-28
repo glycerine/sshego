@@ -691,7 +691,7 @@ func (a *PerAttempt) PublicKeyCallback(c ssh.ConnMetadata, providedPubKey ssh.Pu
 		log.Printf("debug: my userdb is = '%s'\n", a.cfg.HostDb)
 		return nil, unknown
 	}
-	p("PublicKeyCallback sees login attempt for recognized user '%#v'", user)
+	p("PublicKeyCallback sees login attempt for recognized user '%v'", user.MyLogin)
 
 	// update user.FirstLoginTm / LastLoginTm
 
@@ -807,6 +807,7 @@ func (a *PerAttempt) SetTripleConfig() {
 		KeyboardInteractiveCallback: a.KeyboardInteractiveCallback,
 		AuthLogCallback:             a.AuthLogCallback,
 		Config: ssh.Config{
+			Ciphers:      getCiphers(),
 			KeyExchanges: []string{kexAlgoCurve25519SHA256}},
 		ServerVersion: "SSH-2.0-OpenSSH_6.9",
 	}
