@@ -223,12 +223,14 @@ func (h *HostDb) save(lock bool) error {
 }
 
 func (h *HostDb) loadOrCreate() error {
+	p("top of HostDb.loadOrCreate()...")
 
 	err := h.opendb()
 	if err != nil {
 		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
 			h.msgpath(), err)
 	}
+	p("doing h.holtdb.readKey('%s')...", hostDbKey)
 	by, err := h.boltdb.readKey(hostDbKey)
 
 	if len(by) > 0 {

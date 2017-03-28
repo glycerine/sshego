@@ -285,7 +285,7 @@ func (cr *CommandRecv) Start() error {
 }
 
 func (e *Esshd) Start() {
-	//p("Start for Esshd called.")
+	p("Start for Esshd called.")
 
 	e.cr = e.NewCommandRecv()
 	err := e.cr.Start()
@@ -352,7 +352,7 @@ func (e *Esshd) Start() {
 					e.Halt.Done.Close()
 					return
 				case u := <-e.addUserToDatabase:
-					//p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
+					p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
 					_, _, _, err = e.cfg.HostDb.finishUserBuildout(u)
 					panicOn(err)
 					select {
@@ -384,8 +384,8 @@ func (e *Esshd) Start() {
 				}
 				continue
 			}
-			//p("info: Essh.Start() in server.go: accepted new connection on "+
-			//	"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
+			p("info: Essh.Start() in server.go: accepted new connection on "+
+				"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 
 			attempt := NewPerAttempt(a, e.cfg)
 			attempt.SetupAuthRequirements()
@@ -407,7 +407,7 @@ func (e *Esshd) Start() {
 
 func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
-	//p("Accept has returned an nConn... doing handshake")
+	p("Accept has returned an nConn... doing handshake")
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
@@ -419,7 +419,7 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 		return msg
 	}
 
-	//p("done with handshake")
+	p("done with handshake")
 
 	log.Printf("New SSH connection from %s (%s)", sshConn.RemoteAddr(), sshConn.ClientVersion())
 
