@@ -48,6 +48,7 @@ func (e *Esshd) Stop() error {
 // constructed Esshd. does NewHostDb()
 // internally.
 func (cfg *SshegoConfig) NewEsshd() *Esshd {
+	p("top of SshegoConfig.NewEsshd()...")
 	srv := &Esshd{
 		cfg:                  cfg,
 		Halt:                 *idem.NewHalter(),

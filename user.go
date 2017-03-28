@@ -102,6 +102,7 @@ func (h *HostDb) String() string {
 }
 
 func (cfg *SshegoConfig) NewHostDb() error {
+	p("SshegoConfig.NewHostDB() called...")
 	h := &HostDb{
 		cfg:     cfg,
 		Users:   NewAtomicUserMap(),
