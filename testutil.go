@@ -248,7 +248,7 @@ func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw 
 
 	pp("srvCfg.HostDb = %#v", srvCfg.HostDb)
 	toptPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
-		mylogin, myemail, pw, "gosshtun", fullname)
+		mylogin, myemail, pw, "gosshtun", fullname, "")
 	return
 }
 

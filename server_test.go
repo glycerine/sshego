@@ -50,7 +50,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 		p("srvCfg.HostDb = %#v", srvCfg.HostDb)
 		toptPath, qrPath, rsaPath, err := srvCfg.HostDb.AddUser(
-			mylogin, myemail, pw, "gosshtun", fullname)
+			mylogin, myemail, pw, "gosshtun", fullname, "")
 
 		cv.So(err, cv.ShouldBeNil)
 

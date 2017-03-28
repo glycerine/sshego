@@ -99,7 +99,7 @@ func AddUserAndExit(cfg *SshegoConfig) {
 		// we must do it ourselves; other process is not
 		// up and we now hold the port (listening on it) as a lock.
 		toptPath, qrPath, rsaPath, err = cfg.HostDb.AddUser(
-			mylogin, myemail, pw, "gosshtun", fullname)
+			mylogin, myemail, pw, "gosshtun", fullname, "")
 		prt.Unlock()
 	}
 	if err != nil {

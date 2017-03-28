@@ -309,7 +309,10 @@ func (user *User) MatchingHashAndPw(password string) bool {
 var emailAddressREstring = `^([a-zA-Z0-9][\+-_.a-zA-Z0-9]{0,63})@([-_.a-zA-Z0-9]{1,255})$`
 var emailAddressRE = regexp.MustCompile(emailAddressREstring)
 
-func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname string) (toptPath, qrPath, rsaPath string, err error) {
+// AddUser will use an existing extantRsaPath path to private key if provided, otherwise
+// we make a new private/public key pair.
+//
+func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKeyPath string) (toptPath, qrPath, rsaPath string, err error) {
 
 	p("AddUser mylogin:'%v' pw:'%v' myemail:'%v'", mylogin, pw, myemail)
 
@@ -329,7 +332,11 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname string) (toptPat
 	} else {
 		p("brand new user '%s'", mylogin)
 	}
-	rsaPath = h.rsapath(mylogin)
+	if extantPrivateKeyPath != "" {
+		rsaPath = extantPrivateKeyPath
+	} else {
+		rsaPath = h.rsapath(mylogin)
+	}
 
 	//	path := h.userpath(mylogin)
 
@@ -372,20 +379,27 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	}
 
 	if !h.cfg.SkipRSA {
-		rsaPath = h.rsapath(user.MyLogin)
-		user.PrivateKeyPath = rsaPath
-		user.PublicKeyPath = rsaPath + ".pub"
+		// rsa private key already exists and supplied above?
+		if user.PrivateKeyPath != "" && fileExists(user.PrivateKeyPath) {
+			rsaPath = user.PrivateKeyPath
+		} else {
 
-		makeway(rsaPath)
-		bits := h.cfg.BitLenRSAkeys // default 4096
+			// need to make a new
+			rsaPath = h.rsapath(user.MyLogin)
+			user.PrivateKeyPath = rsaPath
+			user.PublicKeyPath = rsaPath + ".pub"
 
-		var signer ssh.Signer
-		_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
-		if err != nil {
-			return
+			makeway(rsaPath)
+			bits := h.cfg.BitLenRSAkeys // default 4096
+
+			var signer ssh.Signer
+			_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
+			if err != nil {
+				return
+			}
+			user.PublicKeyPath = rsaPath + ".pub"
+			user.publicKey = signer.PublicKey()
 		}
-		user.PublicKeyPath = rsaPath + ".pub"
-		user.publicKey = signer.PublicKey()
 	}
 
 	// don't save ClearPw to disk, and no need
