@@ -177,7 +177,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		if err != nil {
 			// this is strict checking of hosts here, any non-nil error
 			// will fail the ssh handshake.
-			pp("err not nil at line 178 of sshutil.go: '%v'", err)
+			p("err not nil at line 178 of sshutil.go: '%v'", err)
 			return err
 		}
 
