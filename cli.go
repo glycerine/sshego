@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -75,6 +76,14 @@ type DialConfig struct {
 
 	// test only; see SshegoConfig
 	TestAllowOneshotConnect bool
+
+	// SkipKeepAlive default to false and we send
+	// a keepalive every minute.
+	SkipKeepAlive bool
+
+	// CancelKeepAlive can be closed to cleanup the
+	// keepalive goroutine.
+	CancelKeepAlive chan struct{}
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -165,5 +174,37 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 		return nc, sshClientConn, err
 	}
 	nc, err := sshClientConn.Dial("tcp", hp)
+
+	// start keepalives on the tcp, unless turned off.
+	if err == nil {
+		if !dc.SkipKeepAlive {
+			err, cancel := StartKeepalives(sshClientConn)
+			dc.CancelKeepAlive = cancel
+			panicOn(err)
+		}
+	}
 	return nc, sshClientConn, err
+}
+
+// StartKeepalives starts a background goroutine
+// that will send a keepalive on sshClientConn
+// every 60 seconds. Closing the returned
+// channel will exit the goroutine.
+func StartKeepalives(sshClientConn *ssh.Client) (error, chan struct{}) {
+	cancel := make(chan struct{})
+	_, _, err := sshClientConn.SendRequest("keepalive@openssh.com", true, nil)
+	if err != nil {
+		return err, cancel
+	}
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Minute):
+				sshClientConn.SendRequest("keepalive@openssh.com", true, nil)
+			case <-cancel:
+				return
+			}
+		}
+	}()
+	return nil, cancel
 }
