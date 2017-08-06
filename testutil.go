@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -298,7 +299,7 @@ func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 
 	totpUrl, err := ioutil.ReadFile(toptPath)
 	panicOn(err)
-	totp := string(totpUrl)
+	totp := strings.TrimSpace(string(totpUrl))
 
 	// tell the client not to run an esshd
 	cliCfg.EmbeddedSSHd.Addr = ""

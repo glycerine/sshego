@@ -29,7 +29,7 @@ func (ki *kiCliHelp) helper(user string, instruction string, questions []string,
 		case passwordChallenge: // "password: "
 			answers = append(answers, ki.passphrase)
 		case gauthChallenge: // "google-authenticator-code: "
-			w, err := otp.NewKeyFromURL(ki.toptUrl)
+			w, err := otp.NewKeyFromURL(strings.TrimSpace(ki.toptUrl))
 			panicOn(err)
 			code, err := totp.GenerateCode(w.Secret(), time.Now())
 			panicOn(err)
