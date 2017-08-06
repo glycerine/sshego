@@ -21,9 +21,14 @@ than OpenVPN.
 
 [1] http://serverfault.com/questions/653211/ssh-tunneling-is-faster-than-openvpn-could-it-be
 
-In any case, you should realize that this is only an ssh
-client, and not an sshd server daemon. It is the equivalent
-to using the ssh client and giving `-L` and/or `-R`.
+The sshego library typically acts as an ssh client, but also
+provides options to support running
+an embedded sshd server daemon. Port forwarding
+is the most typical use of the client, and
+this is the equivalent
+of using the standalone `ssh` client program
+and giving the `-L` and/or `-R` flags.
+
 If you only trust the user running your application and
 not your entire host, you can further restrict access
 by using either DialConfig.Dial() for a direct-tcpip connection, or

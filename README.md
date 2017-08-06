@@ -83,7 +83,9 @@ than OpenVPN.
 In its principal use, sshego is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
 It acts like an ssh client without a remote shell; it simply
-tunnels other TCP connections securely.
+tunnels other TCP connections securely. There are
+also options to run an embedded SSHD. This can
+be useful for securing reverse forwards, if allowed.
 
 For example,
 
