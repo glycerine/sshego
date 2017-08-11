@@ -1,8 +1,10 @@
 package sshego
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/glycerine/greenpack/msgp"
+	"io"
 	"os"
 )
 
@@ -81,11 +83,48 @@ func (b *Filedb) readKey(key string) (val []byte, err error) {
 
 func (b *Filedb) writeKey(key string, val []byte) error {
 	b.Map[key] = val
+	return b.SaveToDisk()
+}
 
+func (b *Filedb) SaveToDisk() error {
 	fd, err := os.OpenFile(b.Filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
+	fdJson, err := os.OpenFile(b.Filepath+".json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer fdJson.Close()
 	defer fd.Close()
-	return msgp.Encode(fd, b)
+
+	by, err := b.MarshalMsg(nil)
+	if err != nil {
+		return err
+	}
+	src := bytes.NewBuffer(by)
+
+	_, err = msgp.CopyToJSON(fdJson, src)
+	if err != nil {
+		return err
+	}
+	err = writeFull(fd, by)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeFull(w io.Writer, b []byte) error {
+	totw := 0
+	n := len(b)
+	for totw < n {
+		nw, err := w.Write(b[totw:])
+		if err != nil {
+			panic(err)
+			return err
+		}
+		totw += nw
+	}
+	return nil
 }
