@@ -79,6 +79,7 @@ func NewUser() *User {
 }
 
 type HostDb struct {
+	UserHomePrefix string
 
 	// Users: key is MyLogin; value is *User.
 	Users *AtomicUserMap
@@ -104,9 +105,10 @@ func (h *HostDb) String() string {
 func (cfg *SshegoConfig) NewHostDb() error {
 	p("SshegoConfig.NewHostDB() called...")
 	h := &HostDb{
-		cfg:     cfg,
-		Users:   NewAtomicUserMap(),
-		userTcp: TcpPort{Port: cfg.SshegoSystemMutexPort},
+		UserHomePrefix: "",
+		cfg:            cfg,
+		Users:          NewAtomicUserMap(),
+		userTcp:        TcpPort{Port: cfg.SshegoSystemMutexPort},
 	}
 	cfg.HostDb = h
 	return h.init()
@@ -169,7 +171,7 @@ func (h *HostDb) userpath(username string) string {
 	return h.cfg.EmbeddedSSHdHostDbPath + "/users/" + username
 }
 
-func (h *HostDb) rsapath(username string) string {
+func (h *HostDb) Rsapath(username string) string {
 	return h.cfg.EmbeddedSSHdHostDbPath + "/users/" + username + "/id_rsa"
 }
 
@@ -324,7 +326,7 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKe
 	if extantPrivateKeyPath != "" {
 		rsaPath = extantPrivateKeyPath
 	} else {
-		rsaPath = h.rsapath(mylogin)
+		rsaPath = h.Rsapath(mylogin)
 	}
 
 	//	path := h.userpath(mylogin)
@@ -343,8 +345,8 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKe
 }
 
 func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath string, err error) {
-	p("finishUserBuildout started: user.MyLogin:'%v' user.ClearPw:'%v' user.MyEmail:'%v'",
-		user.MyLogin, user.ClearPw, user.MyEmail)
+	pp("finishUserBuildout started: user.MyLogin:'%v' user.ClearPw:'%v' user.MyEmail:'%v' toptPath='%v'",
+		user.MyLogin, user.ClearPw, user.MyEmail, toptPath)
 
 	if !h.cfg.SkipPassphrase {
 		user.ScryptedPassword = ScryptHash(user.ClearPw)
@@ -374,7 +376,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 		} else {
 
 			// need to make a new
-			rsaPath = h.rsapath(user.MyLogin)
+			rsaPath = h.Rsapath(user.MyLogin)
 			user.PrivateKeyPath = rsaPath
 			user.PublicKeyPath = rsaPath + ".pub"
 

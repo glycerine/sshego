@@ -24,6 +24,10 @@ func AddUserAndExit(cfg *SshegoConfig) {
 		fmt.Fprintf(os.Stderr, "\nerror: user '%s' already exists. If you want to replace them, use -deluser first.\n", mylogin)
 		os.Exit(1)
 	}
+	if cfg.SshegoSystemMutexPort < 0 {
+		fmt.Fprintf(os.Stderr, "\nerror: cfg.SshegoSystemMutexPort is negative, so we cannot configure users.\n")
+		os.Exit(1)
+	}
 	var ok bool
 	ok, err = cfg.HostDb.ValidLogin(mylogin)
 	if !ok {

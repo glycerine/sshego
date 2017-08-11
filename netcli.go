@@ -9,6 +9,12 @@ import (
 
 func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath string, err error) {
 
+	if cfg.SshegoSystemMutexPort < 0 {
+		err = fmt.Errorf("SshegoSystemMutexPort was negative(%v),"+
+			" not possible to add user", cfg.SshegoSystemMutexPort)
+		return
+	}
+
 	// send newUserCmd followed by the msgp marshalled user
 	sendMe, err := user.MarshalMsg(nil)
 	panicOn(err)
@@ -53,6 +59,12 @@ func (cfg *SshegoConfig) TcpClientUserAdd(user *User) (toptPath, qrPath, rsaPath
 }
 
 func (cfg *SshegoConfig) TcpClientUserDel(user *User) error {
+
+	if cfg.SshegoSystemMutexPort < 0 {
+		err := fmt.Errorf("SshegoSystemMutexPort was negative(%v),"+
+			" not possible to delete user", cfg.SshegoSystemMutexPort)
+		return err
+	}
 
 	// send newUserCmd followed by the msgp marshalled user
 	sendMe, err := user.MarshalMsg(nil)
