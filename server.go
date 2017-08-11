@@ -306,7 +306,8 @@ func (e *Esshd) Start() {
 	// for network commands...
 
 	go func() {
-		log.Printf("Esshd.Start() called, for binding '%s'. %s", e.cfg.EmbeddedSSHd.Addr, SourceVersion())
+		log.Printf("%s Esshd.Start() called, for binding '%s'. %s",
+			e.cfg.Nickname, e.cfg.EmbeddedSSHd.Addr, SourceVersion())
 
 		// most of the auth state is per user, so it has
 		// to wait until we have a login and a

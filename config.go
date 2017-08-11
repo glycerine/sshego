@@ -15,6 +15,8 @@ import (
 
 // SshegoConfig is the top level, main config
 type SshegoConfig struct {
+	Nickname string
+
 	ConfigPath string
 
 	SSHdServer    AddrHostPort // the sshd host we are logging into remotely.
