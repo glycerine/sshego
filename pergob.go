@@ -14,6 +14,7 @@ import (
 )
 
 func (s *KnownHosts) saveGobSnappy(fn string) error {
+	mkpath(fn)
 
 	t0 := time.Now()
 

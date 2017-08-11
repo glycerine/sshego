@@ -12,6 +12,7 @@ import (
 )
 
 func (s *KnownHosts) saveJSONSnappy(fn string) error {
+	mkpath(fn)
 
 	t0 := time.Now()
 

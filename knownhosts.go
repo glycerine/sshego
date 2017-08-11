@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -348,6 +349,7 @@ func (s *KnownHosts) saveSshKnownHosts() error {
 	}
 
 	fn := s.FilepathPrefix
+	mkpath(fn)
 
 	// backups
 	exec.Command("mv", fn+".prev", fn+".prev.prev").Run()
@@ -421,4 +423,8 @@ func (prior *ServerPubKey) AddHostPort(hp string) {
 	if !already2 {
 		prior.AlreadySaved = false
 	}
+}
+
+func mkpath(fn string) {
+	os.MkdirAll(filepath.Dir(fn), 0700)
 }
