@@ -191,6 +191,9 @@ const lockit = true
 
 // always opens h.msgpath()
 func (h *HostDb) opendb() error {
+	if h.cfg.EmbeddedSSHdHostDbPath == "" {
+		panic("opendb() called on empty h.cfg.EmbeddedSSHdHostDbPath")
+	}
 	pp("HostDb.opendb() has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	if h.db.HostDb == nil {
 		err := h.gendir()
@@ -326,7 +329,7 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKe
 	p("h = %#v", h)
 	_, ok := h.Persist.Users.Get2(mylogin)
 	if ok {
-		err = fmt.Errorf("user '%s' already exists; manually -deluser first!",
+		err = fmt.Errorf("user already exists; manually -deluser '%s' first!",
 			mylogin)
 		return
 	} else {
