@@ -203,7 +203,8 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 
 	// EMBEDDED SSHD server
 	if cfg.EmbeddedSSHd.Addr != "" {
-		log.Printf("starting -esshd with addr: %s", cfg.EmbeddedSSHd.Addr)
+		log.Printf("%v starting -esshd with addr: %s",
+			cfg.Nickname, cfg.EmbeddedSSHd.Addr)
 		err := cfg.EmbeddedSSHd.ParseAddr()
 		if err != nil {
 			panic(err)
