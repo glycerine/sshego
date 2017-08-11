@@ -2,31 +2,30 @@ package sshego
 
 import (
 	"fmt"
-	"github.com/boltdb/bolt"
+	"github.com/glycerine/greenpack/msgp"
 	"os"
-	"time"
 )
 
 //go:generate greenpack
 
-var boltBucketName = []byte("sshego-data")
-var hostDbKey = []byte("host-db")
-var authorizedUsersKey = []byte("authorized-keys")
+var boltBucketName = "sshego-data"
+var hostDbKey = "host-db"
+var authorizedUsersKey = "authorized-keys"
 
 type Filedb struct {
 	fd       *os.File
 	Filepath string            `zid:"0"`
-	Map      map[string]string `zid:"1"`
+	Map      map[string][]byte `zid:"1"`
 }
 
-func (b *filedb) Close() {
+func (b *Filedb) Close() {
 	if b != nil && b.fd != nil {
 		b.fd.Close()
-		b.db = nil
+		b.fd = nil
 	}
 }
 
-func newFiledb(filepath string) (*filedb, error) {
+func newFiledb(filepath string) (*Filedb, error) {
 
 	if len(filepath) == 0 {
 		return nil, fmt.Errorf("filepath must not be empty string")
@@ -36,55 +35,57 @@ func newFiledb(filepath string) (*filedb, error) {
 		filepath = "./" + filepath
 	}
 
-	// Open the my.db data file in your current directory.
-	// It will be created if it doesn't exist.
-	db, err := os.OpenFile(filepath, O_RDWR|O_CREATE, 0600)
-	if err != nil {
-		wd, _ := os.Getwd()
-		// probably already open by another process.
-		return nil, fmt.Errorf("error opening filedb,"+
-			" in use by other process? error detail: '%v' "+
-			"upon trying to open path '%s' in cwd '%s'", err, filepath, wd)
+	b := &Filedb{
+		Filepath: filepath,
+		Map:      make(map[string][]byte),
+	}
+	sz := int64(0)
+	if fileExists(filepath) {
+		fi, err := os.Stat(filepath)
+		if err != nil {
+			return nil, err
+		}
+		sz = fi.Size()
 	}
 
-	if err != nil {
-		return nil, err
-	}
-	//log.Printf("FILEDB opened successfully '%s'", filepath)
+	if sz > 0 {
+		// Open the my.db data file in your current directory.
+		// It will be created if it doesn't exist.
+		fd, err := os.OpenFile(b.Filepath, os.O_RDWR|os.O_CREATE, 0600)
+		if err != nil {
+			wd, _ := os.Getwd()
+			// probably already open by another process.
+			return nil, fmt.Errorf("error opening Filedb,"+
+				" in use by other process? error detail: '%v' "+
+				"upon trying to open path '%s' in cwd '%s'", err, filepath, wd)
+		}
+		if err != nil {
+			return nil, err
+		}
+		defer fd.Close()
+		err = msgp.Decode(fd, b)
 
-	return &filedb{
-		db:       db,
-		filepath: filepath,
-	}, nil
+		if err != nil {
+			return nil, err
+		}
+		//log.Printf("FILEDB opened successfully '%s'", filepath)
+	}
+
+	return b, nil
 }
 
-func (b *filedb) readKey(key []byte) (val []byte, err error) {
-
-	err = b.db.View(func(tx *bolt.Tx) error {
-		buck := tx.Bucket(boltBucketName)
-		if buck == nil {
-			// bucket does not exist: first time/no snapshot to recover.
-			return fmt.Errorf("bucket '%s' does not exist", string(boltBucketName))
-		}
-		// get the key
-		bits := buck.Get(key)
-		if len(bits) > 0 {
-			val = make([]byte, len(bits))
-			copy(val, bits)
-		}
-		return nil
-	})
+func (b *Filedb) readKey(key string) (val []byte, err error) {
+	val = b.Map[key]
 	return
 }
 
-func (b *filedb) writeKey(key, val []byte) error {
+func (b *Filedb) writeKey(key string, val []byte) error {
+	b.Map[key] = val
 
-	return b.db.Update(func(tx *bolt.Tx) error {
-		buck, err := tx.CreateBucketIfNotExists(boltBucketName)
-		if err != nil {
-			return fmt.Errorf("create bucket '%s': %s", string(boltBucketName), err)
-		}
-		return buck.Put(key, val)
-	})
-
+	fd, err := os.OpenFile(b.Filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+	return msgp.Encode(fd, b)
 }

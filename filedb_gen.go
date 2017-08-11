@@ -86,7 +86,7 @@ doneWithStruct2zgensym_995050f2db4fcb57_3:
 				return
 			}
 			if z.Map == nil && zgensym_995050f2db4fcb57_4 > 0 {
-				z.Map = make(map[string]string, zgensym_995050f2db4fcb57_4)
+				z.Map = make(map[string][]byte, zgensym_995050f2db4fcb57_4)
 			} else if len(z.Map) > 0 {
 				for key, _ := range z.Map {
 					delete(z.Map, key)
@@ -95,12 +95,12 @@ doneWithStruct2zgensym_995050f2db4fcb57_3:
 			for zgensym_995050f2db4fcb57_4 > 0 {
 				zgensym_995050f2db4fcb57_4--
 				var zgensym_995050f2db4fcb57_0 string
-				var zgensym_995050f2db4fcb57_1 string
+				var zgensym_995050f2db4fcb57_1 []byte
 				zgensym_995050f2db4fcb57_0, err = dc.ReadString()
 				if err != nil {
 					return
 				}
-				zgensym_995050f2db4fcb57_1, err = dc.ReadString()
+				zgensym_995050f2db4fcb57_1, err = dc.ReadBytes(zgensym_995050f2db4fcb57_1)
 				if err != nil {
 					return
 				}
@@ -194,7 +194,7 @@ func (z *Filedb) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteString(zgensym_995050f2db4fcb57_1)
+			err = en.WriteBytes(zgensym_995050f2db4fcb57_1)
 			if err != nil {
 				return
 			}
@@ -229,7 +229,7 @@ func (z *Filedb) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendMapHeader(o, uint32(len(z.Map)))
 		for zgensym_995050f2db4fcb57_0, zgensym_995050f2db4fcb57_1 := range z.Map {
 			o = msgp.AppendString(o, zgensym_995050f2db4fcb57_0)
-			o = msgp.AppendString(o, zgensym_995050f2db4fcb57_1)
+			o = msgp.AppendBytes(o, zgensym_995050f2db4fcb57_1)
 		}
 	}
 
@@ -325,7 +325,7 @@ doneWithStruct7zgensym_995050f2db4fcb57_8:
 					return
 				}
 				if z.Map == nil && zgensym_995050f2db4fcb57_9 > 0 {
-					z.Map = make(map[string]string, zgensym_995050f2db4fcb57_9)
+					z.Map = make(map[string][]byte, zgensym_995050f2db4fcb57_9)
 				} else if len(z.Map) > 0 {
 					for key, _ := range z.Map {
 						delete(z.Map, key)
@@ -333,14 +333,24 @@ doneWithStruct7zgensym_995050f2db4fcb57_8:
 				}
 				for zgensym_995050f2db4fcb57_9 > 0 {
 					var zgensym_995050f2db4fcb57_0 string
-					var zgensym_995050f2db4fcb57_1 string
+					var zgensym_995050f2db4fcb57_1 []byte
 					zgensym_995050f2db4fcb57_9--
 					zgensym_995050f2db4fcb57_0, bts, err = nbs.ReadStringBytes(bts)
 					if err != nil {
 						return
 					}
-					zgensym_995050f2db4fcb57_1, bts, err = nbs.ReadStringBytes(bts)
+					if nbs.AlwaysNil || msgp.IsNil(bts) {
+						if !nbs.AlwaysNil {
+							bts = bts[1:]
+						}
+						zgensym_995050f2db4fcb57_1 = zgensym_995050f2db4fcb57_1[:0]
+					} else {
+						zgensym_995050f2db4fcb57_1, bts, err = nbs.ReadBytesBytes(bts, zgensym_995050f2db4fcb57_1)
 
+						if err != nil {
+							return
+						}
+					}
 					if err != nil {
 						return
 					}
@@ -381,7 +391,7 @@ func (z *Filedb) Msgsize() (s int) {
 		for zgensym_995050f2db4fcb57_0, zgensym_995050f2db4fcb57_1 := range z.Map {
 			_ = zgensym_995050f2db4fcb57_1
 			_ = zgensym_995050f2db4fcb57_0
-			s += msgp.StringPrefixSize + len(zgensym_995050f2db4fcb57_0) + msgp.StringPrefixSize + len(zgensym_995050f2db4fcb57_1)
+			s += msgp.StringPrefixSize + len(zgensym_995050f2db4fcb57_0) + msgp.BytesPrefixSize + len(zgensym_995050f2db4fcb57_1)
 		}
 	}
 	return

@@ -94,7 +94,7 @@ type HostDb struct {
 
 	userTcp TcpPort
 
-	boltdb *boltdb
+	db *Filedb
 }
 
 func (h *HostDb) String() string {
@@ -160,7 +160,7 @@ func makeway(path string) error {
 }
 
 func (h *HostDb) msgpath() string {
-	return h.cfg.EmbeddedSSHdHostDbPath + "/msgp.boltdb"
+	return h.cfg.EmbeddedSSHdHostDbPath + "/msgp.db"
 }
 
 func (h *HostDb) userpath(username string) string {
@@ -181,18 +181,18 @@ const lockit = true
 // always opens h.msgpath()
 func (h *HostDb) opendb() error {
 	p("h.opendb() called")
-	if h.boltdb == nil {
+	if h.db == nil {
 		err := h.gendir()
 		if err != nil {
 			return err
 		}
 
-		bolt, err := newBoltdb(h.msgpath())
+		db, err := newFiledb(h.msgpath())
 		if err != nil {
-			return fmt.Errorf("HostDb.save(): create newBoltdb at '%s' failed: %v",
+			return fmt.Errorf("HostDb.save(): create newFiledb at '%s' failed: %v",
 				h.msgpath(), err)
 		}
-		h.boltdb = bolt
+		h.db = db
 	}
 	return nil
 }
@@ -216,7 +216,7 @@ func (h *HostDb) save(lock bool) error {
 	if err != nil {
 		return err
 	}
-	err = h.boltdb.writeKey(hostDbKey, bts)
+	err = h.db.writeKey(hostDbKey, bts)
 	if err != nil {
 		return fmt.Errorf("HostDb.Save bolt.writeKey hostDbKey='%s' gave error = '%v'", string(hostDbKey), err)
 	}
@@ -231,8 +231,8 @@ func (h *HostDb) loadOrCreate() error {
 		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
 			h.msgpath(), err)
 	}
-	p("doing h.holtdb.readKey('%s')...", hostDbKey)
-	by, err := h.boltdb.readKey(hostDbKey)
+	p("doing h.db.readKey('%s')...", hostDbKey)
+	by, err := h.db.readKey(hostDbKey)
 
 	if len(by) > 0 {
 
