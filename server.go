@@ -58,8 +58,10 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 		replyWithDeletedDone: make(chan bool),
 		updateHostKey:        make(chan ssh.Signer),
 	}
-	err := srv.cfg.NewHostDb()
-	panicOn(err)
+	if srv.cfg.HostDb == nil {
+		err := srv.cfg.NewHostDb()
+		panicOn(err)
+	}
 	cfg.Esshd = srv
 	return srv
 }
