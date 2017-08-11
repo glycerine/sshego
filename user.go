@@ -78,16 +78,20 @@ func NewUser() *User {
 	return u
 }
 
+// only these fields are actually saved/restored.
+type HostDbPersist struct {
+	// Users: key is MyLogin; value is *User.
+	Users              *AtomicUserMap `zid:"0"`
+	HostPrivateKeyPath string         `zid:"1"`
+}
+
 type HostDb struct {
 	UserHomePrefix string
 
-	// Users: key is MyLogin; value is *User.
-	Users *AtomicUserMap
-
-	HostPrivateKeyPath string
-
 	hostSshSigner ssh.Signer
 	cfg           *SshegoConfig
+
+	Persist HostDbPersist
 
 	loadedFromDisk bool
 
@@ -99,7 +103,7 @@ type HostDb struct {
 }
 
 func (h *HostDb) String() string {
-	return h.Users.String()
+	return h.Persist.Users.String()
 }
 
 func (cfg *SshegoConfig) NewHostDb() error {
@@ -107,8 +111,10 @@ func (cfg *SshegoConfig) NewHostDb() error {
 	h := &HostDb{
 		UserHomePrefix: "",
 		cfg:            cfg,
-		Users:          NewAtomicUserMap(),
-		userTcp:        TcpPort{Port: cfg.SshegoSystemMutexPort},
+		Persist: HostDbPersist{
+			Users: NewAtomicUserMap(),
+		},
+		userTcp: TcpPort{Port: cfg.SshegoSystemMutexPort},
 	}
 	cfg.HostDb = h
 	return h.init()
@@ -119,7 +125,8 @@ func (h *HostDb) privpath() string {
 }
 
 func (h *HostDb) init() error {
-	h.HostPrivateKeyPath = h.privpath()
+	h.Persist.HostPrivateKeyPath = h.privpath()
+	pp("HostDb.init(): h.Persist.HostPrivateKeyPath = '%v'", h.Persist.HostPrivateKeyPath)
 	err := h.loadOrCreate()
 	return err
 }
@@ -140,13 +147,13 @@ func (h *HostDb) generateHostKey() error {
 		return err
 	}
 	h.hostSshSigner = signer
-	h.HostPrivateKeyPath = path
+	h.Persist.HostPrivateKeyPath = path
 	return nil
 }
 
 func (h *HostDb) gendir() error {
-
 	path := h.cfg.EmbeddedSSHdHostDbPath
+	pp("HostDb.gendir has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	if dirExists(path) {
 		return nil
 	}
@@ -184,7 +191,7 @@ const lockit = true
 
 // always opens h.msgpath()
 func (h *HostDb) opendb() error {
-	p("h.opendb() called")
+	pp("HostDb.opendb() has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	if h.db.HostDb == nil {
 		err := h.gendir()
 		if err != nil {
@@ -197,7 +204,8 @@ func (h *HostDb) opendb() error {
 				h.msgpath(), err)
 		}
 		if filedb.HostDb != nil {
-			*h = *filedb.HostDb
+			h.Persist = filedb.HostDb.Persist
+			filedb.HostDb = h
 		}
 	}
 	return nil
@@ -221,20 +229,21 @@ func (h *HostDb) save(lock bool) error {
 }
 
 func (h *HostDb) loadOrCreate() error {
-	p("top of HostDb.loadOrCreate()...")
-
+	pp("top of HostDb.loadOrCreate()...")
+	pp("HostDb.loadOrCreate has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	err := h.opendb()
 	if err != nil {
+		panic(err)
 		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
 			h.msgpath(), err)
 	}
 
-	if h.HostPrivateKeyPath != "" && fileExists(h.HostPrivateKeyPath) {
-		p("loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
+	if h.Persist.HostPrivateKeyPath != "" && fileExists(h.Persist.HostPrivateKeyPath) {
+		pp("h.Persist.HostPrivateKeyPath exists already... loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
 
 	} else {
 
-		p("h.HostPrivateKeyPath = '%s' doesn't exist; make a host key...", h.msgpath())
+		pp("h.Persist.HostPrivateKeyPath = '%s' doesn't exist; make a host key...", h.msgpath())
 
 		// no db, so make a host key
 		err := h.generateHostKey()
@@ -251,13 +260,13 @@ func (h *HostDb) loadOrCreate() error {
 	}
 	h.loadedFromDisk = true
 
-	if fileExists(h.HostPrivateKeyPath) {
-		_, err := h.adoptNewHostKeyFromPath(h.HostPrivateKeyPath)
+	if fileExists(h.Persist.HostPrivateKeyPath) {
+		_, err := h.adoptNewHostKeyFromPath(h.Persist.HostPrivateKeyPath)
 		if err != nil {
 			return err
 		}
 	} else {
-		panic(fmt.Sprintf("missing h.HostPrivateKeyPath='%s'", h.HostPrivateKeyPath))
+		panic(fmt.Sprintf("missing h.Persist.HostPrivateKeyPath='%s'", h.Persist.HostPrivateKeyPath))
 	}
 	return nil
 }
@@ -278,7 +287,7 @@ func (h *HostDb) adoptNewHostKeyFromPath(path string) (ssh.PublicKey, error) {
 	h.hostSshSigner = sshPrivKey
 	h.saveMut.Unlock()
 
-	h.HostPrivateKeyPath = path
+	h.Persist.HostPrivateKeyPath = path
 	return sshPrivKey.PublicKey(), nil
 }
 
@@ -315,7 +324,7 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKe
 	}
 
 	p("h = %#v", h)
-	_, ok := h.Users.Get2(mylogin)
+	_, ok := h.Persist.Users.Get2(mylogin)
 	if ok {
 		err = fmt.Errorf("user '%s' already exists; manually -deluser first!",
 			mylogin)
@@ -400,7 +409,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 	user.ClearPw = ""
 
 	//	p("user = %#v", user)
-	h.Users.Set(user.MyLogin, user)
+	h.Persist.Users.Set(user.MyLogin, user)
 
 	err = h.save(lockit)
 	return
@@ -421,13 +430,13 @@ func (h *HostDb) DelUser(mylogin string) error {
 	*/
 
 	p("DelUser %v", mylogin)
-	_, ok = h.Users.Get2(mylogin)
+	_, ok = h.Persist.Users.Get2(mylogin)
 
 	if ok {
 		// cleanup old
 		path := h.userpath(mylogin)
 		err := os.RemoveAll(path)
-		h.Users.Del(mylogin)
+		h.Persist.Users.Del(mylogin)
 		if err != nil {
 			panicOn(err)
 		}
@@ -447,7 +456,7 @@ func (user *User) RestoreTotp() {
 
 // UserExists is used by sshego/cmd/gosshtun/main.go
 func (h *HostDb) UserExists(mylogin string) bool {
-	_, ok := h.Users.Get2(mylogin)
+	_, ok := h.Persist.Users.Get2(mylogin)
 	return ok
 }
 

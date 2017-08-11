@@ -572,7 +572,7 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 	now := time.Now().UTC()
 	remoteAddr := conn.RemoteAddr()
 
-	user, knownUser := a.cfg.HostDb.Users.Get2(mylogin)
+	user, knownUser := a.cfg.HostDb.Persist.Users.Get2(mylogin)
 
 	// don't reveal that the user is unknown by
 	// failing early without a challenge.
@@ -694,7 +694,7 @@ func (a *PerAttempt) PublicKeyCallback(c ssh.ConnMetadata, providedPubKey ssh.Pu
 	remoteAddr := c.RemoteAddr()
 	now := time.Now().UTC()
 
-	user, foundUser := a.cfg.HostDb.Users.Get2(mylogin)
+	user, foundUser := a.cfg.HostDb.Persist.Users.Get2(mylogin)
 	if !foundUser {
 		log.Printf("unrecognized user '%s' from remoteAddr '%s' at %v",
 			mylogin, remoteAddr, now)
