@@ -10,14 +10,12 @@ import (
 
 //go:generate greenpack
 
-var boltBucketName = "sshego-data"
 var hostDbKey = "host-db"
-var authorizedUsersKey = "authorized-keys"
 
 type Filedb struct {
 	fd       *os.File
-	Filepath string            `zid:"0"`
-	Map      map[string][]byte `zid:"1"`
+	filepath string
+	HostDb   *HostDb `zid:"0"`
 }
 
 func (b *Filedb) Close() {
@@ -38,8 +36,7 @@ func newFiledb(filepath string) (*Filedb, error) {
 	}
 
 	b := &Filedb{
-		Filepath: filepath,
-		Map:      make(map[string][]byte),
+		filepath: filepath,
 	}
 	sz := int64(0)
 	if fileExists(filepath) {
@@ -53,12 +50,11 @@ func newFiledb(filepath string) (*Filedb, error) {
 	if sz > 0 {
 		// Open the my.db data file in your current directory.
 		// It will be created if it doesn't exist.
-		fd, err := os.OpenFile(b.Filepath, os.O_RDWR|os.O_CREATE, 0600)
+		fd, err := os.OpenFile(b.filepath, os.O_RDWR|os.O_CREATE, 0600)
 		if err != nil {
 			wd, _ := os.Getwd()
 			// probably already open by another process.
-			return nil, fmt.Errorf("error opening Filedb,"+
-				" in use by other process? error detail: '%v' "+
+			return nil, fmt.Errorf("error opening Filedb: '%v' "+
 				"upon trying to open path '%s' in cwd '%s'", err, filepath, wd)
 		}
 		if err != nil {
@@ -76,22 +72,14 @@ func newFiledb(filepath string) (*Filedb, error) {
 	return b, nil
 }
 
-func (b *Filedb) readKey(key string) (val []byte, err error) {
-	val = b.Map[key]
-	return
-}
-
-func (b *Filedb) writeKey(key string, val []byte) error {
-	b.Map[key] = val
-	return b.SaveToDisk()
-}
-
 func (b *Filedb) SaveToDisk() error {
-	fd, err := os.OpenFile(b.Filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	p("Filedb.SaveToDisk is saving to b.filepath='%s'", b.filepath)
+
+	fd, err := os.OpenFile(b.filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
-	fdJson, err := os.OpenFile(b.Filepath+".json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	fdJson, err := os.OpenFile(b.filepath+".json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -127,4 +115,9 @@ func writeFull(w io.Writer, b []byte) error {
 		totw += nw
 	}
 	return nil
+}
+
+func (b *Filedb) storeHostDb(h *HostDb) error {
+	b.HostDb = h
+	return b.SaveToDisk()
 }

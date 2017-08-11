@@ -17,7 +17,7 @@ import (
 // the keys are not written to disk.
 //
 func GenRSAKeyPair(rsaFile string, bits int, email string) (priv *rsa.PrivateKey, sshPriv ssh.Signer, err error) {
-
+	p("GenRSAKeyPair called.")
 	privKey, err := rsa.GenerateKey(cryptrand.Reader, bits)
 	panicOn(err)
 

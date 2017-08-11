@@ -94,7 +94,7 @@ type HostDb struct {
 
 	userTcp TcpPort
 
-	db *Filedb
+	db Filedb
 }
 
 func (h *HostDb) String() string {
@@ -123,6 +123,7 @@ func (h *HostDb) init() error {
 }
 
 func (h *HostDb) generateHostKey() error {
+	p("generateHostKey called.")
 	err := h.gendir()
 	if err != nil {
 		return err
@@ -137,6 +138,7 @@ func (h *HostDb) generateHostKey() error {
 		return err
 	}
 	h.hostSshSigner = signer
+	h.HostPrivateKeyPath = path
 	return nil
 }
 
@@ -181,18 +183,20 @@ const lockit = true
 // always opens h.msgpath()
 func (h *HostDb) opendb() error {
 	p("h.opendb() called")
-	if h.db == nil {
+	if h.db.HostDb == nil {
 		err := h.gendir()
 		if err != nil {
 			return err
 		}
 
-		db, err := newFiledb(h.msgpath())
+		filedb, err := newFiledb(h.msgpath())
 		if err != nil {
-			return fmt.Errorf("HostDb.save(): create newFiledb at '%s' failed: %v",
+			return fmt.Errorf("HostDb.opendb: create newFiledb at '%s' failed: %v",
 				h.msgpath(), err)
 		}
-		h.db = db
+		if filedb.HostDb != nil {
+			*h = *filedb.HostDb
+		}
 	}
 	return nil
 }
@@ -206,19 +210,10 @@ func (h *HostDb) save(lock bool) error {
 		defer h.saveMut.Unlock()
 	}
 
-	err := h.opendb()
+	h.db.filepath = h.msgpath()
+	err := h.db.storeHostDb(h)
 	if err != nil {
-		return fmt.Errorf("HostDb.save(): opendb() at path '%s' gave error '%v'",
-			h.msgpath(), err)
-	}
-
-	bts, err := h.MarshalMsg(nil)
-	if err != nil {
-		return err
-	}
-	err = h.db.writeKey(hostDbKey, bts)
-	if err != nil {
-		return fmt.Errorf("HostDb.Save bolt.writeKey hostDbKey='%s' gave error = '%v'", string(hostDbKey), err)
+		return fmt.Errorf("HostDb: h.db.storeHostDb(h) gave error = '%v'", err)
 	}
 	return nil
 }
@@ -231,19 +226,13 @@ func (h *HostDb) loadOrCreate() error {
 		return fmt.Errorf("HostDb.loadOrCreate(): opendb() at path '%s' gave error '%v'",
 			h.msgpath(), err)
 	}
-	p("doing h.db.readKey('%s')...", hostDbKey)
-	by, err := h.db.readKey(hostDbKey)
 
-	if len(by) > 0 {
-
-		_, err = h.UnmarshalMsg(by)
-		if err != nil {
-			return err
-		}
+	if h.HostPrivateKeyPath != "" && fileExists(h.HostPrivateKeyPath) {
 		p("loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
+
 	} else {
 
-		p("loadOrCreate path = '%s' doesn't exist; make a host key...", h.msgpath())
+		p("h.HostPrivateKeyPath = '%s' doesn't exist; make a host key...", h.msgpath())
 
 		// no db, so make a host key
 		err := h.generateHostKey()
