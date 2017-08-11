@@ -179,6 +179,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		cliKnownHosts, err := NewKnownHosts(s.CliCfg.ClientKnownHostsPath, KHSsh)
 		panicOn(err)
 
+		p("cliKnownHosts.Hosts=(len %v) '%#v'", len(cliKnownHosts.Hosts), cliKnownHosts.Hosts)
 		cv.So(len(cliKnownHosts.Hosts), cv.ShouldEqual, 3)
 
 		// verify that read of known hosts lacks B

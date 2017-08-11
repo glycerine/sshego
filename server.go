@@ -313,9 +313,9 @@ func (e *Esshd) Start() {
 
 		// we copy the host key here to avoid a data race later.
 		e.cfg.Mut.Lock()
-		//e.cfg.HostDb.saveMut.Lock()
-		a.HostKey = e.cfg.HostDb.hostSshSigner
-		//e.cfg.HostDb.saveMut.Unlock()
+		e.cfg.HostDb.saveMut.Lock()
+		a.HostKey = e.cfg.HostDb.hostSshSigner // race unless we lock saveMut too.
+		e.cfg.HostDb.saveMut.Unlock()
 		e.cfg.Mut.Unlock()
 
 		p("about to listen on %v", e.cfg.EmbeddedSSHd.Addr)
