@@ -83,10 +83,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		_, err = cliCfg.SSHConnect(cliCfg.KnownHosts, mylogin, rsaPath,
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp)
 		// we should be able to login, but then the sshd should
-		// reject the port forwarding request. This is because
-		// we don't want the sshd itself to handle port forwarding
-		// currently -- simply because it isn't implemented
-		// currently. Hopefully this will change in the future!
+		// reject the port forwarding request.
 		//
 		// Anyway, forward request denies does indicate we
 		// logged in when all three (RSA, TOTP, passphrase)
