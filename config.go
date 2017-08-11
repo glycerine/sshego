@@ -84,6 +84,9 @@ type SshegoConfig struct {
 
 	TestingModeNoWait bool
 
+	// for "custom-inproc-stream", etc.
+	CustomChannelHandlers map[string]CustomChannelHandlerCB
+
 	Mut sync.Mutex
 }
 

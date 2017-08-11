@@ -1,14 +1,14 @@
 package sshego
 
 // NOTE: THIS FILE WAS PRODUCED BY THE
-// MSGP CODE GENERATION TOOL (github.com/tinylib/msgp)
+// GREENPACK CODE GENERATION TOOL (github.com/glycerine/greenpack)
 // DO NOT EDIT
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/glycerine/greenpack/msgp"
 )
 
 func TestMarshalUnmarshalAtomicUserMap(t *testing.T) {

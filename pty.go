@@ -99,9 +99,18 @@ func (a *PerAttempt) handleChannel(newChannel ssh.NewChannel, ca *ConnectionAler
 	}
 
 	if t != "session" {
+		if len(a.cfg.CustomChannelHandlers) > 0 {
+			cb, ok := a.cfg.CustomChannelHandlers[t]
+			if ok {
+				go cb(newChannel, ca)
+				return
+			}
+		}
 		newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("unknown channel type: %s", t))
 		return
 	}
+
+	// t == "session", request to open a shell
 
 	// At this point, we have the opportunity to reject the client's
 	// request for another logical connection

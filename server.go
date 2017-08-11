@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glycerine/greenpack/msgp"
 	"github.com/glycerine/idem"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
-	"github.com/tinylib/msgp/msgp"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -63,6 +63,13 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 	cfg.Esshd = srv
 	return srv
 }
+
+// CustomChannelHandlerCB is a callback that
+// is configured in the cfg.CustomChannelHandlers map.
+// Each will be called on its own goroutine already.
+// For example, "custom-inproc-stream" might
+// serve in-process streaming.
+type CustomChannelHandlerCB func(nc ssh.NewChannel, ca *ConnectionAlert)
 
 // PerAttempt holds the auth state
 // that should be reset anew on each

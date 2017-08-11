@@ -10,12 +10,12 @@ import (
 	"time"
 
 	scrypt "github.com/elithrar/simple-scrypt"
+	"github.com/glycerine/greenpack/msgp"
 	"github.com/pquerna/otp"
-	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/crypto/ssh"
 )
 
-//go:generate msgp
+//go:generate greenpack
 
 // LoginRecord is per public key.
 type LoginRecord struct {

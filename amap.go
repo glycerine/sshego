@@ -7,7 +7,7 @@ import (
 
 // atomic map from string to *User
 
-//go:generate msgp
+//go:generate greenpack
 
 type AtomicUserMap struct {
 	U   map[string]*User
