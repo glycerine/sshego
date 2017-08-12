@@ -128,8 +128,25 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	p("about to SSHConnect to dc.Sshdhost='%s'", dc.Sshdhost)
 	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
 
-	sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
-		dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
+	// connection refused errors are common enough
+	// that we do a simple retry logic after a brief pause here.
+	retryCount := 3
+	try := 0
+	for ; try < retryCount; try++ {
+
+		sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
+			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
+		if err == nil {
+			break
+		} else {
+			if strings.Contains(err.Error(), "getsockopt: connection refused") {
+				// simple connection error, just try again in a bit
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			break
+		}
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,7 +192,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	}
 	nc, err := sshClientConn.Dial("tcp", hp)
 
-	// start keepalives on the tcp, unless turned off.
+	// Start keepalives on the tcp, unless turned off.
 	if err == nil {
 		if !dc.SkipKeepAlive {
 			err, cancel := StartKeepalives(sshClientConn)
