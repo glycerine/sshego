@@ -92,8 +92,10 @@ type SshegoConfig struct {
 }
 
 func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {
-	for name := range cfg.CustomChannelHandlers {
-		s += fmt.Sprintf("%s, ", name)
+	if cfg.CustomChannelHandlers != nil {
+		for name := range cfg.CustomChannelHandlers {
+			s += fmt.Sprintf("%s, ", name)
+		}
 	}
 	return
 }
