@@ -44,7 +44,7 @@ type User struct {
 	QrPath         string
 
 	Issuer     string
-	publicKey  ssh.PublicKey
+	PublicKey  ssh.PublicKey
 	SeenPubKey map[string]LoginRecord
 
 	ScryptedPassword []byte
@@ -88,7 +88,7 @@ type HostDbPersist struct {
 type HostDb struct {
 	UserHomePrefix string
 
-	hostSshSigner ssh.Signer
+	HostSshSigner ssh.Signer
 	cfg           *SshegoConfig
 
 	Persist HostDbPersist
@@ -146,7 +146,7 @@ func (h *HostDb) generateHostKey() error {
 	if err != nil {
 		return err
 	}
-	h.hostSshSigner = signer
+	h.HostSshSigner = signer
 	h.Persist.HostPrivateKeyPath = path
 	return nil
 }
@@ -287,7 +287,7 @@ func (h *HostDb) adoptNewHostKeyFromPath(path string) (ssh.PublicKey, error) {
 
 	// avoid data race:
 	h.saveMut.Lock()
-	h.hostSshSigner = sshPrivKey
+	h.HostSshSigner = sshPrivKey
 	h.saveMut.Unlock()
 
 	h.Persist.HostPrivateKeyPath = path
@@ -401,7 +401,7 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 				return
 			}
 			user.PublicKeyPath = rsaPath + ".pub"
-			user.publicKey = signer.PublicKey()
+			user.PublicKey = signer.PublicKey()
 		}
 	}
 

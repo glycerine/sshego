@@ -64,7 +64,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 		fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
 
 		// also have to update the Esshd auth state on the update channel:
-		s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.hostSshSigner
+		s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.HostSshSigner
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 
@@ -144,7 +144,7 @@ func (s *TestSetup) forTestingUpdateServerHostKey(path string) (sbPubKey string)
 	fmt.Printf("\n we had the server adopt public key '%s'\n", sbPubKey)
 
 	// also have to update the Esshd auth state on the update channel:
-	s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.hostSshSigner
+	s.SrvCfg.Esshd.updateHostKey <- s.SrvCfg.HostDb.HostSshSigner
 	return
 }
 

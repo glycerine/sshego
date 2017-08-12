@@ -147,7 +147,7 @@ func (b *BasicListener) Accept() (net.Conn, error) {
 
 	// we copy the host key here to avoid a data race later.
 	e.cfg.HostDb.saveMut.Lock()
-	a.HostKey = e.cfg.HostDb.hostSshSigner
+	a.HostKey = e.cfg.HostDb.HostSshSigner
 	e.cfg.HostDb.saveMut.Unlock()
 
 	// don't Close()! We may want to re-use this listener

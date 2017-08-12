@@ -35,6 +35,7 @@ func GenRSAKeyPair(rsaFile string, bits int, email string) (priv *rsa.PrivateKey
 		},
 	)
 
+	// sshPrivKey is the ssh.Signer, 2nd returned value.
 	sshPrivKey, err := ssh.ParsePrivateKey(privBytes)
 	panicOn(err)
 

@@ -317,7 +317,7 @@ func (e *Esshd) Start() {
 		// we copy the host key here to avoid a data race later.
 		e.cfg.Mut.Lock()
 		e.cfg.HostDb.saveMut.Lock()
-		a.HostKey = e.cfg.HostDb.hostSshSigner // race unless we lock saveMut too.
+		a.HostKey = e.cfg.HostDb.HostSshSigner // race unless we lock saveMut too.
 		e.cfg.HostDb.saveMut.Unlock()
 		e.cfg.Mut.Unlock()
 
@@ -411,7 +411,9 @@ func (e *Esshd) Start() {
 			// important than concurrency of login processing.
 			// After login we let connections proceed freely
 			// and in parallel.
+			pp("PRE attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
 			attempt.PerConnection(nConn, nil)
+			pp("POST attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
 		}
 	}()
 }
@@ -432,7 +434,7 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	p("done with handshake")
 
-	log.Printf("New SSH connection from %s (%s)", sshConn.RemoteAddr(), sshConn.ClientVersion())
+	log.Printf("%s New SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests

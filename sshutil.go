@@ -435,7 +435,7 @@ func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname
 
 			// if we are adding to an SSH_KNOWN_HOSTS file, we need these:
 			Keytype:                  key.Type(),
-			Base64EncodededPublicKey: base64ofPublicKey(key),
+			Base64EncodededPublicKey: Base64ofPublicKey(key),
 			Comment: fmt.Sprintf("added_by_sshego_on_%v",
 				time.Now().Format(time.RFC3339)),
 			SplitHostnames: make(map[string]bool),

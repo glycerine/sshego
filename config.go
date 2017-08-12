@@ -27,9 +27,10 @@ type SshegoConfig struct {
 
 	AddIfNotKnown bool
 
-	Username             string
-	PrivateKeyPath       string
-	ClientKnownHostsPath string
+	// user login creds for client
+	Username             string // for client to login with.
+	PrivateKeyPath       string // path to user's RSA private key
+	ClientKnownHostsPath string // path to user's/client's known hosts
 
 	KnownHosts *KnownHosts
 

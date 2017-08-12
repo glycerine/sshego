@@ -407,7 +407,7 @@ func (s *KnownHosts) saveSshKnownHosts() error {
 	return nil
 }
 
-func base64ofPublicKey(key ssh.PublicKey) string {
+func Base64ofPublicKey(key ssh.PublicKey) string {
 	b := &bytes.Buffer{}
 	e := base64.NewEncoder(base64.StdEncoding, b)
 	e.Write(key.Marshal())
