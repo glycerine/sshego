@@ -64,6 +64,9 @@ type ServerPubKey struct {
 
 	// if AlreadySaved, then we don't need to append.
 	AlreadySaved bool
+
+	// lock around SplitHostnames access
+	Mut sync.Mutex
 }
 
 type KnownHostsPersistFormat int
@@ -428,11 +431,14 @@ func Base64ofPublicKey(key ssh.PublicKey) string {
 
 func (prior *ServerPubKey) AddHostPort(hp string) {
 	//pp("AddHostPort called with hp = '%v'", hp)
+	prior.Mut.Lock()
+
 	_, already2 := prior.SplitHostnames[hp]
 	prior.SplitHostnames[hp] = true
 	if !already2 {
 		prior.AlreadySaved = false
 	}
+	prior.Mut.Unlock()
 }
 
 func mkpath(fn string) {

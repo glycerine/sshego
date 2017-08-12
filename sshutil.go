@@ -123,9 +123,11 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 		if record.Hostname != hostname {
 			// check all the SplitHostnames before failing
 			found := false
+			record.Mut.Lock()
 			for hn := range record.SplitHostnames {
 				if hn == hostname {
 					found = true
+					record.Mut.Unlock()
 					break
 				}
 			}
@@ -134,7 +136,10 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 				return h.AddNeeded(addIfNotKnown, allowOneshotConnect, hostname, remote, strPubBytes, key, record)
 			}
 			if !found {
+				record.Mut.Lock()
 				err := fmt.Errorf("hostname mismatch for key '%s': record.Hostname:'%v' in records, hostname:'%s' supplied now. record.SplitHostnames = '%#v", strPubBytes, record.Hostname, hostname, record.SplitHostnames)
+				record.Mut.Unlock()
+
 				//fmt.Printf("\n in HostAlreadyKnown, returning KnownRecordMismatch: '%s'", err)
 				return KnownRecordMismatch, record, err
 			}
