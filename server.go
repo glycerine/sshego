@@ -403,9 +403,9 @@ func (e *Esshd) Start() {
 			// important than concurrency of login processing.
 			// After login we let connections proceed freely
 			// and in parallel.
-			pp("PRE attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
+			p("PRE attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
 			attempt.PerConnection(nConn, nil)
-			pp("POST attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
+			p("POST attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
 		}
 	}()
 }
