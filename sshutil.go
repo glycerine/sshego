@@ -94,7 +94,9 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 
 	p("in HostAlreadyKnown... starting. looking up by strPubBytes = '%s'", strPubBytes)
 
+	h.Mut.Lock()
 	record, ok := h.Hosts[strPubBytes]
+	h.Mut.Unlock()
 	p("lookup of h.Hosts[strPubBytes] returned ok=%v, record=%#v", ok, record)
 	if ok {
 		if record.ServerBanned {
@@ -445,12 +447,17 @@ func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname
 
 		// host with same key may show up under an IP address and
 		// a FQHN, so combine under the key if we see that.
+		h.Mut.Lock()
 		prior, already := h.Hosts[strPubBytes]
+		// unlock below on both arms.
+
 		if !already {
 			//pp("completely new host:port = '%v' -> record: '%#v'", strPubBytes, record)
 			h.Hosts[strPubBytes] = record
+			h.Mut.Unlock()
 			h.Sync()
 		} else {
+			h.Mut.Unlock()
 			// two or more names under the same key.
 			//pp("two names under one key, hostname = '%#v'. prior='%#v'\n", hostname, prior)
 			prior.AddHostPort(hostname)

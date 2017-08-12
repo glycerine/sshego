@@ -434,7 +434,7 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	p("done with handshake")
 
-	log.Printf("%s New SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
+	log.Printf("server %s sees new SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests

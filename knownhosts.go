@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -33,6 +34,8 @@ type KnownHosts struct {
 
 	// NoSave means we don't touch the files we read from
 	NoSave bool
+
+	Mut sync.Mutex
 }
 
 // ServerPubKey stores the RSA public keys for a particular known server. This
@@ -134,6 +137,11 @@ func NewKnownHosts(filepath string, format KnownHostsPersistFormat) (*KnownHosts
 
 // KnownHostsEqual compares two instances of KnownHosts structures for equality.
 func KnownHostsEqual(a, b *KnownHosts) (bool, error) {
+	a.Mut.Lock()
+	defer a.Mut.Unlock()
+	b.Mut.Lock()
+	defer b.Mut.Unlock()
+
 	for k, v := range a.Hosts {
 		v2, ok := b.Hosts[k]
 		if !ok {
@@ -343,6 +351,8 @@ func LoadSshKnownHosts(path string) (*KnownHosts, error) {
 }
 
 func (s *KnownHosts) saveSshKnownHosts() error {
+	s.Mut.Lock()
+	defer s.Mut.Unlock()
 
 	if s.NoSave {
 		return nil
