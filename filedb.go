@@ -25,7 +25,7 @@ func (b *Filedb) Close() {
 	}
 }
 
-func newFiledb(filepath string) (*Filedb, error) {
+func NewFiledb(filepath string) (*Filedb, error) {
 
 	if len(filepath) == 0 {
 		return nil, fmt.Errorf("filepath must not be empty string")

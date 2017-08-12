@@ -201,7 +201,7 @@ func (h *HostDb) opendb() error {
 			return err
 		}
 
-		filedb, err := newFiledb(h.msgpath())
+		filedb, err := NewFiledb(h.msgpath())
 		if err != nil {
 			return fmt.Errorf("HostDb.opendb: create newFiledb at '%s' failed: %v",
 				h.msgpath(), err)
