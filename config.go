@@ -85,8 +85,6 @@ type SshegoConfig struct {
 	// it is just annoying.
 	TestAllowOneshotConnect bool
 
-	TestingModeNoWait bool
-
 	// for "custom-inproc-stream", etc.
 	CustomChannelHandlers map[string]CustomChannelHandlerCB
 

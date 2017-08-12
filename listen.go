@@ -154,17 +154,8 @@ func (b *BasicListener) Accept() (net.Conn, error) {
 	// for another Accept().
 	// defer b.halt.Done.Close()
 
-	var k int64
 	for {
-		k++
-		// crude but effective rate login rate limiting:
-		// limit attempts to 1 per second.
 		// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
-		if k > 1 {
-			if !e.cfg.TestingModeNoWait {
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
 
 		timeoutMillisec := 1000
 		err := b.lsn.(*net.TCPListener).

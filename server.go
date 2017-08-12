@@ -336,19 +336,11 @@ func (e *Esshd) Start() {
 			panic(msg)
 			return
 		}
-		var k int64
+
 		p("info: Essh.Start() in server.go: listening on "+
 			"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 		for {
-			k++
-			// crude but effective rate login rate limiting:
-			// limit attempts to 1 per second.
 			// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
-			if k > 1 {
-				if !e.cfg.TestingModeNoWait {
-					time.Sleep(500 * time.Millisecond)
-				}
-			}
 
 			timeoutMillisec := 1000
 			err = listener.(*net.TCPListener).SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
@@ -421,7 +413,7 @@ func (e *Esshd) Start() {
 func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	loc := a.cfg.EmbeddedSSHd.Addr
-	pp("%v Accept has returned an nConn... sshego PerConnection(). doing handshake", loc)
+	p("%v Accept has returned an nConn... sshego PerConnection(). doing handshake", loc)
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
@@ -433,9 +425,9 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 		return msg
 	}
 
-	log.Printf("%s done with handshake. handlers in force: '%s'", loc, a.cfg.ChannelHandlerSummary())
+	p("%s done with handshake. handlers in force: '%s'", loc, a.cfg.ChannelHandlerSummary())
 
-	log.Printf("server %s sees new SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
+	p("server %s sees new SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests
@@ -565,11 +557,9 @@ const gauthChallenge = "google-authenticator-code: "
 func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
 	//p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
-	if !a.cfg.TestingModeNoWait {
-		// no matter what happens, temper DDOS/many fast login attemps by
-		// waiting 1-2 seconds before replying.
-		defer wait()
-	}
+	// no matter what happens, temper DDOS/many fast login attemps by
+	// waiting 1-2 seconds before replying.
+	defer wait()
 
 	mylogin := conn.User()
 	now := time.Now().UTC()
@@ -677,9 +667,6 @@ func (a *PerAttempt) AuthLogCallback(conn ssh.ConnMetadata, method string, err e
 func (a *PerAttempt) PublicKeyCallback(c ssh.ConnMetadata, providedPubKey ssh.PublicKey) (perm *ssh.Permissions, rerr error) {
 	p("PublicKeyCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
-	if !a.cfg.TestingModeNoWait {
-		defer wait()
-	}
 	unknown := fmt.Errorf("unknown public key for %q", c.User())
 
 	//	if a.PublicKeyOK && !a.OneTimeOK {

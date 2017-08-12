@@ -23,7 +23,6 @@ func GenTestConfig() (c *SshegoConfig, releasePorts func()) {
 
 	cfg := NewSshegoConfig()
 	cfg.Origdir, cfg.Tempdir = MakeAndMoveToTempDir() // cd to tempdir
-	cfg.TestingModeNoWait = true
 
 	// copy in a 3 host fake known hosts
 	err := exec.Command("cp", "-rp", cfg.Origdir+"/testdata", cfg.Tempdir+"/").Run()
