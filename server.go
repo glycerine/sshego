@@ -420,7 +420,7 @@ func (e *Esshd) Start() {
 
 func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
-	p("Accept has returned an nConn... doing handshake")
+	pp("%v Accept has returned an nConn... sshego PerConnectin() doing handshake", a.cfg.EmbeddedSSHd.Addr)
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
