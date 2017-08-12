@@ -2,6 +2,8 @@ package sshego
 
 import (
 	"fmt"
+	"net"
+	"strings"
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
@@ -57,10 +59,26 @@ func Test201ClientDirectSSH(t *testing.T) {
 				TofuAddIfNotKnown:    true,
 			}
 
-			// first time we add the server key
-			channelToTcpServer, _, err := dc.Dial()
-			fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
-			cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
+			tries := 0
+			var channelToTcpServer net.Conn
+			var err error
+
+			for ; tries < 3; tries++ {
+				// first time we add the server key
+				channelToTcpServer, _, err = dc.Dial()
+				fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
+				errs := err.Error()
+				case1 := strings.Contains(errs, "Re-run without -new")
+				case2 := strings.Contains(errs, "getsockopt: connection refused")
+				ok := case1 || case2
+				cv.So(ok, cv.ShouldBeTrue)
+				if case1 {
+					break
+				}
+			}
+			if tries == 3 {
+				panic("could not get 'Re-run without -new' after 3 tries")
+			}
 
 			// second time we connect based on that server key
 			dc.TofuAddIfNotKnown = false
