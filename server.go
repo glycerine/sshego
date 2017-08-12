@@ -420,19 +420,20 @@ func (e *Esshd) Start() {
 
 func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
-	pp("%v Accept has returned an nConn... sshego PerConnectin() doing handshake", a.cfg.EmbeddedSSHd.Addr)
+	loc := a.cfg.EmbeddedSSHd.Addr
+	pp("%v Accept has returned an nConn... sshego PerConnection(). doing handshake", loc)
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, a.Config)
 	if err != nil {
-		msg := fmt.Errorf("did not handshake: %v", err)
+		msg := fmt.Errorf("%v did not handshake: %v", loc, err)
 		log.Printf(msg.Error())
 		return msg
 	}
 
-	p("done with handshake")
+	log.Printf("%s done with handshake. handlers in force: '%s'", loc, a.cfg.ChannelHandlerSummary())
 
 	log.Printf("server %s sees new SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
 

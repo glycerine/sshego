@@ -93,6 +93,13 @@ type SshegoConfig struct {
 	Mut sync.Mutex
 }
 
+func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {
+	for name := range cfg.CustomChannelHandlers {
+		s += fmt.Sprintf("%s, ", name)
+	}
+	return
+}
+
 func NewSshegoConfig() *SshegoConfig {
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
