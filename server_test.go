@@ -155,7 +155,7 @@ func newServer(c net.Conn, conf *ssh.ServerConfig) (*server, error) {
 	if err != nil {
 		return nil, err
 	}
-	go ssh.DiscardRequests(reqs)
+	go ssh.DiscardRequests(reqs, nil)
 	return &server{sconn, chans}, nil
 }
 

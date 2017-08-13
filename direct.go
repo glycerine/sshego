@@ -36,7 +36,7 @@ func handleDirectTcp(newChannel ssh.NewChannel, ca *ConnectionAlert) {
 
 	channel, req, err := newChannel.Accept() // (Channel, <-chan *Request, error)
 	panicOn(err)
-	go ssh.DiscardRequests(req)
+	go ssh.DiscardRequests(req, nil)
 
 	go func(ch ssh.Channel, host string, port uint32) {
 
@@ -86,6 +86,6 @@ func dialDirect(c *ssh.Client, laddr string, lport int, raddr string, rport int)
 	if err != nil {
 		return nil, err
 	}
-	go ssh.DiscardRequests(in)
+	go ssh.DiscardRequests(in, nil)
 	return ch, err
 }
