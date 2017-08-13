@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -162,7 +163,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
+func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, ctx context.Context) (*ssh.Client, net.Conn, error) {
 
 	var sshClientConn *ssh.Client
 	var nc net.Conn
@@ -273,7 +274,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg)
+		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg, ctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
@@ -494,10 +495,18 @@ func getCiphers() []string {
 	*/
 }
 
-func mySSHDial(network, addr string, config *ssh.ClientConfig) (*ssh.Client, net.Conn, error) {
+func mySSHDial(network, addr string, config *ssh.ClientConfig, ctx context.Context) (*ssh.Client, net.Conn, error) {
 	conn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
+	}
+	if ctx != nil {
+		go func() {
+			select {
+			case <-ctx.Done():
+				conn.Close()
+			}
+		}()
 	}
 	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 	if err != nil {

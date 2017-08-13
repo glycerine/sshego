@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -84,6 +85,8 @@ type DialConfig struct {
 	// CancelKeepAlive can be closed to cleanup the
 	// keepalive goroutine.
 	CancelKeepAlive chan struct{}
+
+	Ctx context.Context
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -135,7 +138,8 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	for ; try < retryCount; try++ {
 
 		sshClientConn, _, err = cfg.SSHConnect(dc.KnownHosts,
-			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
+			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
+			dc.Pw, dc.TotpUrl, dc.Ctx)
 		if err == nil {
 			break
 		} else {
