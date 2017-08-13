@@ -165,6 +165,9 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 //
 func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, ctx context.Context) (*ssh.Client, net.Conn, error) {
 
+	cfg.Mut.Lock()
+	defer cfg.Mut.Unlock()
+
 	var sshClientConn *ssh.Client
 	var nc net.Conn
 
