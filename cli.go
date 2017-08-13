@@ -134,7 +134,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	try := 0
 	for ; try < retryCount; try++ {
 
-		sshClientConn, err = cfg.SSHConnect(dc.KnownHosts,
+		sshClientConn, _, err = cfg.SSHConnect(dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport, dc.Pw, dc.TotpUrl)
 		if err == nil {
 			break

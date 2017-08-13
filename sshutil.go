@@ -162,9 +162,10 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, error) {
+func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
 
 	var sshClientConn *ssh.Client
+	var nc net.Conn
 
 	p("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
 
@@ -272,25 +273,25 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, err = ssh.Dial("tcp", hostport, cliCfg)
+		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg)
 		if err != nil {
-			return nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
+			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
 			err = cfg.StartupReverseListener(sshClientConn)
 			if err != nil {
-				return nil, fmt.Errorf("StartupReverseListener failed: %s", err)
+				return nil, nil, fmt.Errorf("StartupReverseListener failed: %s", err)
 			}
 		}
 		if cfg.LocalToRemote.Listen.Addr != "" {
 			err = cfg.StartupForwardListener(sshClientConn)
 			if err != nil {
-				return nil, fmt.Errorf("StartupFowardListener failed: %s", err)
+				return nil, nil, fmt.Errorf("StartupFowardListener failed: %s", err)
 			}
 		}
 	}
-	return sshClientConn, nil
+	return sshClientConn, nc, nil
 }
 
 // StartupForwardListener is called when a forward tunnel is the
@@ -491,4 +492,16 @@ func getCiphers() []string {
 		"aes192-ctr", 33.5 seconds
 		"aes256-ctr", 34.5 seconds
 	*/
+}
+
+func mySSHDial(network, addr string, config *ssh.ClientConfig) (*ssh.Client, net.Conn, error) {
+	conn, err := net.DialTimeout(network, addr, config.Timeout)
+	if err != nil {
+		return nil, nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), conn, nil
 }
