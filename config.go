@@ -88,6 +88,12 @@ type SshegoConfig struct {
 	// for "custom-inproc-stream", etc.
 	CustomChannelHandlers map[string]CustomChannelHandlerCB
 
+	// SkipCommandRecv if true, says don't
+	// start up the CommandRecv goroutine
+	// on the SshegoSystemMutexPort port.
+	// Commandline adding users won't work.
+	SkipCommandRecv bool
+
 	Mut sync.Mutex
 }
 

@@ -297,10 +297,12 @@ func (cr *CommandRecv) Start() error {
 func (e *Esshd) Start() {
 	p("Start for Esshd called.")
 
-	e.cr = e.NewCommandRecv()
-	err := e.cr.Start()
-	if err != nil {
-		panic(err)
+	if !e.cfg.SkipCommandRecv {
+		e.cr = e.NewCommandRecv()
+		err := e.cr.Start()
+		if err != nil {
+			panic(err)
+		}
 	}
 	// invar: e.cr is listening on -xport
 	// for network commands...
@@ -352,6 +354,9 @@ func (e *Esshd) Start() {
 				// p("simple timeout err: '%v'", err)
 				select {
 				case <-e.Halt.ReqStop.Chan:
+					if e.cr != nil {
+						close(e.cr.reqStop)
+					}
 					e.Halt.Done.Close()
 					return
 				case u := <-e.addUserToDatabase:
