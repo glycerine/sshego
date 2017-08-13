@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -57,9 +58,10 @@ func main() {
 
 	passphrase := ""
 	totpUrl := ""
+	ctx := context.Background()
 
-	_, err = cfg.SSHConnect(h, cfg.Username, cfg.PrivateKeyPath,
-		cfg.SSHdServer.Host, cfg.SSHdServer.Port, passphrase, totpUrl)
+	_, _, err = cfg.SSHConnect(h, cfg.Username, cfg.PrivateKeyPath,
+		cfg.SSHdServer.Host, cfg.SSHdServer.Port, passphrase, totpUrl, ctx)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(0)
