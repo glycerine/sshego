@@ -177,7 +177,7 @@ func (cr *CommandRecv) Start() error {
 			timeoutMillisec := 500
 			err = tcpLsn.SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
 			panicOn(err)
-			nConn, err = tcpLsn.Accept()
+			nConn, err = tcpLsn.Accept() // hung here
 			if err != nil {
 				// simple timeout, check if stop requested
 				// 'accept tcp 127.0.0.1:54796: i/o timeout'

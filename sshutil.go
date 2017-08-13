@@ -180,8 +180,10 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		//log.Printf("SshegoConfig.SSHConnect(): in hostKeyCallback(), hostStatus: '%s', hostname='%s', remote='%s', key.Type='%s'  server.host.pub.key='%s' and host-key sha256.fingerprint='%s'\n", hostStatus, hostname, remote, key.Type(), pubBytes, fingerprint)
 		_ = fingerprint
 		//log.Printf("server '%s' has host-key sha256.fingerprint='%s'", hostname, fingerprint)
+		h.Mut.Lock()
 		h.curStatus = hostStatus
 		h.curHost = spubkey
+		h.Mut.Unlock()
 
 		if err != nil {
 			// this is strict checking of hosts here, any non-nil error
@@ -503,12 +505,12 @@ func mySSHDial(network, addr string, config *ssh.ClientConfig, ctx context.Conte
 	if ctx != nil {
 		go func() {
 			select {
-			case <-ctx.Done():
+			case <-ctx.Done(): // hung here
 				conn.Close()
 			}
 		}()
 	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config) // hung here
 	if err != nil {
 		return nil, nil, err
 	}
