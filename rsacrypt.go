@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 /*

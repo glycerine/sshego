@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // GenRSAKeyPair generates an RSA keypair of length bits. If rsa_file != "", we write

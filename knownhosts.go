@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // KnownHosts represents in Hosts a hash map of host identifier (ip or name)

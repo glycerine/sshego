@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 
 	cv "github.com/glycerine/goconvey/convey"
 )

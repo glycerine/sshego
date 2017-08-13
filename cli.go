@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // DialConfig provides Dial() with what

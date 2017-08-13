@@ -53,7 +53,7 @@ import (
 	"unsafe"
 
 	"github.com/kr/pty"
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 type ConnectionAlert struct {

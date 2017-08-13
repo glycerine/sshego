@@ -12,7 +12,7 @@ import (
 
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 type kiCliHelp struct {
@@ -489,7 +489,7 @@ func (h *KnownHosts) AddNeeded(addIfNotKnown, allowOneshotConnect bool, hostname
 // client and server cipher chosen here.
 func getCiphers() []string {
 	return []string{"aes128-gcm@openssh.com"}
-	/* available in golang.org/x/crypto/ssh :
+	/* available in github.com/glycerine/xcryptossh :
 	time for 512MB from SanJose to Amazon EC2 N. Cali,
 		"aes128-gcm@openssh.com", 27 seconds, 27 seconds.
 		"arcfour256", 24.96 seconds, 31.5 seconds on retry.

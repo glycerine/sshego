@@ -10,7 +10,7 @@ import (
 
 	"github.com/glycerine/go-unsnap-stream"
 	"github.com/mailgun/log"
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 func (s *KnownHosts) saveGobSnappy(fn string) error {

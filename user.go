@@ -12,7 +12,7 @@ import (
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/glycerine/greenpack/msgp"
 	"github.com/pquerna/otp"
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 //go:generate greenpack

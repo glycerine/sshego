@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 const MUX_C_OPEN_FWD = 0x10000006 // 268435462
@@ -58,7 +58,7 @@ func DialRemoteUnixDomain(c *ssh.Client, udpath string) (net.Conn, error) {
 
 // unixDomainChanConn fulfills the net.Conn interface without
 // the tcpChan having to hold laddr or raddr directly.
-// From golang.org/x/crypto/ssh/tcpip.go
+// From github.com/glycerine/xcryptossh/tcpip.go
 type unixDomainChanConn struct {
 	ssh.Channel
 	laddr, raddr net.Addr

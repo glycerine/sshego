@@ -17,7 +17,7 @@ import (
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // Esshd is our embedded sshd server,
@@ -794,7 +794,7 @@ func (a *PerAttempt) SetupAuthRequirements() {
 	}
 }
 
-// see vendor/golang.org/x/crypto/ssh/kex.go
+// see vendor/github.com/glycerine/xcryptossh/kex.go
 const (
 	kexAlgoCurve25519SHA256 = "curve25519-sha256@libssh.org"
 )

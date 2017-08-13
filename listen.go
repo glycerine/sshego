@@ -9,7 +9,7 @@ import (
 
 	"github.com/glycerine/idem"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // BasicServer configures a simple embedded sshd server

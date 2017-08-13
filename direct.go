@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // see also dev.justinjudd.org/justin/easyssh for examples

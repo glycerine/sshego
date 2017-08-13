@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/testdata"
+	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh/testdata"
 )
 
 func Test101StartupAndShutdown(t *testing.T) {
@@ -144,7 +144,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 	})
 }
 
-// from ~/go/src/golang.org/x/crypto/ssh/testdata_test.go : init() function.
+// from ~/go/src/github.com/glycerine/xcryptossh/testdata_test.go : init() function.
 
 // Copyright 2014 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
