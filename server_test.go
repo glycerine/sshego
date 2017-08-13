@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/testdata"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/testdata"
 )
 
 func Test101StartupAndShutdown(t *testing.T) {

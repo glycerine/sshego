@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 const MUX_C_OPEN_FWD = 0x10000006 // 268435462

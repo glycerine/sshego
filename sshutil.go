@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
-	"github.com/glycerine/xcryptossh"
 )
 
 type kiCliHelp struct {

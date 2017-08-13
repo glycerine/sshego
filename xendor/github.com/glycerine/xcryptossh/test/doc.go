@@ -4,4 +4,4 @@
 
 // This package contains integration tests for the
 // github.com/glycerine/xcryptossh package.
-package test // import "github.com/glycerine/xcryptossh/test"
+package test

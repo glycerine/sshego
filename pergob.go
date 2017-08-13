@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/glycerine/go-unsnap-stream"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/mailgun/log"
-	"github.com/glycerine/xcryptossh"
 )
 
 func (s *KnownHosts) saveGobSnappy(fn string) error {

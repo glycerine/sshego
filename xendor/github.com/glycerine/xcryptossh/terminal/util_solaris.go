@@ -4,7 +4,7 @@
 
 // +build solaris
 
-package terminal // import "github.com/glycerine/xcryptossh/terminal"
+package terminal
 
 import (
 	"golang.org/x/sys/unix"

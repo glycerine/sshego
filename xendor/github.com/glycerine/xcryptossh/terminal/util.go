@@ -14,7 +14,7 @@
 // 	        panic(err)
 // 	}
 // 	defer terminal.Restore(0, oldState)
-package terminal // import "github.com/glycerine/xcryptossh/terminal"
+package terminal
 
 import (
 	"syscall"

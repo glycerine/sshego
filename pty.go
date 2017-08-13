@@ -52,8 +52,8 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/kr/pty"
-	"github.com/glycerine/xcryptossh"
 )
 
 type ConnectionAlert struct {

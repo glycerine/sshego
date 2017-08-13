@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // see also dev.justinjudd.org/justin/easyssh for examples

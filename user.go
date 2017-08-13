@@ -11,8 +11,8 @@ import (
 
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/glycerine/greenpack/msgp"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/pquerna/otp"
-	"github.com/glycerine/xcryptossh"
 )
 
 //go:generate greenpack
