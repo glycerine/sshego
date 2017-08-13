@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // RequestAgentForwarding sets up agent forwarding for the session.

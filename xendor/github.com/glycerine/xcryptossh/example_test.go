@@ -17,8 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/terminal"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/terminal"
 )
 
 func ExampleNewServerConn() {

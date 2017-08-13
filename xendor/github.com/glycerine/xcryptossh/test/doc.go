@@ -3,5 +3,5 @@
 // license that can be found in the LICENSE file.
 
 // This package contains integration tests for the
-// github.com/glycerine/xcryptossh package.
+// github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh package.
 package test

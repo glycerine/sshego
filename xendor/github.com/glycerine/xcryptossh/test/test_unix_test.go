@@ -21,8 +21,8 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/testdata"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/testdata"
 )
 
 const sshd_config = `

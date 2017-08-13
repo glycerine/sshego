@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // startOpenSSHAgent executes ssh-agent, and returns a Agent interface to it.

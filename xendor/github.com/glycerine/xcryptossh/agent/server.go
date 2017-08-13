@@ -17,7 +17,7 @@ import (
 	"math/big"
 
 	"golang.org/x/crypto/ed25519"
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // Server wraps an Agent and uses it to implement the agent side of
