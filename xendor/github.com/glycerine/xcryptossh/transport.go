@@ -84,7 +84,7 @@ func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult, con
 	} else {
 		select {
 		case t.reader.pendingKeyChange <- ciph:
-		case <-config.Ctx.Done():
+		case <-config.Halt.Done.Chan:
 			return io.EOF
 		}
 	}
@@ -94,7 +94,7 @@ func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult, con
 	} else {
 		select {
 		case t.writer.pendingKeyChange <- ciph:
-		case <-config.Ctx.Done():
+		case <-config.Halt.Done.Chan:
 			return io.EOF
 		}
 	}

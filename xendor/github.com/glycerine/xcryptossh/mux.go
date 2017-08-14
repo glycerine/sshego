@@ -5,7 +5,6 @@
 package ssh
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -99,7 +98,7 @@ type mux struct {
 	errCond *sync.Cond
 	err     error
 
-	ctx context.Context
+	halt *Halter
 }
 
 // When debugging, each new chanList instantiation has a different
@@ -116,15 +115,19 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(p packetConn, ctx context.Context) *mux {
+func newMux(p packetConn, halt *Halter) *mux {
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
 		globalResponses:  make(chan interface{}, 1),
 		incomingRequests: make(chan *Request, chanSize),
 		errCond:          newCond(),
-		ctx:              ctx,
+		halt:             halt,
 	}
+	if m.halt == nil {
+		m.halt = NewHalter()
+	}
+
 	if debugMux {
 		m.chanList.offset = atomic.AddUint32(&globalOff, 1)
 	}
@@ -173,7 +176,7 @@ func (m *mux) SendRequest(name string, wantReply bool, payload []byte) (bool, []
 			return false, nil, fmt.Errorf("ssh: unexpected response to request: %#v", msg)
 		}
 
-	case <-m.ctx.Done():
+	case <-m.halt.Done.Chan:
 		return false, nil, io.EOF
 	}
 }
@@ -271,13 +274,13 @@ func (m *mux) handleGlobalPacket(packet []byte) error {
 			mux:       m,
 		}:
 			// just the send
-		case <-m.ctx.Done():
+		case <-m.halt.Done.Chan:
 			return io.EOF
 		}
 	case *globalRequestSuccessMsg, *globalRequestFailureMsg:
 		select {
 		case m.globalResponses <- msg:
-		case <-m.ctx.Done():
+		case <-m.halt.Done.Chan:
 			return io.EOF
 		}
 	default:
@@ -310,7 +313,7 @@ func (m *mux) handleChannelOpen(packet []byte) error {
 	c.remoteWin.add(msg.PeersWindow)
 	select {
 	case m.incomingChannels <- c:
-	case <-m.ctx.Done():
+	case <-m.halt.Done.Chan:
 		return io.EOF
 	}
 	return nil
@@ -341,6 +344,11 @@ func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
 		return nil, err
 	}
 
+	var done chan struct{}
+	if m.halt != nil {
+		done = m.halt.Done.Chan
+	}
+
 	select {
 	case msg := <-ch.msg:
 		switch msgt := msg.(type) {
@@ -351,7 +359,7 @@ func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
 		default:
 			return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msgt)
 		}
-	case <-m.ctx.Done():
+	case <-done:
 		return nil, io.EOF
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh"
 )
 
 // Test both logging in with a cert, and also that the certificate presented by an OpenSSH host can be validated correctly

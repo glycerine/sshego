@@ -169,11 +169,7 @@ func NewServerConn(c net.Conn, config *ServerConfig) (*ServerConn, <-chan NewCha
 		fullConf.MaxAuthTries = 6
 	}
 
-	s := &connection{
-		sshConn:   sshConn{conn: c},
-		ctx:       fullConf.Ctx,
-		cancelctx: fullConf.CancelCtx,
-	}
+	s := newConnection(c)
 	perms, err := s.serverHandshake(&fullConf)
 	if err != nil {
 		c.Close()
@@ -247,7 +243,7 @@ func (s *connection) serverHandshake(config *ServerConfig) (*Permissions, error)
 	if err != nil {
 		return nil, err
 	}
-	s.mux = newMux(s.transport, config.Ctx)
+	s.mux = newMux(s.transport, config.Halt)
 	return perms, err
 }
 

@@ -114,7 +114,7 @@ func newHandshakeTransport(conn keyingTransport, config *Config, clientVersion, 
 	select {
 	case t.requestKex <- struct{}{}:
 		return t
-	case <-t.config.Ctx.Done():
+	case <-t.config.Halt.Done.Chan:
 		return nil
 	}
 }
@@ -189,7 +189,7 @@ func (t *handshakeTransport) readPacket() ([]byte, error) {
 			return nil, t.readError
 		}
 		return p, nil
-	case <-t.config.Ctx.Done():
+	case <-t.config.Halt.Done.Chan:
 		return nil, io.EOF
 	}
 }
@@ -209,7 +209,7 @@ func (t *handshakeTransport) readLoop() {
 		}
 		select {
 		case t.incoming <- p:
-		case <-t.config.Ctx.Done():
+		case <-t.config.Halt.Done.Chan:
 			return
 		}
 	}
@@ -279,7 +279,7 @@ write:
 				}
 			case <-t.requestKex:
 				break
-			case <-t.config.Ctx.Done():
+			case <-t.config.Halt.Done.Chan:
 				return
 			}
 
@@ -296,7 +296,7 @@ write:
 			if request != nil {
 				select {
 				case request.done <- err:
-				case <-t.config.Ctx.Done():
+				case <-t.config.Halt.Done.Chan:
 					return
 				}
 			}
@@ -338,7 +338,7 @@ write:
 
 		select {
 		case request.done <- t.writeError:
-		case <-t.config.Ctx.Done():
+		case <-t.config.Halt.Done.Chan:
 			return
 		}
 
@@ -366,11 +366,11 @@ write:
 				if init != nil {
 					select {
 					case init.done <- t.writeError:
-					case <-t.config.Ctx.Done():
+					case <-t.config.Halt.Done.Chan:
 						return
 					}
 				}
-			case <-t.config.Ctx.Done():
+			case <-t.config.Halt.Done.Chan:
 				return
 			}
 		}
@@ -438,10 +438,10 @@ func (t *handshakeTransport) readOnePacket(first bool) ([]byte, error) {
 	case t.startKex <- &kex:
 		select {
 		case err = <-kex.done:
-		case <-t.config.Ctx.Done():
+		case <-t.config.Halt.Done.Chan:
 			return nil, io.EOF
 		}
-	case <-t.config.Ctx.Done():
+	case <-t.config.Halt.Done.Chan:
 		return nil, io.EOF
 	}
 

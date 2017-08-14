@@ -163,7 +163,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, ctx context.Context) (*ssh.Client, net.Conn, error) {
+func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
 
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()

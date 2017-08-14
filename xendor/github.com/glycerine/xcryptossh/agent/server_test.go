@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh"
 )
 
 func TestServer(t *testing.T) {

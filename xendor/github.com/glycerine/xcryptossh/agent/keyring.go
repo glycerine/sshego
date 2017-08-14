@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh"
 )
 
 type privKey struct {

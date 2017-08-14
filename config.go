@@ -2,6 +2,7 @@ package sshego
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -15,7 +16,9 @@ import (
 
 // SshegoConfig is the top level, main config
 type SshegoConfig struct {
-	Nickname string
+	Nickname  string
+	Ctx       context.Context
+	CancelCtx context.CancelFunc
 
 	ConfigPath string
 
@@ -106,9 +109,13 @@ func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {
 	return
 }
 
-func NewSshegoConfig() *SshegoConfig {
+func NewSshegoConfig(parentctx context.Context) *SshegoConfig {
+	ctx, cancelctx := context.WithCancel(parentctx)
+
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
+		Ctx:           ctx,
+		CancelCtx:     cancelctx,
 	}
 	return cfg
 }

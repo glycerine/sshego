@@ -304,8 +304,6 @@ func (e *Esshd) Start() {
 			panic(err)
 		}
 	}
-	// invar: e.cr is listening on -xport
-	// for network commands...
 
 	go func() {
 		log.Printf("%s Esshd.Start() called, for binding '%s'. %s",

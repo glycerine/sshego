@@ -8,7 +8,6 @@ package ssh
 
 import (
 	"bytes"
-	"context"
 	crypto_rand "crypto/rand"
 	"errors"
 	"io"
@@ -17,7 +16,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/terminal"
+	"github.com/glycerine/xcryptossh/terminal"
 )
 
 type serverType func(Channel, <-chan *Request, *testing.T)
@@ -29,15 +28,12 @@ func dial(handler serverType, t *testing.T) *Client {
 		t.Fatalf("netPipe: %v", err)
 	}
 
-	ctx, cancelctx := context.WithCancel(context.Background())
-
 	go func() {
 		defer c1.Close()
 		conf := ServerConfig{
 			NoClientAuth: true,
 			Config: Config{
-				Ctx:       ctx,
-				CancelCtx: cancelctx,
+				Halt: NewHalter(),
 			},
 		}
 		conf.AddHostKey(testSigners["rsa"])
@@ -46,7 +42,7 @@ func dial(handler serverType, t *testing.T) *Client {
 		if err != nil {
 			t.Fatalf("Unable to handshake: %v", err)
 		}
-		go DiscardRequests(reqs, ctx)
+		go DiscardRequests(reqs, conf.Halt)
 
 		for newCh := range chans {
 			if newCh.ChannelType() != "session" {
@@ -69,8 +65,7 @@ func dial(handler serverType, t *testing.T) *Client {
 		User:            "testuser",
 		HostKeyCallback: InsecureIgnoreHostKey(),
 		Config: Config{
-			Ctx:       ctx,
-			CancelCtx: cancelctx,
+			Halt: NewHalter(),
 		},
 	}
 
@@ -663,7 +658,7 @@ func TestSessionID(t *testing.T) {
 			t.Fatalf("server handshake: %v", err)
 		}
 		serverID <- conn.SessionID()
-		go DiscardRequests(reqs, context.TODO())
+		go DiscardRequests(reqs, serverConf.Halt)
 		for ch := range chans {
 			ch.Reject(Prohibited, "")
 		}
@@ -675,7 +670,7 @@ func TestSessionID(t *testing.T) {
 			t.Fatalf("client handshake: %v", err)
 		}
 		clientID <- conn.SessionID()
-		go DiscardRequests(reqs, context.TODO())
+		go DiscardRequests(reqs, clientConf.Halt)
 		for ch := range chans {
 			ch.Reject(Prohibited, "")
 		}

@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/agent"
+	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh/agent"
 )
 
 func TestAgentForward(t *testing.T) {

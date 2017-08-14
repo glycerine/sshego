@@ -312,7 +312,7 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(incoming, l.conn.Ctx)
+	go DiscardRequests(incoming, l.conn.Halt)
 
 	return &chanConn{
 		Channel: ch,
@@ -433,7 +433,7 @@ func (c *Client) dial(laddr string, lport int, raddr string, rport int) (Channel
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(in, c.Ctx)
+	go DiscardRequests(in, c.Halt)
 	return ch, err
 }
 

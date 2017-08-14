@@ -5,7 +5,6 @@
 package ssh
 
 import (
-	"context"
 	"fmt"
 	"net"
 )
@@ -81,11 +80,11 @@ type Conn interface {
 
 // DiscardRequests consumes and rejects all requests from the
 // passed-in channel.
-func DiscardRequests(in <-chan *Request, ctx context.Context) {
+func DiscardRequests(in <-chan *Request, halt *Halter) {
 
-	var done <-chan struct{}
-	if ctx != nil {
-		done = ctx.Done()
+	var done chan struct{}
+	if halt != nil {
+		done = halt.Done.Chan
 	}
 	for {
 		select {
@@ -105,20 +104,26 @@ type connection struct {
 	sshConn
 
 	// clean shutdown mechanism
-	ctx       context.Context
-	cancelctx context.CancelFunc
+	halt *Halter
 
 	// The connection protocol.
 	*mux
 }
 
+func newConnection(c net.Conn) *connection {
+	return &connection{
+		sshConn: sshConn{conn: c},
+		halt:    NewHalter(),
+	}
+}
+
 func (c *connection) Close() error {
-	c.cancelctx()
+	c.halt.ReqStop.Close()
 	return c.sshConn.conn.Close()
 }
 
 func (c *connection) Done() <-chan struct{} {
-	return c.ctx.Done()
+	return c.halt.Done.Chan
 }
 
 // sshconn provides net.Conn metadata, but disallows direct reads and

@@ -76,6 +76,7 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 			}
 			return nil, errors.New("keyboard-interactive failed")
 		},
+		Config: Config{Halt: NewHalter()},
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
 

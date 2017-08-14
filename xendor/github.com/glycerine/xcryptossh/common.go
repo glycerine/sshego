@@ -5,7 +5,6 @@
 package ssh
 
 import (
-	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -203,18 +202,7 @@ type Config struct {
 	// is used.
 	MACs []string
 
-	// Ctx is for cancelling.
-	// It must be the compliment
-	// to Cancel below.
-	Ctx context.Context
-
-	// CancelCtx is how we cancel everyone
-	// waiting on Ctx.Done(): see
-	// the Ctx value just above. These
-	// two values must be the paired result
-	// from a context.WithCancel()
-	// call.
-	CancelCtx context.CancelFunc
+	Halt *Halter
 }
 
 // SetDefaults sets sensible values for unset fields in config. This is
@@ -253,10 +241,8 @@ func (c *Config) SetDefaults() {
 		c.RekeyThreshold = math.MaxInt64
 	}
 
-	// backwards compatibility: set values that were
-	// recently added to sane defaults.
-	if c.Ctx == nil || c.CancelCtx == nil {
-		c.Ctx, c.CancelCtx = context.WithCancel(context.Background())
+	if c.Halt == nil {
+		c.Halt = NewHalter()
 	}
 }
 

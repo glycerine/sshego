@@ -109,7 +109,7 @@ type DialConfig struct {
 //
 func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 
-	cfg := NewSshegoConfig()
+	cfg := NewSshegoConfig(dc.Ctx)
 	cfg.BitLenRSAkeys = 4096
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
@@ -139,7 +139,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 
 		sshClientConn, _, err = cfg.SSHConnect(dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
-			dc.Pw, dc.TotpUrl, dc.Ctx)
+			dc.Pw, dc.TotpUrl)
 		if err == nil {
 			break
 		} else {

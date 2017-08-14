@@ -9,8 +9,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/agent"
+	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh/agent"
 )
 
 func ExampleClientAgent() {

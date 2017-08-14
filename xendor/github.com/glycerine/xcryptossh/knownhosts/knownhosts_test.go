@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/xcryptossh"
 )
 
 const edKeyStr = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGBAarftlLeoyf+v+nVchEZII/vna2PCV8FaX4vsF5BX"

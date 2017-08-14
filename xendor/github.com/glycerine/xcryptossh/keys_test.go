@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"golang.org/x/crypto/ed25519"
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/testdata"
+	"github.com/glycerine/xcryptossh/testdata"
 )
 
 func rawKey(pub PublicKey) interface{} {

@@ -6,7 +6,6 @@ package ssh
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -18,8 +17,7 @@ import (
 // subprocesses, TCP port/streamlocal forwarding and tunneled dialing.
 type Client struct {
 	Conn
-	Ctx       context.Context
-	CtxCancel context.CancelFunc
+	Halt *Halter
 
 	forwards        forwardList // forwarded tcpip connections from the remote side
 	mu              sync.Mutex
@@ -54,6 +52,7 @@ func NewClient(c Conn, chans <-chan NewChannel, reqs <-chan *Request) *Client {
 	conn := &Client{
 		Conn:            c,
 		channelHandlers: make(map[string]chan NewChannel, 1),
+		Halt:            NewHalter(),
 	}
 
 	go conn.handleGlobalRequests(reqs)
@@ -78,11 +77,7 @@ func NewClientConn(c net.Conn, addr string, config *ClientConfig) (Conn, <-chan 
 		return nil, nil, nil, errors.New("ssh: must specify HostKeyCallback")
 	}
 
-	conn := &connection{
-		sshConn:   sshConn{conn: c},
-		ctx:       fullConf.Ctx,
-		cancelctx: fullConf.CancelCtx,
-	}
+	conn := newConnection(c)
 
 	// can block on conn here, we need to get a close
 	// on conn in.
@@ -90,7 +85,7 @@ func NewClientConn(c net.Conn, addr string, config *ClientConfig) (Conn, <-chan 
 		c.Close()
 		return nil, nil, nil, fmt.Errorf("ssh: handshake failed: %v", err)
 	}
-	conn.mux = newMux(conn.transport, conn.ctx)
+	conn.mux = newMux(conn.transport, conn.halt)
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil
 }
 
@@ -142,10 +137,6 @@ func (c *Client) NewSession() (*Session, error) {
 
 func (c *Client) handleGlobalRequests(incoming <-chan *Request) {
 
-	var ctxdone <-chan struct{}
-	if c.Ctx != nil {
-		ctxdone = c.Ctx.Done()
-	}
 	for {
 		select {
 		case r := <-incoming:
@@ -154,7 +145,7 @@ func (c *Client) handleGlobalRequests(incoming <-chan *Request) {
 				// the behaviour of OpenSSH.
 				r.Reply(false, nil)
 			}
-		case <-ctxdone:
+		case <-c.Halt.Done.Chan:
 			return
 		case <-c.Conn.Done():
 			return
@@ -165,13 +156,9 @@ func (c *Client) handleGlobalRequests(incoming <-chan *Request) {
 // handleChannelOpens channel open messages from the remote side.
 func (c *Client) handleChannelOpens(in <-chan NewChannel) {
 
-	var ctxdone <-chan struct{}
-	if c.Ctx != nil {
-		ctxdone = c.Ctx.Done()
-	}
 	for {
 		select {
-		case <-ctxdone:
+		case <-c.Halt.Done.Chan:
 			return
 		case <-c.Conn.Done():
 			return
@@ -183,7 +170,7 @@ func (c *Client) handleChannelOpens(in <-chan NewChannel) {
 				if handler != nil {
 					select {
 					case handler <- ch:
-					case <-ctxdone:
+					case <-c.Halt.Done.Chan:
 						return
 					case <-c.Conn.Done():
 						return
