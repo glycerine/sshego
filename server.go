@@ -2,6 +2,7 @@ package sshego
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image/png"
@@ -159,7 +160,7 @@ func (e *Esshd) NewCommandRecv() *CommandRecv {
 	}
 }
 
-func (cr *CommandRecv) Start() error {
+func (cr *CommandRecv) Start(ctx context.Context) error {
 
 	msecLimit := 100
 	err := cr.userTcp.Lock(msecLimit)
@@ -172,6 +173,10 @@ func (cr *CommandRecv) Start() error {
 		tcpLsn := cr.userTcp.Lsn.(*net.TCPListener)
 		var nConn net.Conn
 
+		defer func() {
+			close(cr.Done)
+		}()
+
 	mainloop:
 		for {
 			timeoutMillisec := 500
@@ -183,8 +188,9 @@ func (cr *CommandRecv) Start() error {
 				// 'accept tcp 127.0.0.1:54796: i/o timeout'
 				// p("simple timeout err: '%v'", err)
 				select {
+				case <-ctx.Done():
+					return
 				case <-cr.reqStop:
-					close(cr.Done)
 					return
 				default:
 					// no stop request, keep looping
@@ -243,7 +249,8 @@ func (cr *CommandRecv) Start() error {
 						log.Printf("warning: unable to deliver delUser request " +
 							"after 10 seconds")
 					case <-cr.reqStop:
-						close(cr.Done)
+						return
+					case <-ctx.Done():
 						return
 					}
 					// ack back
@@ -260,7 +267,8 @@ func (cr *CommandRecv) Start() error {
 						nConn.Close()
 
 					case <-cr.reqStop:
-						close(cr.Done)
+						return
+					case <-ctx.Done():
 						return
 					}
 				}
@@ -273,7 +281,8 @@ func (cr *CommandRecv) Start() error {
 						log.Printf("warning: unable to deliver newUser request" +
 							"after 10 seconds")
 					case <-cr.reqStop:
-						close(cr.Done)
+						return
+					case <-ctx.Done():
 						return
 					}
 					// send remote client a reply, also a User
@@ -283,9 +292,9 @@ func (cr *CommandRecv) Start() error {
 						//p("goback received!")
 						writeBackHelper(goback, nConn)
 					case <-cr.reqStop:
-						close(cr.Done)
 						return
-
+					case <-ctx.Done():
+						return
 					}
 				}
 			}
@@ -294,12 +303,12 @@ func (cr *CommandRecv) Start() error {
 	return nil
 }
 
-func (e *Esshd) Start() {
+func (e *Esshd) Start(ctx context.Context) {
 	p("Start for Esshd called.")
 
 	if !e.cfg.SkipCommandRecv {
 		e.cr = e.NewCommandRecv()
-		err := e.cr.Start()
+		err := e.cr.Start(ctx)
 		if err != nil {
 			panic(err)
 		}
@@ -337,6 +346,14 @@ func (e *Esshd) Start() {
 			return
 		}
 
+		// cleanup, any which way we return
+		defer func() {
+			if e.cr != nil {
+				close(e.cr.reqStop)
+			}
+			e.Halt.Done.Close()
+		}()
+
 		p("info: Essh.Start() in server.go: listening on "+
 			"domain '%s', addr: '%s'", domain, e.cfg.EmbeddedSSHd.Addr)
 		for {
@@ -351,11 +368,9 @@ func (e *Esshd) Start() {
 				// 'accept tcp 127.0.0.1:54796: i/o timeout'
 				// p("simple timeout err: '%v'", err)
 				select {
+				case <-ctx.Done():
+					return
 				case <-e.Halt.ReqStop.Chan:
-					if e.cr != nil {
-						close(e.cr.reqStop)
-					}
-					e.Halt.Done.Close()
 					return
 				case u := <-e.addUserToDatabase:
 					p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
@@ -365,7 +380,6 @@ func (e *Esshd) Start() {
 					case e.replyWithCreatedUser <- u:
 						//p("sent: e.replyWithCreatedUser <- u")
 					case <-e.Halt.ReqStop.Chan:
-						e.Halt.Done.Close()
 						return
 					}
 
@@ -407,13 +421,13 @@ func (e *Esshd) Start() {
 			// After login we let connections proceed freely
 			// and in parallel.
 			p("PRE attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
-			attempt.PerConnection(nConn, nil)
+			attempt.PerConnection(ctx, nConn, nil)
 			p("POST attempt.PerConnection, server %v", e.cfg.EmbeddedSSHd.Addr)
 		}
 	}()
 }
 
-func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
+func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *ConnectionAlert) error {
 
 	loc := a.cfg.EmbeddedSSHd.Addr
 	p("%v Accept has returned an nConn... sshego PerConnection(). doing handshake", loc)
@@ -434,14 +448,14 @@ func (a *PerAttempt) PerConnection(nConn net.Conn, ca *ConnectionAlert) error {
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests
-	go a.discardRequests(reqs)
+	go a.discardRequests(ctx, reqs)
 	// Accept all channels
-	go a.handleChannels(chans, ca)
+	go a.handleChannels(ctx, chans, ca)
 
 	return nil
 }
 
-func (a *PerAttempt) discardRequests(in <-chan *ssh.Request) {
+func (a *PerAttempt) discardRequests(ctx context.Context, in <-chan *ssh.Request) {
 	for {
 		select {
 		case req, stillOpen := <-in:
@@ -452,6 +466,8 @@ func (a *PerAttempt) discardRequests(in <-chan *ssh.Request) {
 				req.Reply(false, nil)
 			}
 		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}

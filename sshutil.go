@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -163,7 +164,7 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
+func (cfg *SshegoConfig) SSHConnect(ctx context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
 
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
@@ -227,7 +228,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 				panic(err)
 			}
 			cfg.NewEsshd()
-			go cfg.Esshd.Start()
+			go cfg.Esshd.Start(ctx)
 		}
 	}
 
@@ -279,7 +280,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg, cfg.Halter)
+		sshClientConn, nc, err = mySSHDial(ctx, "tcp", hostport, cliCfg, cfg.Halter)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
@@ -500,7 +501,7 @@ func getCiphers() []string {
 	*/
 }
 
-func mySSHDial(network, addr string, config *ssh.ClientConfig, halt *idem.Halter) (*ssh.Client, net.Conn, error) {
+func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *idem.Halter) (*ssh.Client, net.Conn, error) {
 	conn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
@@ -517,6 +518,7 @@ func mySSHDial(network, addr string, config *ssh.ClientConfig, halt *idem.Halter
 			select {
 			case <-h1:
 			case <-h2:
+			case <-ctx.Done():
 			}
 			conn.Close()
 		}()

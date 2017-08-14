@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -97,9 +98,10 @@ func Test302ReadKnownHosts(t *testing.T) {
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 		}
+		ctx := context.Background()
 
 		// first time we add the server key
-		channelToTcpServer, _, err := dc.Dial()
+		channelToTcpServer, _, err := dc.Dial(ctx)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		fmt.Printf("\n now host key B should be known.\n")
@@ -118,7 +120,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, err = dc.Dial()
+		channelToTcpServer, _, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
@@ -205,9 +207,10 @@ func Test303DedupKnownHosts(t *testing.T) {
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 		}
+		ctx := context.Background()
 
 		// first time we add the server key
-		channelToTcpServer, _, err := dc.Dial()
+		channelToTcpServer, _, err := dc.Dial(ctx)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		fmt.Printf("\n now host key B should be known.\n")
@@ -219,7 +222,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, err = dc.Dial()
+		channelToTcpServer, _, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
@@ -274,7 +277,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		}
 
 		// first time we add the server key
-		channelToTcpServer, _, err = dc2.Dial()
+		channelToTcpServer, _, err = dc2.Dial(ctx)
 		pp("dc2.Dial() -> err = %#v", err)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 

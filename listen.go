@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -135,7 +136,7 @@ func (e *Esshd) Listen(bs *BasicServer) (*BasicListener, error) {
 
 // Accept and Listen support BasicServer functionality.
 // Accept waits for and returns the next connection to the listener.
-func (b *BasicListener) Accept() (net.Conn, error) {
+func (b *BasicListener) Accept(ctx context.Context) (net.Conn, error) {
 	p("Accept for BasicListener called.")
 
 	e := b.esshd
@@ -192,7 +193,7 @@ func (b *BasicListener) Accept() (net.Conn, error) {
 			PortOne:  make(chan ssh.Channel),
 			ShutDown: b.esshd.Halt.ReqStop.Chan,
 		}
-		err = attempt.PerConnection(nConn, ca)
+		err = attempt.PerConnection(ctx, nConn, ca)
 		if err != nil {
 			return nil, err
 		}

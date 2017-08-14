@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -52,14 +53,15 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 				DownstreamHostPort:   dest,
 				TofuAddIfNotKnown:    true,
 			}
+			ctx := context.Background()
 
 			// first time we add the server key
-			channelToTcpServer, _, err := dc.Dial()
+			channelToTcpServer, _, err := dc.Dial(ctx)
 			cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 			// second time we connect based on that server key
 			dc.TofuAddIfNotKnown = false
-			channelToTcpServer, _, err = dc.Dial()
+			channelToTcpServer, _, err = dc.Dial(ctx)
 			cv.So(err, cv.ShouldBeNil)
 
 			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)

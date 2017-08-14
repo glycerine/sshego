@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -104,7 +105,7 @@ type DialConfig struct {
 // to which the sshd should forward our connection after successful
 // authentication.
 //
-func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
+func (dc *DialConfig) Dial(ctx context.Context) (net.Conn, *ssh.Client, error) {
 
 	cfg := NewSshegoConfig()
 	cfg.BitLenRSAkeys = 4096
@@ -134,7 +135,7 @@ func (dc *DialConfig) Dial() (net.Conn, *ssh.Client, error) {
 	try := 0
 	for ; try < retryCount; try++ {
 
-		sshClientConn, _, err = cfg.SSHConnect(dc.KnownHosts,
+		sshClientConn, _, err = cfg.SSHConnect(ctx, dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
 			dc.Pw, dc.TotpUrl)
 		if err == nil {

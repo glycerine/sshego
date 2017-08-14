@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -279,6 +280,7 @@ func UnencPingPong(dest, confirmationPayload, confirmationReply string, payloadB
 func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 	srvCfg, r1 := GenTestConfig()
 	cliCfg, r2 := GenTestConfig()
+	ctx := context.Background()
 
 	// now that we have all different ports, we
 	// must release them for use below.
@@ -286,7 +288,7 @@ func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 	r2()
 	srvCfg.NewEsshd()
 	if startEsshd {
-		srvCfg.Esshd.Start()
+		srvCfg.Esshd.Start(ctx)
 	}
 	// create a new acct
 	mylogin, toptPath, rsaPath, pw, err := TestCreateNewAccount(srvCfg)

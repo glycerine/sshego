@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ssh foo@localhost -p 2200 #pass=bar
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -61,7 +62,7 @@ type ConnectionAlert struct {
 	ShutDown chan struct{}
 }
 
-func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionAlert) {
+func (a *PerAttempt) handleChannels(ctx context.Context, chans <-chan ssh.NewChannel, ca *ConnectionAlert) {
 	// Service the incoming Channel channel in go routine
 	var shut chan struct{}
 	if ca != nil {
@@ -73,16 +74,18 @@ func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionA
 			if !stillOpen {
 				return
 			}
-			go a.handleChannel(newChannel, ca)
+			go a.handleChannel(ctx, newChannel, ca)
 		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
 			return
 		case <-shut:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (a *PerAttempt) handleChannel(newChannel ssh.NewChannel, ca *ConnectionAlert) {
+func (a *PerAttempt) handleChannel(ctx context.Context, newChannel ssh.NewChannel, ca *ConnectionAlert) {
 
 	// Since we're handling a shell, we expect a
 	// channel type of "session". The spec also describes

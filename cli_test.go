@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -62,10 +63,11 @@ func Test201ClientDirectSSH(t *testing.T) {
 			tries := 0
 			var channelToTcpServer net.Conn
 			var err error
+			ctx := context.Background()
 
 			for ; tries < 3; tries++ {
 				// first time we add the server key
-				channelToTcpServer, _, err = dc.Dial()
+				channelToTcpServer, _, err = dc.Dial(ctx)
 				fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
 				errs := err.Error()
 				case1 := strings.Contains(errs, "Re-run without -new")
@@ -82,7 +84,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 			// second time we connect based on that server key
 			dc.TofuAddIfNotKnown = false
-			channelToTcpServer, _, err = dc.Dial()
+			channelToTcpServer, _, err = dc.Dial(ctx)
 			cv.So(err, cv.ShouldBeNil)
 
 			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)

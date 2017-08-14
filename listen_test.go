@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -20,9 +21,10 @@ func Test501BasicServerListenStartupAcceptAndShutdown(t *testing.T) {
 		panicOn(err)
 		var aerr error
 		acceptDone := make(chan bool)
+		ctx := context.Background()
 		go func() {
 			pp("bs.Accept starting")
-			_, aerr = bs.Accept()
+			_, aerr = bs.Accept(ctx)
 			close(acceptDone)
 			pp("bs.Accept done and close(acceptDone) happened.")
 		}()
@@ -59,11 +61,11 @@ func Test502BasicServerListenStartupAndShutdown(t *testing.T) {
 }
 
 // help method for tests in this file
-func startBackgroundTestSshServer2(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
+func startBackgroundTestSshServer2(ctx context.Context, serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn *BasicListener) {
 	go func() {
 		for {
 			pp("startBackgroundTestTcpServer() about to call Accept().")
-			tcpServerConn, err := tcpSrvLsn.Accept()
+			tcpServerConn, err := tcpSrvLsn.Accept(ctx)
 			if err != nil {
 				pp("startBackgroundTestSshServer2 ignoring"+
 					" error from Accept: '%v'", err)
@@ -148,6 +150,7 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 		bs := NewBasicServer(cfg)
 		mylogin, _, rsaPath, _, err := TestCreateNewAccount(cfg)
 		panicOn(err)
+		ctx := context.Background()
 
 		blsn, err := bs.Listen(cfg.EmbeddedSSHd.Addr)
 		panicOn(err)
@@ -155,6 +158,7 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		startBackgroundTestSshServer2(
+			ctx,
 			serverDone,
 			payloadByteCount,
 			confirmationPayload,
@@ -176,13 +180,13 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 		}
 
 		// first time we add the server key
-		channelToTcpServer, _, err := dc.Dial()
+		channelToTcpServer, _, err := dc.Dial(ctx)
 		pp("here!!")
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, err = dc.Dial()
+		channelToTcpServer, _, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
 		verifyExchange2(
@@ -216,11 +220,13 @@ func Test505BasicServerInterruptsAcceptOnClose(t *testing.T) {
 			s := NewBasicServer(cfg)
 			bs, err := s.Listen(cfg.EmbeddedSSHd.Addr)
 			panicOn(err)
+			ctx := context.Background()
+
 			var aerr error
 			acceptDone := make(chan bool)
 			go func() {
 				pp("bs.Accept starting")
-				_, aerr = bs.Accept()
+				_, aerr = bs.Accept(ctx)
 				close(acceptDone)
 				pp("bs.Accept done and close(acceptDone) happened.")
 			}()
