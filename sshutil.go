@@ -1,7 +1,6 @@
 package sshego
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/glycerine/idem"
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -279,7 +279,7 @@ func (cfg *SshegoConfig) SSHConnect(h *KnownHosts, username string, keypath stri
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg, ctx)
+		sshClientConn, nc, err = mySSHDial("tcp", hostport, cliCfg, cfg.Halter)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
@@ -500,20 +500,28 @@ func getCiphers() []string {
 	*/
 }
 
-func mySSHDial(network, addr string, config *ssh.ClientConfig, ctx context.Context) (*ssh.Client, net.Conn, error) {
+func mySSHDial(network, addr string, config *ssh.ClientConfig, halt *idem.Halter) (*ssh.Client, net.Conn, error) {
 	conn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
 	}
-	if ctx != nil {
+	if config.Halt != nil || halt != nil {
 		go func() {
-			select {
-			case <-ctx.Done(): // hung here
-				conn.Close()
+			var h1, h2 chan struct{}
+			if config.Halt != nil {
+				h1 = config.Halt.ReqStop.Chan
 			}
+			if halt != nil {
+				h2 = halt.ReqStop.Chan
+			}
+			select {
+			case <-h1:
+			case <-h2:
+			}
+			conn.Close()
 		}()
 	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config) // hung here
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
 	if err != nil {
 		return nil, nil, err
 	}

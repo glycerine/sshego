@@ -58,12 +58,12 @@ import (
 
 type ConnectionAlert struct {
 	PortOne  chan ssh.Channel
-	ShutDown chan bool
+	ShutDown chan struct{}
 }
 
 func (a *PerAttempt) handleChannels(chans <-chan ssh.NewChannel, ca *ConnectionAlert) {
 	// Service the incoming Channel channel in go routine
-	var shut chan bool
+	var shut chan struct{}
 	if ca != nil {
 		shut = ca.ShutDown
 	}

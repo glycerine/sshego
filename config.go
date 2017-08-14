@@ -2,7 +2,6 @@ package sshego
 
 import (
 	"bufio"
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -12,13 +11,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/glycerine/idem"
 )
 
 // SshegoConfig is the top level, main config
 type SshegoConfig struct {
-	Nickname  string
-	Ctx       context.Context
-	CancelCtx context.CancelFunc
+	Nickname string
+	Halter   *idem.Halter
 
 	ConfigPath string
 
@@ -109,13 +109,11 @@ func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {
 	return
 }
 
-func NewSshegoConfig(parentctx context.Context) *SshegoConfig {
-	ctx, cancelctx := context.WithCancel(parentctx)
+func NewSshegoConfig() *SshegoConfig {
 
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
-		Ctx:           ctx,
-		CancelCtx:     cancelctx,
+		Halter:        idem.NewHalter(),
 	}
 	return cfg
 }
