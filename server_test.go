@@ -45,6 +45,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		defer TempDirCleanup(srvCfg.Origdir, srvCfg.Tempdir)
 		srvCfg.NewEsshd()
 		ctx := context.Background()
+		halt := ssh.NewHalter()
 
 		srvCfg.Esshd.Start(ctx)
 		// create a new acct
@@ -86,7 +87,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		cliCfg.RemoteToLocal.Listen.Addr = ""
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp)
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp, halt)
 		// we should be able to login, but then the sshd should
 		// reject the port forwarding request.
 		//
@@ -101,43 +102,45 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		fmt.Printf("\n test with only 2 of the required 3 auth...\n")
 		cliCfg.AddIfNotKnown = false
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, "")
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, "", halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp)
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp, halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp)
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp, halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		fmt.Printf("\n and test with only one auth method...\n")
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", "")
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", "", halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp)
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp, halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, "")
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, "", halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		fmt.Printf("\n and test with zero auth methods...\n")
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", "")
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", "", halt)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
 
 		fmt.Printf("\n test that reverse forwarding is denied by our sshd... even if all 3 proper auth is given\n")
 		cliCfg.RemoteToLocal.Listen.Addr = rev
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
-			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp)
+			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp, halt)
 		cv.So(err.Error(), cv.ShouldEqual, "StartupReverseListener failed: ssh: tcpip-forward request denied by peer")
 		fmt.Printf("\n excellent: as expected, err was '%s'\n", err)
 
 		// done with testing, cleanup
+		halt.ReqStop.Close()
+		halt.Done.Close()
 		srvCfg.Esshd.Stop()
 		<-srvCfg.Esshd.Halt.Done.Chan
 		cv.So(true, cv.ShouldEqual, true) // we should get here.

@@ -105,7 +105,7 @@ type DialConfig struct {
 // to which the sshd should forward our connection after successful
 // authentication.
 //
-func (dc *DialConfig) Dial(ctx context.Context) (net.Conn, *ssh.Client, error) {
+func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error) {
 
 	cfg := NewSshegoConfig()
 	cfg.BitLenRSAkeys = 4096
@@ -133,17 +133,24 @@ func (dc *DialConfig) Dial(ctx context.Context) (net.Conn, *ssh.Client, error) {
 	// that we do a simple retry logic after a brief pause here.
 	retryCount := 3
 	try := 0
-	for ; try < retryCount; try++ {
 
+	for ; try < retryCount; try++ {
+		ctx, cancelctx := context.WithCancel(parCtx)
+		childHalt := ssh.NewHalter()
 		// the 2nd argument is the underlying most-basic
 		// TCP net.Conn. We don't need to retrieve here since
 		// ctx or cfg.Halt will close it for us if need be.
 		sshClientConn, _, err = cfg.SSHConnect(ctx, dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
-			dc.Pw, dc.TotpUrl)
+			dc.Pw, dc.TotpUrl, childHalt)
 		if err == nil {
+			// tie ctx and childHalt together
+			go ssh.MAD(ctx, cancelctx, childHalt)
 			break
 		} else {
+			cancelctx()
+			childHalt.ReqStop.Close()
+			childHalt.Done.Close()
 			if strings.Contains(err.Error(), "getsockopt: connection refused") {
 				// simple connection error, just try again in a bit
 				time.Sleep(10 * time.Millisecond)

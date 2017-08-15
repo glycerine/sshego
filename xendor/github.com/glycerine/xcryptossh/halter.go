@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
 	"sync"
 )
@@ -99,4 +100,41 @@ func (h *Halter) IsStopRequested() bool {
 // IsDone returns true iff h.Done has been Closed().
 func (h *Halter) IsDone() bool {
 	return h.Done.IsClosed()
+}
+
+// MAD provides a link between context.Context
+//   and Halter.
+// MAD stands for mutual assured destruction.
+// When ctx is cancelled, then halt will be too.
+// When halt is done, then cancelctx will be called.
+func MAD(ctx context.Context, cancelctx context.CancelFunc, halt *Halter) {
+	go func() {
+		cchan := ctx.Done()
+		hchan1 := halt.ReqStop.Chan
+		hchan2 := halt.Done.Chan
+		cDone := false
+		hDone := false
+		for {
+			select {
+			case <-cchan:
+				halt.ReqStop.Close()
+				halt.Done.Close()
+				cDone = true
+				cchan = nil
+			case <-hchan1:
+				hDone = true
+				cancelctx()
+				hchan1 = nil
+				hchan2 = nil
+			case <-hchan2:
+				hDone = true
+				cancelctx()
+				hchan1 = nil
+				hchan2 = nil
+			}
+			if cDone && hDone {
+				return
+			}
+		}
+	}()
 }

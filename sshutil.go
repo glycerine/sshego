@@ -163,10 +163,13 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(ctx context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string) (*ssh.Client, net.Conn, error) {
+func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
 
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
+
+	ctx, cancelctx := context.WithCancel(ctxPar)
+	go ssh.MAD(ctx, cancelctx, halt)
 
 	var sshClientConn *ssh.Client
 	var nc net.Conn
@@ -275,12 +278,12 @@ func (cfg *SshegoConfig) SSHConnect(ctx context.Context, h *KnownHosts, username
 			HostKeyCallback: hostKeyCallback,
 			Config: ssh.Config{
 				Ciphers: getCiphers(),
-				Halt:    cfg.Halter,
+				Halt:    halt,
 			},
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = mySSHDial(ctx, "tcp", hostport, cliCfg, cfg.Halter)
+		sshClientConn, nc, err = mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
