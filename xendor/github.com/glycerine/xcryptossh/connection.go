@@ -119,6 +119,7 @@ func newConnection(c net.Conn) *connection {
 
 func (c *connection) Close() error {
 	c.halt.ReqStop.Close()
+	c.halt.Done.Close()
 	return c.sshConn.conn.Close()
 }
 
