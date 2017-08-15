@@ -9,6 +9,7 @@ import (
 	"os"
 
 	tun "github.com/glycerine/sshego"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 const ProgramName = "gosshtun"
@@ -59,9 +60,10 @@ func main() {
 	passphrase := ""
 	totpUrl := ""
 	ctx := context.Background()
+	halt := ssh.NewHalter()
 
-	_, _, err = cfg.SSHConnect(h, cfg.Username, cfg.PrivateKeyPath,
-		cfg.SSHdServer.Host, cfg.SSHdServer.Port, passphrase, totpUrl, ctx)
+	_, _, err = cfg.SSHConnect(ctx, h, cfg.Username, cfg.PrivateKeyPath,
+		cfg.SSHdServer.Host, cfg.SSHdServer.Port, passphrase, totpUrl, halt)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(0)
