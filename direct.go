@@ -46,12 +46,12 @@ func handleDirectTcp(newChannel ssh.NewChannel, ca *ConnectionAlert) {
 		switch port {
 		case minus2_uint32:
 			// unix domain request
-			pp("direct.go has unix domain forwarding request")
+			//pp("direct.go has unix domain forwarding request")
 			targetConn, err = net.Dial("unix", host)
 		case 1:
-			pp("direct.go has port 1 forwarding request. ca = %#v", ca)
+			//pp("direct.go has port 1 forwarding request. ca = %#v", ca)
 			if ca != nil && ca.PortOne != nil {
-				pp("handleDirectTcp sees a port one request with a live ca.PortOne")
+				//pp("handleDirectTcp sees a port one request with a live ca.PortOne")
 				select {
 				case ca.PortOne <- ch:
 				case <-ca.ShutDown:

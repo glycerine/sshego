@@ -126,7 +126,7 @@ func (h *HostDb) privpath() string {
 
 func (h *HostDb) init() error {
 	h.Persist.HostPrivateKeyPath = h.privpath()
-	pp("HostDb.init(): h.Persist.HostPrivateKeyPath = '%v'", h.Persist.HostPrivateKeyPath)
+	p("HostDb.init(): h.Persist.HostPrivateKeyPath = '%v'", h.Persist.HostPrivateKeyPath)
 	err := h.loadOrCreate()
 	return err
 }
@@ -153,7 +153,7 @@ func (h *HostDb) generateHostKey() error {
 
 func (h *HostDb) gendir() error {
 	path := h.cfg.EmbeddedSSHdHostDbPath
-	pp("HostDb.gendir has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
+	p("HostDb.gendir has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	if dirExists(path) {
 		return nil
 	}
@@ -194,7 +194,7 @@ func (h *HostDb) opendb() error {
 	if h.cfg.EmbeddedSSHdHostDbPath == "" {
 		panic("opendb() called on empty h.cfg.EmbeddedSSHdHostDbPath")
 	}
-	pp("HostDb.opendb() has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
+	p("HostDb.opendb() has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	if h.db.HostDb == nil {
 		err := h.gendir()
 		if err != nil {
@@ -232,8 +232,8 @@ func (h *HostDb) save(lock bool) error {
 }
 
 func (h *HostDb) loadOrCreate() error {
-	pp("top of HostDb.loadOrCreate()...")
-	pp("HostDb.loadOrCreate has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
+	p("top of HostDb.loadOrCreate()...")
+	p("HostDb.loadOrCreate has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
 	err := h.opendb()
 	if err != nil {
 		panic(err)
@@ -242,11 +242,11 @@ func (h *HostDb) loadOrCreate() error {
 	}
 
 	if h.Persist.HostPrivateKeyPath != "" && fileExists(h.Persist.HostPrivateKeyPath) {
-		pp("h.Persist.HostPrivateKeyPath exists already... loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
+		p("h.Persist.HostPrivateKeyPath exists already... loaded HostDb from msgpath()='%s'. db = '%s'", h.msgpath(), h)
 
 	} else {
 
-		pp("h.Persist.HostPrivateKeyPath = '%s' doesn't exist; make a host key...", h.msgpath())
+		p("h.Persist.HostPrivateKeyPath = '%s' doesn't exist; make a host key...", h.msgpath())
 
 		// no db, so make a host key
 		err := h.generateHostKey()
@@ -357,7 +357,7 @@ func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKe
 }
 
 func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath string, err error) {
-	pp("finishUserBuildout started: user.MyLogin:'%v' user.ClearPw:'%v' user.MyEmail:'%v' toptPath='%v'",
+	p("finishUserBuildout started: user.MyLogin:'%v' user.ClearPw:'%v' user.MyEmail:'%v' toptPath='%v'",
 		user.MyLogin, user.ClearPw, user.MyEmail, toptPath)
 
 	if !h.cfg.SkipPassphrase {
