@@ -437,8 +437,8 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, a.Config)
 	if err != nil {
-		msg := fmt.Errorf("%v did not handshake: %v", loc, err)
-		log.Printf(msg.Error())
+		msg := fmt.Errorf("%v sshego PerAttempt.PerConnection() did not handshake: %v", loc, err)
+		p(msg.Error())
 		return msg
 	}
 

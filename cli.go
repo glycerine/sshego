@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // DialConfig provides Dial() with what
@@ -135,6 +135,9 @@ func (dc *DialConfig) Dial(ctx context.Context) (net.Conn, *ssh.Client, error) {
 	try := 0
 	for ; try < retryCount; try++ {
 
+		// the 2nd argument is the underlying most-basic
+		// TCP net.Conn. We don't need to retrieve here since
+		// ctx or cfg.Halt will close it for us if need be.
 		sshClientConn, _, err = cfg.SSHConnect(ctx, dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
 			dc.Pw, dc.TotpUrl)

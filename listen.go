@@ -31,7 +31,7 @@ func NewBasicServer(cfg *SshegoConfig) *BasicServer {
 	return &BasicServer{cfg: cfg}
 }
 
-// Close closes bind to the port that the server has.
+// Close releases all server port bindings.
 func (b *BasicServer) Close() error {
 	// In case we haven't yet actually started, close Done too.
 	// Multiple Close() calls on an idem.Halter are fine.

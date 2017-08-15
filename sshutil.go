@@ -506,6 +506,12 @@ func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConf
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Close conn when when get a shutdown request.
+	// This close on the underlying TCP connection
+	// is essential to unblock some reads deep in
+	// the ssh codebash that otherwise won't timeout.
+	// Any of three flavors of close work.
 	if config.Halt != nil || halt != nil {
 		go func() {
 			var h1, h2 chan struct{}
