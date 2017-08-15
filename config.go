@@ -12,13 +12,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/glycerine/idem"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // SshegoConfig is the top level, main config
 type SshegoConfig struct {
 	Nickname string
-	Halter   *idem.Halter
+	Halter   *ssh.Halter
 
 	ConfigPath string
 
@@ -113,7 +113,7 @@ func NewSshegoConfig() *SshegoConfig {
 
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
-		Halter:        idem.NewHalter(),
+		Halter:        ssh.NewHalter(),
 	}
 	return cfg
 }

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/glycerine/idem"
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -276,6 +275,7 @@ func (cfg *SshegoConfig) SSHConnect(ctx context.Context, h *KnownHosts, username
 			HostKeyCallback: hostKeyCallback,
 			Config: ssh.Config{
 				Ciphers: getCiphers(),
+				Halt:    cfg.Halter,
 			},
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
@@ -501,7 +501,7 @@ func getCiphers() []string {
 	*/
 }
 
-func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *idem.Halter) (*ssh.Client, net.Conn, error) {
+func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
 	conn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err

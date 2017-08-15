@@ -18,7 +18,7 @@ import (
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
-	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // Esshd is our embedded sshd server,
@@ -827,7 +827,9 @@ func (a *PerAttempt) SetTripleConfig() {
 		AuthLogCallback:             a.AuthLogCallback,
 		Config: ssh.Config{
 			Ciphers:      getCiphers(),
-			KeyExchanges: []string{kexAlgoCurve25519SHA256}},
+			KeyExchanges: []string{kexAlgoCurve25519SHA256},
+			Halt:         a.cfg.Halter,
+		},
 		ServerVersion: "SSH-2.0-OpenSSH_6.9",
 	}
 	a.Config.AddHostKey(a.State.HostKey)
