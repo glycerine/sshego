@@ -170,7 +170,7 @@ func NewServerConn(ctx context.Context, c net.Conn, config *ServerConfig) (*Serv
 		fullConf.MaxAuthTries = 6
 	}
 
-	s := newConnection(c)
+	s := newConnection(c, config.Halt)
 	perms, err := s.serverHandshake(ctx, &fullConf)
 	if err != nil {
 		c.Close()
@@ -213,7 +213,9 @@ func (s *connection) serverHandshake(ctx context.Context, config *ServerConfig) 
 
 	tr := newTransport(s.sshConn.conn, config.Rand, false /* not client */, &config.Config)
 	s.transport = newServerTransport(ctx, tr, s.clientVersion, s.serverVersion, config)
-
+	if s.transport == nil {
+		return nil, fmt.Errorf("ssh: shutting down.")
+	}
 	if err := s.transport.waitSession(ctx); err != nil {
 		return nil, err
 	}

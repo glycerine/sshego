@@ -125,9 +125,9 @@ func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 		errCond:          newCond(),
 		halt:             halt,
 	}
-	if m.halt == nil {
-		m.halt = NewHalter()
-	}
+	//	if m.halt == nil {
+	//		m.halt = NewHalter()
+	//	}
 
 	if debugMux {
 		m.chanList.offset = atomic.AddUint32(&globalOff, 1)
@@ -177,7 +177,7 @@ func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payl
 			return false, nil, fmt.Errorf("ssh: unexpected response to request: %#v", msg)
 		}
 
-	case <-m.halt.Done.Chan:
+	case <-m.halt.ReqStop.Chan:
 		return false, nil, io.EOF
 	case <-ctx.Done():
 		return false, nil, io.EOF
@@ -277,7 +277,7 @@ func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 			mux:       m,
 		}:
 			// just the send
-		case <-m.halt.Done.Chan:
+		case <-m.halt.ReqStop.Chan:
 			return io.EOF
 		case <-ctx.Done():
 			return io.EOF
@@ -285,7 +285,7 @@ func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 	case *globalRequestSuccessMsg, *globalRequestFailureMsg:
 		select {
 		case m.globalResponses <- msg:
-		case <-m.halt.Done.Chan:
+		case <-m.halt.ReqStop.Chan:
 			return io.EOF
 		case <-ctx.Done():
 			return io.EOF
@@ -320,7 +320,7 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 	c.remoteWin.add(msg.PeersWindow)
 	select {
 	case m.incomingChannels <- c:
-	case <-m.halt.Done.Chan:
+	case <-m.halt.ReqStop.Chan:
 		return io.EOF
 	case <-ctx.Done():
 		return io.EOF
@@ -355,7 +355,7 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 
 	var done chan struct{}
 	if m.halt != nil {
-		done = m.halt.Done.Chan
+		done = m.halt.ReqStop.Chan
 	}
 
 	select {

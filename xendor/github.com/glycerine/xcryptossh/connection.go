@@ -71,7 +71,8 @@ type Conn interface {
 	Wait() error
 
 	// Done can be used to await connection shutdown. The
-	// returned channel will be closed when the Conn is closed.
+	// returned channel will be closed when the Conn is
+	// shutting down.
 	Done() <-chan struct{}
 
 	// TODO(hanwen): consider exposing:
@@ -83,9 +84,9 @@ type Conn interface {
 // passed-in channel.
 func DiscardRequests(ctx context.Context, in <-chan *Request, halt *Halter) {
 
-	var done chan struct{}
+	var reqStop chan struct{}
 	if halt != nil {
-		done = halt.Done.Chan
+		reqStop = halt.ReqStop.Chan
 	}
 	for {
 		select {
@@ -93,7 +94,7 @@ func DiscardRequests(ctx context.Context, in <-chan *Request, halt *Halter) {
 			if req != nil && req.WantReply {
 				req.Reply(false, nil)
 			}
-		case <-done:
+		case <-reqStop:
 			return
 		case <-ctx.Done():
 			return
@@ -113,16 +114,15 @@ type connection struct {
 	*mux
 }
 
-func newConnection(c net.Conn) *connection {
+func newConnection(c net.Conn, halt *Halter) *connection {
 	return &connection{
 		sshConn: sshConn{conn: c},
-		halt:    NewHalter(),
+		halt:    halt,
 	}
 }
 
 func (c *connection) Close() error {
 	c.halt.ReqStop.Close()
-	c.halt.Done.Close()
 	return c.sshConn.conn.Close()
 }
 

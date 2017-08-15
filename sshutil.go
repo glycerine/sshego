@@ -537,5 +537,5 @@ func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConf
 	if err != nil {
 		return nil, nil, err
 	}
-	return ssh.NewClient(ctx, c, chans, reqs), conn, nil
+	return ssh.NewClient(ctx, c, chans, reqs, halt), conn, nil
 }

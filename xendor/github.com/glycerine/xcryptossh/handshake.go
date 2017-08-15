@@ -115,7 +115,7 @@ func newHandshakeTransport(ctx context.Context, conn keyingTransport, config *Co
 	select {
 	case t.requestKex <- struct{}{}:
 		return t
-	case <-t.config.Halt.Done.Chan:
+	case <-t.config.Halt.ReqStop.Chan:
 		return nil
 	case <-ctx.Done():
 		return nil
@@ -140,6 +140,10 @@ func newClientTransport(ctx context.Context, conn keyingTransport, clientVersion
 func newServerTransport(ctx context.Context, conn keyingTransport, clientVersion, serverVersion []byte, config *ServerConfig) *handshakeTransport {
 
 	t := newHandshakeTransport(ctx, conn, &config.Config, clientVersion, serverVersion)
+	if t == nil {
+		// shutting down
+		return nil
+	}
 	t.hostKeys = config.hostKeys
 	go t.readLoop(ctx)
 	go t.kexLoop(ctx)
@@ -192,7 +196,7 @@ func (t *handshakeTransport) readPacket(ctx context.Context) ([]byte, error) {
 			return nil, t.readError
 		}
 		return p, nil
-	case <-t.config.Halt.Done.Chan:
+	case <-t.config.Halt.ReqStop.Chan:
 		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, io.EOF
@@ -214,7 +218,7 @@ func (t *handshakeTransport) readLoop(ctx context.Context) {
 		}
 		select {
 		case t.incoming <- p:
-		case <-t.config.Halt.Done.Chan:
+		case <-t.config.Halt.ReqStop.Chan:
 			return
 		case <-ctx.Done():
 			return
@@ -270,7 +274,31 @@ func (t *handshakeTransport) resetWriteThresholds() {
 	}
 }
 
+type DEBUGtestName struct {
+	testName string
+	mut      sync.Mutex
+}
+
+var DEBUGtn DEBUGtestName
+
+func SetTestName(s string) {
+	DEBUGtn.mut.Lock()
+	DEBUGtn.testName = s
+	DEBUGtn.mut.Unlock()
+}
+
+func GetTestName() (s string) {
+	DEBUGtn.mut.Lock()
+	s = DEBUGtn.testName
+	DEBUGtn.mut.Unlock()
+	return
+}
+
 func (t *handshakeTransport) kexLoop(ctx context.Context) {
+
+	p := func(s string) { fmt.Printf("\n\nTest '%s': "+s+"\n\n", GetTestName()) } // DEBUG
+	p(fmt.Sprintf("DEBUG 111111-begin kexLoop started. t=%p. t.config.Halt.ReqStop.Chan=%p. t.config.Halt=%p", t, t.config.Halt.ReqStop.Chan, t.config.Halt))
+	defer p(fmt.Sprintf("DEBUG 111111-fin kexLoop returned. t=%p", t))
 
 write:
 	for t.getWriteError() == nil {
@@ -286,9 +314,11 @@ write:
 				}
 			case <-t.requestKex:
 				break
-			case <-t.config.Halt.Done.Chan:
+			case <-t.config.Halt.ReqStop.Chan:
+				p("DEBUG 111111-end 0-th kexLoop got t.config.Halt.ReqStop.Chan")
 				return
 			case <-ctx.Done():
+				p("DEBUG 111111-end 0-th kexLoop got ctx.Done()")
 				return
 			}
 
@@ -305,9 +335,11 @@ write:
 			if request != nil {
 				select {
 				case request.done <- err:
-				case <-t.config.Halt.Done.Chan:
+				case <-t.config.Halt.ReqStop.Chan:
+					p("DEBUG 111111-end 1/2-th kexLoop got t.config.Halt.ReqStop.Chan")
 					return
 				case <-ctx.Done():
+					p("DEBUG 111111-end 1/2-th kexLoop got ctx.Done()")
 					return
 				}
 			}
@@ -341,7 +373,6 @@ write:
 		for {
 			select {
 			case <-t.requestKex:
-				//
 			default:
 				break clear
 			}
@@ -349,9 +380,11 @@ write:
 
 		select {
 		case request.done <- t.writeError:
-		case <-t.config.Halt.Done.Chan:
+		case <-t.config.Halt.ReqStop.Chan:
+			p("DEBUG 111111-end 3/4-th kexLoop got t.config.Halt.ReqStop.Chan")
 			return
 		case <-ctx.Done():
+			p("DEBUG 111111-end 3/4-th kexLoop got ctx.Done()")
 			return
 		}
 
@@ -373,23 +406,31 @@ write:
 	// drain startKex channel. We don't service t.requestKex
 	// because nobody does blocking sends there.
 	go func() {
+		p(fmt.Sprintf("DEBUG 111111-begin DRAIN the startKex. t=%p", t))
+
+		defer func() {
+			t.config.Halt.Done.Close()
+			p(fmt.Sprintf("DEBUG 111111-fin DRAIN the startKex. t=%p", t))
+		}()
 		for {
 			select {
 			case init := <-t.startKex:
 				if init != nil {
 					select {
 					case init.done <- t.writeError:
-					case <-t.config.Halt.Done.Chan:
+					case <-t.config.Halt.ReqStop.Chan:
+						p("DEBUG 111111-end 1st kexLoop got t.config.Halt.ReqStop.Chan")
 						return
 					case <-ctx.Done():
+						p("DEBUG 111111-end 2nd kexLoop got ctx.Done()")
 						return
 					}
 				}
 			case <-t.config.Halt.ReqStop.Chan:
-				return
-			case <-t.config.Halt.Done.Chan:
+				p("DEBUG 111111-end 3rd kexLoop got t.config.Halt.ReqStop.Chan") // end 003, 005
 				return
 			case <-ctx.Done():
+				p("DEBUG 111111-end 5th kexLoop got ctx.Done()") // end of 002/003/005
 				return
 			}
 		}
@@ -457,12 +498,12 @@ func (t *handshakeTransport) readOnePacket(ctx context.Context, first bool) ([]b
 	case t.startKex <- &kex:
 		select {
 		case err = <-kex.done:
-		case <-t.config.Halt.Done.Chan:
+		case <-t.config.Halt.ReqStop.Chan:
 			return nil, io.EOF
 		case <-ctx.Done():
 			return nil, io.EOF
 		}
-	case <-t.config.Halt.Done.Chan:
+	case <-t.config.Halt.ReqStop.Chan:
 		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, io.EOF

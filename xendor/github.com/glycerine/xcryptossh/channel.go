@@ -421,9 +421,9 @@ func (c *channel) handlePacket(packet []byte) error {
 		return err
 	}
 
-	var done chan struct{}
+	var reqStop chan struct{}
 	if c.mux.halt != nil {
-		done = c.mux.halt.Done.Chan
+		reqStop = c.mux.halt.ReqStop.Chan
 	}
 
 	switch msg := decoded.(type) {
@@ -434,7 +434,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		c.mux.chanList.remove(msg.PeersId)
 		select {
 		case c.msg <- msg:
-		case <-done:
+		case <-reqStop:
 			return io.EOF
 		}
 	case *channelOpenConfirmMsg:
@@ -449,7 +449,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		c.remoteWin.add(msg.MyWindow)
 		select {
 		case c.msg <- msg:
-		case <-done:
+		case <-reqStop:
 			return io.EOF
 		}
 	case *windowAdjustMsg:
@@ -465,13 +465,13 @@ func (c *channel) handlePacket(packet []byte) error {
 		}
 		select {
 		case c.incomingRequests <- &req:
-		case <-done:
+		case <-reqStop:
 			return io.EOF
 		}
 	default:
 		select {
 		case c.msg <- msg:
-		case <-done:
+		case <-reqStop:
 			return io.EOF
 		}
 	}
@@ -592,7 +592,7 @@ func (ch *channel) Stderr() io.ReadWriter {
 
 func (ch *channel) Done() <-chan struct{} {
 	if ch.mux.halt != nil {
-		return ch.mux.halt.Done.Chan
+		return ch.mux.halt.ReqStop.Chan
 	}
 	return nil
 }
@@ -617,14 +617,14 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 	if err := ch.sendMessage(msg); err != nil {
 		return false, err
 	}
-	var done chan struct{}
+	var reqStop chan struct{}
 	if ch.mux.halt != nil {
-		done = ch.mux.halt.Done.Chan
+		reqStop = ch.mux.halt.ReqStop.Chan
 	}
 
 	if wantReply {
 		select {
-		case <-done:
+		case <-reqStop:
 			return false, io.EOF
 		case m, ok := (<-ch.msg):
 			if !ok {

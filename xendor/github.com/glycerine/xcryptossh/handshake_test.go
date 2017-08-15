@@ -115,7 +115,9 @@ func handshakePair(clientConf *ClientConfig, addr string, noise bool) (client *h
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
 	server = newServerTransport(ctx, trS, v, v, serverConf)
-
+	if server == nil {
+		return nil, nil, fmt.Errorf("ssh: shutting down.")
+	}
 	if err := server.waitSession(ctx); err != nil {
 		return nil, nil, fmt.Errorf("server.waitSession: %v", err)
 	}
@@ -248,6 +250,10 @@ func TestForceFirstKex(t *testing.T) {
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
 	server := newServerTransport(ctx, trS, v, v, serverConf)
+	if server == nil {
+		// shut down
+		return
+	}
 
 	defer client.Close()
 	defer server.Close()
