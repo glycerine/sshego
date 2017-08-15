@@ -430,7 +430,7 @@ func (e *Esshd) Start(ctx context.Context) {
 func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *ConnectionAlert) error {
 
 	loc := a.cfg.EmbeddedSSHd.Addr
-	log.Printf("%v Accept has returned an nConn... sshego PerConnection(). doing handshake. This is where the server handshake transport and kexLoop are started: ssh.NewServerConn().", loc, a.Config)
+	log.Printf("%v Accept has returned an nConn... sshego PerConnection(). doing handshake. This is where the server handshake transport and kexLoop are started: ssh.NewServerConn().", loc)
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
