@@ -12,7 +12,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/glycerine/xcryptossh/testdata"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/testdata"
 )
 
 var (
