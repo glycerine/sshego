@@ -370,6 +370,8 @@ write:
 						return
 					}
 				}
+			case <-t.config.Halt.ReqStop.Chan:
+				return
 			case <-t.config.Halt.Done.Chan:
 				return
 			}
