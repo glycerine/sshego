@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ type keyingTransport interface {
 	// prepareKeyChange sets up a key change. The key change for a
 	// direction will be effected if a msgNewKeys message is sent
 	// or received.
-	prepareKeyChange(*algorithms, *kexResult, *Config) error
+	prepareKeyChange(context.Context, *algorithms, *kexResult, *Config) error
 }
 
 // handshakeTransport implements rekeying on top of a keyingTransport
@@ -96,7 +97,7 @@ type pendingKex struct {
 	done      chan error
 }
 
-func newHandshakeTransport(conn keyingTransport, config *Config, clientVersion, serverVersion []byte) *handshakeTransport {
+func newHandshakeTransport(ctx context.Context, conn keyingTransport, config *Config, clientVersion, serverVersion []byte) *handshakeTransport {
 	t := &handshakeTransport{
 		conn:          conn,
 		serverVersion: serverVersion,
@@ -116,11 +117,13 @@ func newHandshakeTransport(conn keyingTransport, config *Config, clientVersion, 
 		return t
 	case <-t.config.Halt.Done.Chan:
 		return nil
+	case <-ctx.Done():
+		return nil
 	}
 }
 
-func newClientTransport(conn keyingTransport, clientVersion, serverVersion []byte, config *ClientConfig, dialAddr string, addr net.Addr) *handshakeTransport {
-	t := newHandshakeTransport(conn, &config.Config, clientVersion, serverVersion)
+func newClientTransport(ctx context.Context, conn keyingTransport, clientVersion, serverVersion []byte, config *ClientConfig, dialAddr string, addr net.Addr) *handshakeTransport {
+	t := newHandshakeTransport(ctx, conn, &config.Config, clientVersion, serverVersion)
 	t.dialAddress = dialAddr
 	t.remoteAddr = addr
 	t.hostKeyCallback = config.HostKeyCallback
@@ -129,17 +132,17 @@ func newClientTransport(conn keyingTransport, clientVersion, serverVersion []byt
 	} else {
 		t.hostKeyAlgorithms = supportedHostKeyAlgos
 	}
-	go t.readLoop()
-	go t.kexLoop()
+	go t.readLoop(ctx)
+	go t.kexLoop(ctx)
 	return t
 }
 
-func newServerTransport(conn keyingTransport, clientVersion, serverVersion []byte, config *ServerConfig) *handshakeTransport {
+func newServerTransport(ctx context.Context, conn keyingTransport, clientVersion, serverVersion []byte, config *ServerConfig) *handshakeTransport {
 
-	t := newHandshakeTransport(conn, &config.Config, clientVersion, serverVersion)
+	t := newHandshakeTransport(ctx, conn, &config.Config, clientVersion, serverVersion)
 	t.hostKeys = config.hostKeys
-	go t.readLoop()
-	go t.kexLoop()
+	go t.readLoop(ctx)
+	go t.kexLoop(ctx)
 	return t
 }
 
@@ -149,8 +152,8 @@ func (t *handshakeTransport) getSessionID() []byte {
 
 // waitSession waits for the session to be established. This should be
 // the first thing to call after instantiating handshakeTransport.
-func (t *handshakeTransport) waitSession() error {
-	p, err := t.readPacket()
+func (t *handshakeTransport) waitSession(ctx context.Context) error {
+	p, err := t.readPacket(ctx)
 	if err != nil {
 		return err
 	}
@@ -182,7 +185,7 @@ func (t *handshakeTransport) printPacket(p []byte, write bool) {
 	}
 }
 
-func (t *handshakeTransport) readPacket() ([]byte, error) {
+func (t *handshakeTransport) readPacket(ctx context.Context) ([]byte, error) {
 	select {
 	case p, ok := <-t.incoming:
 		if !ok {
@@ -191,13 +194,15 @@ func (t *handshakeTransport) readPacket() ([]byte, error) {
 		return p, nil
 	case <-t.config.Halt.Done.Chan:
 		return nil, io.EOF
+	case <-ctx.Done():
+		return nil, io.EOF
 	}
 }
 
-func (t *handshakeTransport) readLoop() {
+func (t *handshakeTransport) readLoop(ctx context.Context) {
 	first := true
 	for {
-		p, err := t.readOnePacket(first)
+		p, err := t.readOnePacket(ctx, first)
 		first = false
 		if err != nil {
 			t.readError = err
@@ -210,6 +215,8 @@ func (t *handshakeTransport) readLoop() {
 		select {
 		case t.incoming <- p:
 		case <-t.config.Halt.Done.Chan:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -263,7 +270,7 @@ func (t *handshakeTransport) resetWriteThresholds() {
 	}
 }
 
-func (t *handshakeTransport) kexLoop() {
+func (t *handshakeTransport) kexLoop(ctx context.Context) {
 
 write:
 	for t.getWriteError() == nil {
@@ -280,6 +287,8 @@ write:
 			case <-t.requestKex:
 				break
 			case <-t.config.Halt.Done.Chan:
+				return
+			case <-ctx.Done():
 				return
 			}
 
@@ -298,6 +307,8 @@ write:
 				case request.done <- err:
 				case <-t.config.Halt.Done.Chan:
 					return
+				case <-ctx.Done():
+					return
 				}
 			}
 			break
@@ -311,7 +322,7 @@ write:
 		// another key change request, until we close the done
 		// channel on the pendingKex request.
 
-		err := t.enterKeyExchange(request.otherInit)
+		err := t.enterKeyExchange(ctx, request.otherInit)
 
 		t.mu.Lock()
 		t.writeError = err
@@ -339,6 +350,8 @@ write:
 		select {
 		case request.done <- t.writeError:
 		case <-t.config.Halt.Done.Chan:
+			return
+		case <-ctx.Done():
 			return
 		}
 
@@ -368,11 +381,15 @@ write:
 					case init.done <- t.writeError:
 					case <-t.config.Halt.Done.Chan:
 						return
+					case <-ctx.Done():
+						return
 					}
 				}
 			case <-t.config.Halt.ReqStop.Chan:
 				return
 			case <-t.config.Halt.Done.Chan:
+				return
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -400,8 +417,8 @@ func (t *handshakeTransport) resetReadThresholds() {
 	}
 }
 
-func (t *handshakeTransport) readOnePacket(first bool) ([]byte, error) {
-	p, err := t.conn.readPacket()
+func (t *handshakeTransport) readOnePacket(ctx context.Context, first bool) ([]byte, error) {
+	p, err := t.conn.readPacket(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -442,8 +459,12 @@ func (t *handshakeTransport) readOnePacket(first bool) ([]byte, error) {
 		case err = <-kex.done:
 		case <-t.config.Halt.Done.Chan:
 			return nil, io.EOF
+		case <-ctx.Done():
+			return nil, io.EOF
 		}
 	case <-t.config.Halt.Done.Chan:
+		return nil, io.EOF
+	case <-ctx.Done():
 		return nil, io.EOF
 	}
 
@@ -562,7 +583,7 @@ func (t *handshakeTransport) Close() error {
 	return t.conn.Close()
 }
 
-func (t *handshakeTransport) enterKeyExchange(otherInitPacket []byte) error {
+func (t *handshakeTransport) enterKeyExchange(ctx context.Context, otherInitPacket []byte) error {
 	if debugHandshake {
 		log.Printf("%s entered key exchange", t.id())
 	}
@@ -607,7 +628,7 @@ func (t *handshakeTransport) enterKeyExchange(otherInitPacket []byte) error {
 	if otherInit.FirstKexFollows && (clientInit.KexAlgos[0] != serverInit.KexAlgos[0] || clientInit.ServerHostKeyAlgos[0] != serverInit.ServerHostKeyAlgos[0]) {
 		// other side sent a kex message for the wrong algorithm,
 		// which we have to ignore.
-		if _, err := t.conn.readPacket(); err != nil {
+		if _, err := t.conn.readPacket(ctx); err != nil {
 			return err
 		}
 	}
@@ -619,9 +640,9 @@ func (t *handshakeTransport) enterKeyExchange(otherInitPacket []byte) error {
 
 	var result *kexResult
 	if len(t.hostKeys) > 0 {
-		result, err = t.server(kex, t.algorithms, &magics)
+		result, err = t.server(ctx, kex, t.algorithms, &magics)
 	} else {
-		result, err = t.client(kex, t.algorithms, &magics)
+		result, err = t.client(ctx, kex, t.algorithms, &magics)
 	}
 
 	if err != nil {
@@ -633,13 +654,13 @@ func (t *handshakeTransport) enterKeyExchange(otherInitPacket []byte) error {
 	}
 	result.SessionID = t.sessionID
 
-	if err := t.conn.prepareKeyChange(t.algorithms, result, t.config); err != nil {
+	if err := t.conn.prepareKeyChange(ctx, t.algorithms, result, t.config); err != nil {
 		return err
 	}
 	if err = t.conn.writePacket([]byte{msgNewKeys}); err != nil {
 		return err
 	}
-	if packet, err := t.conn.readPacket(); err != nil {
+	if packet, err := t.conn.readPacket(ctx); err != nil {
 		return err
 	} else if packet[0] != msgNewKeys {
 		return unexpectedMessageError(msgNewKeys, packet[0])
@@ -648,7 +669,7 @@ func (t *handshakeTransport) enterKeyExchange(otherInitPacket []byte) error {
 	return nil
 }
 
-func (t *handshakeTransport) server(kex kexAlgorithm, algs *algorithms, magics *handshakeMagics) (*kexResult, error) {
+func (t *handshakeTransport) server(ctx context.Context, kex kexAlgorithm, algs *algorithms, magics *handshakeMagics) (*kexResult, error) {
 	var hostKey Signer
 	for _, k := range t.hostKeys {
 		if algs.hostKey == k.PublicKey().Type() {
@@ -656,12 +677,12 @@ func (t *handshakeTransport) server(kex kexAlgorithm, algs *algorithms, magics *
 		}
 	}
 
-	r, err := kex.Server(t.conn, t.config.Rand, magics, hostKey)
+	r, err := kex.Server(ctx, t.conn, t.config.Rand, magics, hostKey)
 	return r, err
 }
 
-func (t *handshakeTransport) client(kex kexAlgorithm, algs *algorithms, magics *handshakeMagics) (*kexResult, error) {
-	result, err := kex.Client(t.conn, t.config.Rand, magics)
+func (t *handshakeTransport) client(ctx context.Context, kex kexAlgorithm, algs *algorithms, magics *handshakeMagics) (*kexResult, error) {
+	result, err := kex.Client(ctx, t.conn, t.config.Rand, magics)
 	if err != nil {
 		return nil, err
 	}

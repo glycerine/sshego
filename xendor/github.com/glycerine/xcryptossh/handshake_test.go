@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -105,18 +106,20 @@ func handshakePair(clientConf *ClientConfig, addr string, noise bool) (client *h
 	clientConf.SetDefaults()
 
 	v := []byte("version")
-	client = newClientTransport(trC, v, v, clientConf, addr, a.RemoteAddr())
+	ctx := context.Background()
+
+	client = newClientTransport(ctx, trC, v, v, clientConf, addr, a.RemoteAddr())
 
 	serverConf := &ServerConfig{}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
-	server = newServerTransport(trS, v, v, serverConf)
+	server = newServerTransport(ctx, trS, v, v, serverConf)
 
-	if err := server.waitSession(); err != nil {
+	if err := server.waitSession(ctx); err != nil {
 		return nil, nil, fmt.Errorf("server.waitSession: %v", err)
 	}
-	if err := client.waitSession(); err != nil {
+	if err := client.waitSession(ctx); err != nil {
 		return nil, nil, fmt.Errorf("client.waitSession: %v", err)
 	}
 
@@ -179,12 +182,14 @@ func TestHandshakeBasic(t *testing.T) {
 		}
 	}()
 
+	ctx := context.Background()
+
 	// Server checks that client messages come in cleanly
 	i := 0
 	err = nil
 	for ; i < N; i++ {
 		var p []byte
-		p, err = trS.readPacket()
+		p, err = trS.readPacket(ctx)
 		if err != nil {
 			break
 		}
@@ -235,13 +240,14 @@ func TestForceFirstKex(t *testing.T) {
 	clientConf.SetDefaults()
 
 	v := []byte("version")
-	client := newClientTransport(trC, v, v, clientConf, "addr", a.RemoteAddr())
+	ctx := context.Background()
+	client := newClientTransport(ctx, trC, v, v, clientConf, "addr", a.RemoteAddr())
 
 	serverConf := &ServerConfig{}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
-	server := newServerTransport(trS, v, v, serverConf)
+	server := newServerTransport(ctx, trS, v, v, serverConf)
 
 	defer client.Close()
 	defer server.Close()
@@ -250,7 +256,7 @@ func TestForceFirstKex(t *testing.T) {
 	// tries to send serviceRequestMsg in cleartext, which is
 	// disallowed.
 
-	if err := server.waitSession(); err == nil {
+	if err := server.waitSession(ctx); err == nil {
 		t.Errorf("server first kex init should reject unexpected packet")
 	}
 }
@@ -271,6 +277,7 @@ func TestHandshakeAutoRekeyWrite(t *testing.T) {
 
 	input := make([]byte, 251)
 	input[0] = msgRequestSuccess
+	ctx := context.Background()
 
 	done := make(chan int, 1)
 	const numPacket = 5
@@ -278,7 +285,7 @@ func TestHandshakeAutoRekeyWrite(t *testing.T) {
 		defer close(done)
 		j := 0
 		for ; j < numPacket; j++ {
-			if p, err := trS.readPacket(); err != nil {
+			if p, err := trS.readPacket(ctx); err != nil {
 				break
 			} else if !bytes.Equal(input, p) {
 				t.Errorf("got packet type %d, want %d", p[0], input[0])
@@ -346,9 +353,11 @@ func TestHandshakeAutoRekeyRead(t *testing.T) {
 	// While we read out the packet, a key change will be
 	// initiated.
 	done := make(chan int, 1)
+	ctx := context.Background()
+
 	go func() {
 		defer close(done)
-		if _, err := trC.readPacket(); err != nil {
+		if _, err := trC.readPacket(ctx); err != nil {
 			t.Fatalf("readPacket(client): %v", err)
 		}
 
@@ -365,7 +374,7 @@ type errorKeyingTransport struct {
 	readLeft, writeLeft int
 }
 
-func (n *errorKeyingTransport) prepareKeyChange(*algorithms, *kexResult, *Config) error {
+func (n *errorKeyingTransport) prepareKeyChange(context.Context, *algorithms, *kexResult, *Config) error {
 	return nil
 }
 
@@ -383,14 +392,15 @@ func (n *errorKeyingTransport) writePacket(packet []byte) error {
 	return n.packetConn.writePacket(packet)
 }
 
-func (n *errorKeyingTransport) readPacket() ([]byte, error) {
+func (n *errorKeyingTransport) readPacket(ctx context.Context) ([]byte, error) {
 	if n.readLeft == 0 {
 		n.Close()
 		return nil, errors.New("barf")
 	}
 
 	n.readLeft--
-	return n.packetConn.readPacket()
+
+	return n.packetConn.readPacket(ctx)
 }
 
 func TestHandshakeErrorHandlingRead(t *testing.T) {
@@ -430,18 +440,19 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 	key := testSigners["ecdsa"]
 	serverConf := Config{RekeyThreshold: minRekeyThreshold}
 	serverConf.SetDefaults()
-	serverConn := newHandshakeTransport(&errorKeyingTransport{a, readLimit, writeLimit}, &serverConf, []byte{'a'}, []byte{'b'})
+	ctx := context.Background()
+	serverConn := newHandshakeTransport(ctx, &errorKeyingTransport{a, readLimit, writeLimit}, &serverConf, []byte{'a'}, []byte{'b'})
 	serverConn.hostKeys = []Signer{key}
-	go serverConn.readLoop()
-	go serverConn.kexLoop()
+	go serverConn.readLoop(ctx)
+	go serverConn.kexLoop(ctx)
 
 	clientConf := Config{RekeyThreshold: 10 * minRekeyThreshold}
 	clientConf.SetDefaults()
-	clientConn := newHandshakeTransport(&errorKeyingTransport{b, -1, -1}, &clientConf, []byte{'a'}, []byte{'b'})
+	clientConn := newHandshakeTransport(ctx, &errorKeyingTransport{b, -1, -1}, &clientConf, []byte{'a'}, []byte{'b'})
 	clientConn.hostKeyAlgorithms = []string{key.PublicKey().Type()}
 	clientConn.hostKeyCallback = InsecureIgnoreHostKey()
-	go clientConn.readLoop()
-	go clientConn.kexLoop()
+	go clientConn.readLoop(ctx)
+	go clientConn.kexLoop(ctx)
 
 	var wg sync.WaitGroup
 
@@ -461,7 +472,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 			}(hs)
 			go func(c packetConn) {
 				for {
-					_, err := c.readPacket()
+					_, err := c.readPacket(ctx)
 					if err != nil {
 						break
 					}
@@ -472,7 +483,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 			wg.Add(1)
 			go func(c packetConn) {
 				for {
-					_, err := c.readPacket()
+					_, err := c.readPacket(ctx)
 					if err != nil {
 						break
 					}
@@ -508,8 +519,8 @@ func TestDisconnect(t *testing.T) {
 	}
 	trC.writePacket(Marshal(errMsg))
 	trC.writePacket([]byte{msgRequestSuccess, 0, 0})
-
-	packet, err := trS.readPacket()
+	ctx := context.Background()
+	packet, err := trS.readPacket(ctx)
 	if err != nil {
 		t.Fatalf("readPacket 1: %v", err)
 	}
@@ -517,14 +528,14 @@ func TestDisconnect(t *testing.T) {
 		t.Errorf("got packet %v, want packet type %d", packet, msgRequestSuccess)
 	}
 
-	_, err = trS.readPacket()
+	_, err = trS.readPacket(ctx)
 	if err == nil {
 		t.Errorf("readPacket 2 succeeded")
 	} else if !reflect.DeepEqual(err, errMsg) {
 		t.Errorf("got error %#v, want %#v", err, errMsg)
 	}
 
-	_, err = trS.readPacket()
+	_, err = trS.readPacket(ctx)
 	if err == nil {
 		t.Errorf("readPacket 3 succeeded")
 	}

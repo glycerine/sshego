@@ -7,6 +7,7 @@ package ssh_test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -92,7 +93,9 @@ func ExampleNewServerConn() {
 
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
-	conn, chans, reqs, err := ssh.NewServerConn(nConn, config)
+	ctx := context.Background()
+
+	conn, chans, reqs, err := ssh.NewServerConn(ctx, nConn, config)
 	if err != nil {
 		log.Fatal("failed to handshake: ", err)
 	}
@@ -175,8 +178,8 @@ func ExampleHostKeyCheck() {
 		User:            os.Getenv("USER"),
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
-
-	_, err = ssh.Dial("tcp", host+":22", &config)
+	ctx := context.Background()
+	_, err = ssh.Dial(ctx, "tcp", host+":22", &config)
 	log.Println(err)
 }
 
@@ -194,14 +197,15 @@ func ExampleDial() {
 		},
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
-	client, err := ssh.Dial("tcp", "yourserver.com:22", config)
+	ctx := context.Background()
+	client, err := ssh.Dial(ctx, "tcp", "yourserver.com:22", config)
 	if err != nil {
 		log.Fatal("Failed to dial: ", err)
 	}
 
 	// Each ClientConn can support multiple interactive sessions,
 	// represented by a Session.
-	session, err := client.NewSession()
+	session, err := client.NewSession(ctx)
 	if err != nil {
 		log.Fatal("Failed to create session: ", err)
 	}
@@ -245,7 +249,8 @@ func ExamplePublicKeys() {
 	}
 
 	// Connect to the remote server and perform the SSH handshake.
-	client, err := ssh.Dial("tcp", "host.com:22", config)
+	ctx := context.Background()
+	client, err := ssh.Dial(ctx, "tcp", "host.com:22", config)
 	if err != nil {
 		log.Fatalf("unable to connect: %v", err)
 	}
@@ -262,7 +267,8 @@ func ExampleClient_Listen() {
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
 	// Dial your ssh server.
-	conn, err := ssh.Dial("tcp", "localhost:22", config)
+	ctx := context.Background()
+	conn, err := ssh.Dial(ctx, "tcp", "localhost:22", config)
 	if err != nil {
 		log.Fatal("unable to connect: ", err)
 	}
@@ -292,13 +298,14 @@ func ExampleSession_RequestPty() {
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
 	// Connect to ssh server
-	conn, err := ssh.Dial("tcp", "localhost:22", config)
+	ctx := context.Background()
+	conn, err := ssh.Dial(ctx, "tcp", "localhost:22", config)
 	if err != nil {
 		log.Fatal("unable to connect: ", err)
 	}
 	defer conn.Close()
 	// Create a session
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		log.Fatal("unable to create session: ", err)
 	}

@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 
 type keyboardInteractive map[string]string
 
-func (cr keyboardInteractive) Challenge(user string, instruction string, questions []string, echos []bool) ([]string, error) {
+func (cr keyboardInteractive) Challenge(ctx context.Context, user string, instruction string, questions []string, echos []bool) ([]string, error) {
 	var answers []string
 	for _, q := range questions {
 		answers = append(answers, cr[q])
@@ -36,6 +37,8 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 	}
 	defer c1.Close()
 	defer c2.Close()
+
+	ctx := context.Background()
 
 	certChecker := CertChecker{
 		IsUserAuthority: func(k PublicKey) bool {
@@ -62,7 +65,7 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 		},
 		PublicKeyCallback: certChecker.Authenticate,
 		KeyboardInteractiveCallback: func(conn ConnMetadata, challenge KeyboardInteractiveChallenge) (*Permissions, error) {
-			ans, err := challenge("user",
+			ans, err := challenge(ctx, "user",
 				"instruction",
 				[]string{"question1", "question2"},
 				[]bool{true, true})
@@ -71,7 +74,7 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 			}
 			ok := conn.User() == "testuser" && ans[0] == "answer1" && ans[1] == "answer2"
 			if ok {
-				challenge("user", "motd", nil, nil)
+				challenge(ctx, "user", "motd", nil, nil)
 				return nil, nil
 			}
 			return nil, errors.New("keyboard-interactive failed")
@@ -80,8 +83,8 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
 
-	go newServer(c1, serverConfig)
-	_, _, _, err = NewClientConn(c2, "", config)
+	go newServer(ctx, c1, serverConfig)
+	_, _, _, err = NewClientConn(ctx, c2, "", config)
 	return err
 }
 
@@ -384,9 +387,9 @@ func testPermissionsPassing(withPermissions bool, t *testing.T) {
 	}
 	defer c1.Close()
 	defer c2.Close()
-
-	go NewClientConn(c2, "", clientConfig)
-	serverConn, err := newServer(c1, serverConfig)
+	ctx := context.Background()
+	go NewClientConn(ctx, c2, "", clientConfig)
+	serverConn, err := newServer(ctx, c1, serverConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,7 +437,7 @@ func ExampleRetryableAuthMethod(t *testing.T) {
 
 	// Normally this would be a callback that prompts the user to answer the
 	// provided questions
-	Cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+	Cb := func(ctx context.Context, user, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		return []string{"answer1", "answer2"}, nil
 	}
 
@@ -470,9 +473,9 @@ func TestClientAuthNone(t *testing.T) {
 	}
 	defer c1.Close()
 	defer c2.Close()
-
-	go NewClientConn(c2, "", clientConfig)
-	serverConn, err := newServer(c1, serverConfig)
+	ctx := context.Background()
+	go NewClientConn(ctx, c2, "", clientConfig)
+	serverConn, err := newServer(ctx, c1, serverConfig)
 	if err != nil {
 		t.Fatalf("newServer: %v", err)
 	}
@@ -523,9 +526,10 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 		}
 		defer c1.Close()
 		defer c2.Close()
+		ctx := context.Background()
 
-		go newServer(c1, serverConfig)
-		_, _, _, err = NewClientConn(c2, "", clientConfig)
+		go newServer(ctx, c1, serverConfig)
+		_, _, _, err = NewClientConn(ctx, c2, "", clientConfig)
 		if tries > 2 {
 			if err == nil {
 				t.Fatalf("client: got no error, want %s", expectedErr)
@@ -601,9 +605,10 @@ func TestClientAuthErrorList(t *testing.T) {
 	}
 	defer c1.Close()
 	defer c2.Close()
+	ctx := context.Background()
 
-	go NewClientConn(c2, "", clientConfig)
-	_, err = newServer(c1, serverConfig)
+	go NewClientConn(ctx, c2, "", clientConfig)
+	_, err = newServer(ctx, c1, serverConfig)
 	if err == nil {
 		t.Fatal("newServer: got nil, expected errors")
 	}

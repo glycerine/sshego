@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,9 +29,9 @@ func (c *Client) Listen(n, addr string) (net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		return c.ListenTCP(laddr)
+		return c.ListenTCP(c.tmpctx, laddr)
 	case "unix":
-		return c.ListenUnix(addr)
+		return c.ListenUnix(c.tmpctx, addr)
 	default:
 		return nil, fmt.Errorf("ssh: unsupported protocol: %s", n)
 	}
@@ -68,14 +69,14 @@ func isBrokenOpenSSHVersion(versionStr string) bool {
 
 // autoPortListenWorkaround simulates automatic port allocation by
 // trying random ports repeatedly.
-func (c *Client) autoPortListenWorkaround(laddr *net.TCPAddr) (net.Listener, error) {
-	var sshListener net.Listener
+func (c *Client) autoPortListenWorkaround(ctx context.Context, laddr *net.TCPAddr) (*tcpListener, error) {
+	var sshListener *tcpListener
 	var err error
 	const tries = 10
 	for i := 0; i < tries; i++ {
 		addr := *laddr
 		addr.Port = 1024 + portRandomizer.Intn(60000)
-		sshListener, err = c.ListenTCP(&addr)
+		sshListener, err = c.ListenTCP(ctx, &addr)
 		if err == nil {
 			laddr.Port = addr.Port
 			return sshListener, err
@@ -93,9 +94,9 @@ type channelForwardMsg struct {
 // ListenTCP requests the remote peer open a listening socket
 // on laddr. Incoming connections will be available by calling
 // Accept on the returned net.Listener.
-func (c *Client) ListenTCP(laddr *net.TCPAddr) (net.Listener, error) {
+func (c *Client) ListenTCP(ctx context.Context, laddr *net.TCPAddr) (*tcpListener, error) {
 	if laddr.Port == 0 && isBrokenOpenSSHVersion(string(c.ServerVersion())) {
-		return c.autoPortListenWorkaround(laddr)
+		return c.autoPortListenWorkaround(ctx, laddr)
 	}
 
 	m := channelForwardMsg{
@@ -103,7 +104,7 @@ func (c *Client) ListenTCP(laddr *net.TCPAddr) (net.Listener, error) {
 		uint32(laddr.Port),
 	}
 	// send message
-	ok, resp, err := c.SendRequest("tcpip-forward", true, Marshal(&m))
+	ok, resp, err := c.SendRequest(ctx, "tcpip-forward", true, Marshal(&m))
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,11 @@ func (c *Client) ListenTCP(laddr *net.TCPAddr) (net.Listener, error) {
 	// Register this forward, using the port number we obtained.
 	ch := c.forwards.add(laddr)
 
-	return &tcpListener{laddr, c, ch}, nil
+	return &tcpListener{
+		laddr:  laddr,
+		conn:   c,
+		in:     ch,
+		tmpctx: c.tmpctx}, nil
 }
 
 // forwardList stores a mapping between remote
@@ -182,11 +187,13 @@ func parseTCPAddr(addr string, port uint32) (*net.TCPAddr, error) {
 	return &net.TCPAddr{IP: ip, Port: int(port)}, nil
 }
 
-func (l *forwardList) handleChannels(in <-chan NewChannel, conn Conn) {
+func (l *forwardList) handleChannels(ctx context.Context, in <-chan NewChannel, conn Conn) {
 	var ch NewChannel
 	for {
 		select {
 		case <-conn.Done():
+			return
+		case <-ctx.Done():
 			return
 		case ch = <-in:
 			var (
@@ -235,7 +242,7 @@ func (l *forwardList) handleChannels(in <-chan NewChannel, conn Conn) {
 			default:
 				panic(fmt.Errorf("ssh: unknown channel type %s", channelType))
 			}
-			ok, err := l.forward(laddr, raddr, ch, conn)
+			ok, err := l.forward(ctx, laddr, raddr, ch, conn)
 			if err != nil {
 				return
 			}
@@ -273,7 +280,7 @@ func (l *forwardList) closeAll() {
 	l.entries = nil
 }
 
-func (l *forwardList) forward(laddr, raddr net.Addr, ch NewChannel, conn Conn) (bool, error) {
+func (l *forwardList) forward(ctx context.Context, laddr, raddr net.Addr, ch NewChannel, conn Conn) (bool, error) {
 	l.Lock()
 	defer l.Unlock()
 	for _, f := range l.entries {
@@ -282,6 +289,8 @@ func (l *forwardList) forward(laddr, raddr net.Addr, ch NewChannel, conn Conn) (
 			case f.c <- forward{newCh: ch, raddr: raddr}:
 				return true, nil
 			case <-conn.Done():
+				return false, io.EOF
+			case <-ctx.Done():
 				return false, io.EOF
 			}
 		}
@@ -294,6 +303,9 @@ type tcpListener struct {
 
 	conn *Client
 	in   <-chan forward
+
+	// must be set for Accept() and Close() call.
+	tmpctx context.Context
 }
 
 // Accept waits for and returns the next connection to the listener.
@@ -302,6 +314,8 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	var s forward
 	select {
 	case <-l.conn.Done():
+		return nil, io.EOF
+	case <-l.tmpctx.Done():
 		return nil, io.EOF
 	case s, ok = <-l.in:
 		if !ok {
@@ -330,7 +344,7 @@ func (l *tcpListener) Close() error {
 
 	// this also closes the listener.
 	l.conn.forwards.remove(l.laddr)
-	ok, _, err := l.conn.SendRequest("cancel-tcpip-forward", true, Marshal(&m))
+	ok, _, err := l.conn.SendRequest(l.tmpctx, "cancel-tcpip-forward", true, Marshal(&m))
 	if err == nil && !ok {
 		err = errors.New("ssh: cancel-tcpip-forward failed")
 	}
@@ -373,7 +387,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		}, nil
 	case "unix":
 		var err error
-		ch, err = c.dialStreamLocal(addr)
+		ch, err = c.dialStreamLocal(c.tmpctx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -429,7 +443,7 @@ func (c *Client) dial(laddr string, lport int, raddr string, rport int) (Channel
 		laddr: laddr,
 		lport: uint32(lport),
 	}
-	ch, in, err := c.OpenChannel("direct-tcpip", Marshal(&msg))
+	ch, in, err := c.OpenChannel(c.tmpctx, "direct-tcpip", Marshal(&msg))
 	if err != nil {
 		return nil, err
 	}

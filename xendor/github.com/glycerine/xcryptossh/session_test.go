@@ -8,6 +8,7 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	crypto_rand "crypto/rand"
 	"errors"
 	"io"
@@ -37,8 +38,9 @@ func dial(handler serverType, t *testing.T) *Client {
 			},
 		}
 		conf.AddHostKey(testSigners["rsa"])
+		ctx := context.Background()
 
-		_, chans, reqs, err := NewServerConn(c1, &conf)
+		_, chans, reqs, err := NewServerConn(ctx, c1, &conf)
 		if err != nil {
 			t.Fatalf("Unable to handshake: %v", err)
 		}
@@ -68,20 +70,23 @@ func dial(handler serverType, t *testing.T) *Client {
 			Halt: NewHalter(),
 		},
 	}
+	ctx := context.Background()
 
-	conn, chans, reqs, err := NewClientConn(c2, "", config)
+	conn, chans, reqs, err := NewClientConn(ctx, c2, "", config)
 	if err != nil {
 		t.Fatalf("unable to dial remote side: %v", err)
 	}
 
-	return NewClient(conn, chans, reqs)
+	return NewClient(ctx, conn, chans, reqs)
 }
 
 // Test a simple string is returned to session.Stdout.
 func TestSessionShell(t *testing.T) {
 	conn := dial(shellHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -106,7 +111,9 @@ func TestSessionShell(t *testing.T) {
 func TestSessionStdoutPipe(t *testing.T) {
 	conn := dial(shellHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -141,7 +148,9 @@ func TestSessionStdoutPipe(t *testing.T) {
 func TestSessionOutput(t *testing.T) {
 	conn := dial(fixedOutputHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -165,7 +174,9 @@ func TestSessionOutput(t *testing.T) {
 func TestSessionCombinedOutput(t *testing.T) {
 	conn := dial(fixedOutputHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -189,7 +200,9 @@ func TestSessionCombinedOutput(t *testing.T) {
 func TestExitStatusNonZero(t *testing.T) {
 	conn := dial(exitStatusNonZeroHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -214,7 +227,9 @@ func TestExitStatusNonZero(t *testing.T) {
 func TestExitStatusZero(t *testing.T) {
 	conn := dial(exitStatusZeroHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -233,7 +248,9 @@ func TestExitStatusZero(t *testing.T) {
 func TestExitSignalAndStatus(t *testing.T) {
 	conn := dial(exitSignalAndStatusHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -258,7 +275,9 @@ func TestExitSignalAndStatus(t *testing.T) {
 func TestKnownExitSignalOnly(t *testing.T) {
 	conn := dial(exitSignalHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -283,7 +302,9 @@ func TestKnownExitSignalOnly(t *testing.T) {
 func TestUnknownExitSignal(t *testing.T) {
 	conn := dial(exitSignalUnknownHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -307,7 +328,9 @@ func TestUnknownExitSignal(t *testing.T) {
 func TestExitWithoutStatusOrSignal(t *testing.T) {
 	conn := dial(exitWithoutSignalOrStatus, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("Unable to request new session: %v", err)
 	}
@@ -336,7 +359,9 @@ func TestServerWindow(t *testing.T) {
 
 	conn := dial(echoHandler, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +406,9 @@ func TestServerWindow(t *testing.T) {
 func TestClientHandlesKeepalives(t *testing.T) {
 	conn := dial(channelKeepaliveSender, t)
 	defer conn.Close()
-	session, err := conn.NewSession()
+	ctx := context.Background()
+
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,8 +615,9 @@ func channelKeepaliveSender(ch Channel, in <-chan *Request, t *testing.T) {
 func TestClientWriteEOF(t *testing.T) {
 	conn := dial(simpleEchoHandler, t)
 	defer conn.Close()
+	ctx := context.Background()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,7 +681,8 @@ func TestSessionID(t *testing.T) {
 	}
 
 	go func() {
-		conn, chans, reqs, err := NewServerConn(c1, serverConf)
+		ctx := context.Background()
+		conn, chans, reqs, err := NewServerConn(ctx, c1, serverConf)
 		if err != nil {
 			t.Fatalf("server handshake: %v", err)
 		}
@@ -665,7 +694,8 @@ func TestSessionID(t *testing.T) {
 	}()
 
 	go func() {
-		conn, chans, reqs, err := NewClientConn(c2, "", clientConf)
+		ctx := context.Background()
+		conn, chans, reqs, err := NewClientConn(ctx, c2, "", clientConf)
 		if err != nil {
 			t.Fatalf("client handshake: %v", err)
 		}
@@ -709,15 +739,16 @@ func TestInvalidServerConfiguration(t *testing.T) {
 
 	serveConn := noReadConn{Conn: c1}
 	serverConf := &ServerConfig{}
+	ctx := context.Background()
 
-	NewServerConn(&serveConn, serverConf)
+	NewServerConn(ctx, &serveConn, serverConf)
 	if serveConn.readSeen {
 		t.Fatalf("NewServerConn attempted to Read() from Conn while configuration is missing host key")
 	}
 
 	serverConf.AddHostKey(testSigners["ecdsa"])
 
-	NewServerConn(&serveConn, serverConf)
+	NewServerConn(ctx, &serveConn, serverConf)
 	if serveConn.readSeen {
 		t.Fatalf("NewServerConn attempted to Read() from Conn while configuration is missing authentication method")
 	}
@@ -742,9 +773,10 @@ func TestHostKeyAlgorithms(t *testing.T) {
 		}
 		defer c1.Close()
 		defer c2.Close()
+		ctx := context.Background()
 
-		go NewServerConn(c1, serverConf)
-		_, _, _, err = NewClientConn(c2, "", clientConf)
+		go NewServerConn(ctx, c1, serverConf)
+		_, _, _, err = NewClientConn(ctx, c2, "", clientConf)
 		if err != nil {
 			t.Fatalf("NewClientConn: %v", err)
 		}
@@ -770,10 +802,11 @@ func TestHostKeyAlgorithms(t *testing.T) {
 	}
 	defer c1.Close()
 	defer c2.Close()
+	ctx := context.Background()
 
-	go NewServerConn(c1, serverConf)
+	go NewServerConn(ctx, c1, serverConf)
 	clientConf.HostKeyAlgorithms = []string{"nonexistent-hostkey-algo"}
-	_, _, _, err = NewClientConn(c2, "", clientConf)
+	_, _, _, err = NewClientConn(ctx, c2, "", clientConf)
 	if err == nil {
 		t.Fatal("succeeded connecting with unknown hostkey algorithm")
 	}

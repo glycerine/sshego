@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"sync"
@@ -15,8 +16,10 @@ func muxPair() (*mux, *mux) {
 	a, b := memPipe()
 
 	halt := NewHalter()
-	s := newMux(a, halt)
-	c := newMux(b, halt)
+	ctx := context.Background()
+
+	s := newMux(ctx, a, halt)
+	c := newMux(ctx, b, halt)
 
 	return s, c
 }
@@ -41,8 +44,9 @@ func channelPair(t *testing.T) (*channel, *channel, *mux) {
 		}
 		res <- ch.(*channel)
 	}()
+	ctx := context.Background()
 
-	ch, err := c.openChannel("chan", nil)
+	ch, err := c.openChannel(ctx, "chan", nil)
 	if err != nil {
 		t.Fatalf("OpenChannel: %v", err)
 	}
@@ -227,8 +231,9 @@ func TestMuxReject(t *testing.T) {
 		}
 		ch.Reject(RejectionReason(42), "message")
 	}()
+	ctx := context.Background()
 
-	ch, err := client.openChannel("ch", []byte("extra"))
+	ch, err := client.openChannel(ctx, "ch", []byte("extra"))
 	if ch != nil {
 		t.Fatal("openChannel not rejected")
 	}
@@ -311,23 +316,24 @@ func TestMuxGlobalRequest(t *testing.T) {
 			}
 		}
 	}()
+	ctx := context.Background()
 
-	_, _, err := clientMux.SendRequest("peek", false, nil)
+	_, _, err := clientMux.SendRequest(ctx, "peek", false, nil)
 	if err != nil {
 		t.Errorf("SendRequest: %v", err)
 	}
 
-	ok, data, err := clientMux.SendRequest("yes", true, []byte("a"))
+	ok, data, err := clientMux.SendRequest(ctx, "yes", true, []byte("a"))
 	if !ok || string(data) != "yesa" || err != nil {
 		t.Errorf("SendRequest(\"yes\", true, \"a\"): %v %v %v",
 			ok, data, err)
 	}
-	if ok, data, err := clientMux.SendRequest("yes", true, []byte("a")); !ok || string(data) != "yesa" || err != nil {
+	if ok, data, err := clientMux.SendRequest(ctx, "yes", true, []byte("a")); !ok || string(data) != "yesa" || err != nil {
 		t.Errorf("SendRequest(\"yes\", true, \"a\"): %v %v %v",
 			ok, data, err)
 	}
 
-	if ok, data, err := clientMux.SendRequest("no", true, []byte("a")); ok || string(data) != "noa" || err != nil {
+	if ok, data, err := clientMux.SendRequest(ctx, "no", true, []byte("a")); ok || string(data) != "noa" || err != nil {
 		t.Errorf("SendRequest(\"no\", true, \"a\"): %v %v %v",
 			ok, data, err)
 	}
@@ -343,8 +349,10 @@ func TestMuxGlobalRequestUnblock(t *testing.T) {
 	defer clientMux.Close()
 
 	result := make(chan error, 1)
+	ctx := context.Background()
+
 	go func() {
-		_, _, err := clientMux.SendRequest("hello", true, nil)
+		_, _, err := clientMux.SendRequest(ctx, "hello", true, nil)
 		result <- err
 	}()
 
@@ -438,7 +446,9 @@ func TestMuxInvalidRecord(t *testing.T) {
 	packet[9] = 42
 
 	a.conn.writePacket(packet)
-	go a.SendRequest("hello", false, nil)
+	ctx := context.Background()
+
+	go a.SendRequest(ctx, "hello", false, nil)
 	// 'a' wrote an invalid packet, so 'b' has exited.
 	req, ok := <-b.incomingRequests
 	if ok {

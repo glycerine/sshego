@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
 	"net"
 )
@@ -53,14 +54,14 @@ type Conn interface {
 	// SendRequest sends a global request, and returns the
 	// reply. If wantReply is true, it returns the response status
 	// and payload. See also RFC4254, section 4.
-	SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error)
+	SendRequest(ctx context.Context, name string, wantReply bool, payload []byte) (bool, []byte, error)
 
 	// OpenChannel tries to open an channel. If the request is
 	// rejected, it returns *OpenChannelError. On success it returns
 	// the SSH Channel and a Go channel for incoming, out-of-band
 	// requests. The Go channel must be serviced, or the
 	// connection will hang.
-	OpenChannel(name string, data []byte) (Channel, <-chan *Request, error)
+	OpenChannel(ctx context.Context, name string, data []byte) (Channel, <-chan *Request, error)
 
 	// Close closes the underlying network connection
 	Close() error
@@ -124,7 +125,7 @@ func (c *connection) Close() error {
 }
 
 func (c *connection) Done() <-chan struct{} {
-	return c.halt.Done.Chan
+	return c.halt.ReqStop.Chan
 }
 
 // sshconn provides net.Conn metadata, but disallows direct reads and

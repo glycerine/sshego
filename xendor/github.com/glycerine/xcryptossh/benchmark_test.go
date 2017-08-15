@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -16,8 +17,8 @@ type server struct {
 	chans <-chan NewChannel
 }
 
-func newServer(c net.Conn, conf *ServerConfig) (*server, error) {
-	sconn, chans, reqs, err := NewServerConn(c, conf)
+func newServer(ctx context.Context, c net.Conn, conf *ServerConfig) (*server, error) {
+	sconn, chans, reqs, err := NewServerConn(ctx, c, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func sshPipe() (Conn, *server, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
+	ctx := context.Background()
 	clientConf := ClientConfig{
 		User: "user",
 	}
@@ -48,14 +49,14 @@ func sshPipe() (Conn, *server, error) {
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	done := make(chan *server, 1)
 	go func() {
-		server, err := newServer(c2, &serverConf)
+		server, err := newServer(ctx, c2, &serverConf)
 		if err != nil {
 			done <- nil
 		}
 		done <- server
 	}()
 
-	client, _, reqs, err := NewClientConn(c1, "", &clientConf)
+	client, _, reqs, err := NewClientConn(ctx, c1, "", &clientConf)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,6 +72,8 @@ func sshPipe() (Conn, *server, error) {
 
 func BenchmarkEndToEnd(b *testing.B) {
 	b.StopTimer()
+
+	ctx := context.Background()
 
 	client, server, err := sshPipe()
 	if err != nil {
@@ -102,7 +105,7 @@ func BenchmarkEndToEnd(b *testing.B) {
 		done <- 1
 	}()
 
-	ch, in, err := client.OpenChannel("speed", nil)
+	ch, in, err := client.OpenChannel(ctx, "speed", nil)
 	if err != nil {
 		b.Fatalf("OpenChannel: %v", err)
 	}

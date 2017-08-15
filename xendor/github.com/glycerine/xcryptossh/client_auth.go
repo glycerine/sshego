@@ -6,18 +6,19 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 )
 
 // clientAuthenticate authenticates with the remote server. See RFC 4252.
-func (c *connection) clientAuthenticate(config *ClientConfig) error {
+func (c *connection) clientAuthenticate(ctx context.Context, config *ClientConfig) error {
 	// initiate user auth session
 	if err := c.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
 		return err
 	}
-	packet, err := c.transport.readPacket()
+	packet, err := c.transport.readPacket(ctx)
 	if err != nil {
 		return err
 	}
@@ -33,7 +34,7 @@ func (c *connection) clientAuthenticate(config *ClientConfig) error {
 
 	sessionID := c.transport.getSessionID()
 	for auth := AuthMethod(new(noneAuth)); auth != nil; {
-		ok, methods, err := auth.auth(sessionID, config.User, c.transport, config.Rand)
+		ok, methods, err := auth.auth(ctx, sessionID, config.User, c.transport, config.Rand)
 		if err != nil {
 			return err
 		}
@@ -82,7 +83,7 @@ type AuthMethod interface {
 	// If authentication is not successful, a []string of alternative
 	// method names is returned. If the slice is nil, it will be ignored
 	// and the previous set of possible methods will be reused.
-	auth(session []byte, user string, p packetConn, rand io.Reader) (bool, []string, error)
+	auth(ctx context.Context, session []byte, user string, p packetConn, rand io.Reader) (bool, []string, error)
 
 	// method returns the RFC 4252 method name.
 	method() string
@@ -91,7 +92,7 @@ type AuthMethod interface {
 // "none" authentication, RFC 4252 section 5.2.
 type noneAuth int
 
-func (n *noneAuth) auth(session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
+func (n *noneAuth) auth(ctx context.Context, session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
 	if err := c.writePacket(Marshal(&userAuthRequestMsg{
 		User:    user,
 		Service: serviceSSH,
@@ -100,7 +101,7 @@ func (n *noneAuth) auth(session []byte, user string, c packetConn, rand io.Reade
 		return false, nil, err
 	}
 
-	return handleAuthResponse(c)
+	return handleAuthResponse(ctx, c)
 }
 
 func (n *noneAuth) method() string {
@@ -111,7 +112,7 @@ func (n *noneAuth) method() string {
 // a function call, e.g. by prompting the user.
 type passwordCallback func() (password string, err error)
 
-func (cb passwordCallback) auth(session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
+func (cb passwordCallback) auth(ctx context.Context, session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
 	type passwordAuthMsg struct {
 		User     string `sshtype:"50"`
 		Service  string
@@ -138,7 +139,7 @@ func (cb passwordCallback) auth(session []byte, user string, c packetConn, rand 
 		return false, nil, err
 	}
 
-	return handleAuthResponse(c)
+	return handleAuthResponse(ctx, c)
 }
 
 func (cb passwordCallback) method() string {
@@ -178,7 +179,7 @@ func (cb publicKeyCallback) method() string {
 	return "publickey"
 }
 
-func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
+func (cb publicKeyCallback) auth(ctx context.Context, session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
 	// Authentication is performed by sending an enquiry to test if a key is
 	// acceptable to the remote. If the key is acceptable, the client will
 	// attempt to authenticate with the valid key.  If not the client will repeat
@@ -190,7 +191,7 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 	}
 	var methods []string
 	for _, signer := range signers {
-		ok, err := validateKey(signer.PublicKey(), user, c)
+		ok, err := validateKey(ctx, signer.PublicKey(), user, c)
 		if err != nil {
 			return false, nil, err
 		}
@@ -227,7 +228,7 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 			return false, nil, err
 		}
 		var success bool
-		success, methods, err = handleAuthResponse(c)
+		success, methods, err = handleAuthResponse(ctx, c)
 		if err != nil {
 			return false, nil, err
 		}
@@ -255,7 +256,7 @@ func containsMethod(methods []string, method string) bool {
 }
 
 // validateKey validates the key provided is acceptable to the server.
-func validateKey(key PublicKey, user string, c packetConn) (bool, error) {
+func validateKey(ctx context.Context, key PublicKey, user string, c packetConn) (bool, error) {
 	pubKey := key.Marshal()
 	msg := publickeyAuthMsg{
 		User:     user,
@@ -269,15 +270,15 @@ func validateKey(key PublicKey, user string, c packetConn) (bool, error) {
 		return false, err
 	}
 
-	return confirmKeyAck(key, c)
+	return confirmKeyAck(ctx, key, c)
 }
 
-func confirmKeyAck(key PublicKey, c packetConn) (bool, error) {
+func confirmKeyAck(ctx context.Context, key PublicKey, c packetConn) (bool, error) {
 	pubKey := key.Marshal()
 	algoname := key.Type()
 
 	for {
-		packet, err := c.readPacket()
+		packet, err := c.readPacket(ctx)
 		if err != nil {
 			return false, err
 		}
@@ -316,9 +317,9 @@ func PublicKeysCallback(getSigners func() (signers []Signer, err error)) AuthMet
 // handleAuthResponse returns whether the preceding authentication request succeeded
 // along with a list of remaining authentication methods to try next and
 // an error if an unexpected response was received.
-func handleAuthResponse(c packetConn) (bool, []string, error) {
+func handleAuthResponse(ctx context.Context, c packetConn) (bool, []string, error) {
 	for {
-		packet, err := c.readPacket()
+		packet, err := c.readPacket(ctx)
 		if err != nil {
 			return false, nil, err
 		}
@@ -347,7 +348,7 @@ func handleAuthResponse(c packetConn) (bool, []string, error) {
 // questions, for which the user and instruction messages should be
 // printed.  RFC 4256 section 3.3 details how the UI should behave for
 // both CLI and GUI environments.
-type KeyboardInteractiveChallenge func(user, instruction string, questions []string, echos []bool) (answers []string, err error)
+type KeyboardInteractiveChallenge func(ctx context.Context, user, instruction string, questions []string, echos []bool) (answers []string, err error)
 
 // KeyboardInteractive returns a AuthMethod using a prompt/response
 // sequence controlled by the server.
@@ -359,7 +360,7 @@ func (cb KeyboardInteractiveChallenge) method() string {
 	return "keyboard-interactive"
 }
 
-func (cb KeyboardInteractiveChallenge) auth(session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
+func (cb KeyboardInteractiveChallenge) auth(ctx context.Context, session []byte, user string, c packetConn, rand io.Reader) (bool, []string, error) {
 	type initiateMsg struct {
 		User       string `sshtype:"50"`
 		Service    string
@@ -377,7 +378,7 @@ func (cb KeyboardInteractiveChallenge) auth(session []byte, user string, c packe
 	}
 
 	for {
-		packet, err := c.readPacket()
+		packet, err := c.readPacket(ctx)
 		if err != nil {
 			return false, nil, err
 		}
@@ -424,7 +425,7 @@ func (cb KeyboardInteractiveChallenge) auth(session []byte, user string, c packe
 			return false, nil, errors.New("ssh: extra data following keyboard-interactive pairs")
 		}
 
-		answers, err := cb(msg.User, msg.Instruction, prompts, echos)
+		answers, err := cb(ctx, msg.User, msg.Instruction, prompts, echos)
 		if err != nil {
 			return false, nil, err
 		}
@@ -456,9 +457,9 @@ type retryableAuthMethod struct {
 	maxTries   int
 }
 
-func (r *retryableAuthMethod) auth(session []byte, user string, c packetConn, rand io.Reader) (ok bool, methods []string, err error) {
+func (r *retryableAuthMethod) auth(ctx context.Context, session []byte, user string, c packetConn, rand io.Reader) (ok bool, methods []string, err error) {
 	for i := 0; r.maxTries <= 0 || i < r.maxTries; i++ {
-		ok, methods, err = r.authMethod.auth(session, user, c, rand)
+		ok, methods, err = r.authMethod.auth(ctx, session, user, c, rand)
 		if ok || err != nil { // either success or error terminate
 			return ok, methods, err
 		}

@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"reflect"
 	"testing"
@@ -194,13 +195,13 @@ func TestHostKeyCert(t *testing.T) {
 		defer c2.Close()
 
 		errc := make(chan error)
-
+		ctx := context.Background()
 		go func() {
 			conf := ServerConfig{
 				NoClientAuth: true,
 			}
 			conf.AddHostKey(certSigner)
-			_, _, _, err := NewServerConn(c1, &conf)
+			_, _, _, err := NewServerConn(ctx, c1, &conf)
 			errc <- err
 		}()
 
@@ -208,7 +209,7 @@ func TestHostKeyCert(t *testing.T) {
 			User:            "user",
 			HostKeyCallback: checker.CheckHostKey,
 		}
-		_, _, _, err = NewClientConn(c2, test.addr, config)
+		_, _, _, err = NewClientConn(ctx, c2, test.addr, config)
 
 		if (err == nil) != test.succeed {
 			t.Fatalf("NewClientConn(%q): %v", test.addr, err)

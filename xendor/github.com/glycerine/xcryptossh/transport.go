@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -30,7 +31,7 @@ type packetConn interface {
 	// Read a packet from the connection. The read is blocking,
 	// i.e. if error is nil, then the returned byte slice is
 	// always non-empty.
-	readPacket() ([]byte, error)
+	readPacket(ctx context.Context) ([]byte, error)
 
 	// Close closes the write-side of the connection.
 	Close() error
@@ -77,7 +78,7 @@ type connectionState struct {
 // prepareKeyChange sets up key material for a keychange. The key changes in
 // both directions are triggered by reading and writing a msgNewKey packet
 // respectively.
-func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult, config *Config) error {
+func (t *transport) prepareKeyChange(ctx context.Context, algs *algorithms, kexResult *kexResult, config *Config) error {
 
 	if ciph, err := newPacketCipher(t.reader.dir, algs.r, kexResult); err != nil {
 		return err
@@ -85,6 +86,8 @@ func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult, con
 		select {
 		case t.reader.pendingKeyChange <- ciph:
 		case <-config.Halt.Done.Chan:
+			return io.EOF
+		case <-ctx.Done():
 			return io.EOF
 		}
 	}
@@ -95,6 +98,8 @@ func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult, con
 		select {
 		case t.writer.pendingKeyChange <- ciph:
 		case <-config.Halt.Done.Chan:
+			return io.EOF
+		case <-ctx.Done():
 			return io.EOF
 		}
 	}
@@ -119,7 +124,7 @@ func (t *transport) printPacket(p []byte, write bool) {
 }
 
 // Read and decrypt next packet.
-func (t *transport) readPacket() (p []byte, err error) {
+func (t *transport) readPacket(ctx context.Context) (p []byte, err error) {
 	for {
 		p, err = t.reader.readPacket(t.bufReader)
 		if err != nil {

@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -115,7 +116,7 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(p packetConn, halt *Halter) *mux {
+func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
@@ -132,7 +133,7 @@ func newMux(p packetConn, halt *Halter) *mux {
 		m.chanList.offset = atomic.AddUint32(&globalOff, 1)
 	}
 
-	go m.loop()
+	go m.loop(ctx)
 	return m
 }
 
@@ -144,7 +145,7 @@ func (m *mux) sendMessage(msg interface{}) error {
 	return m.conn.writePacket(p)
 }
 
-func (m *mux) SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error) {
+func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payload []byte) (bool, []byte, error) {
 	if wantReply {
 		m.globalSentMu.Lock()
 		defer m.globalSentMu.Unlock()
@@ -178,6 +179,8 @@ func (m *mux) SendRequest(name string, wantReply bool, payload []byte) (bool, []
 
 	case <-m.halt.Done.Chan:
 		return false, nil, io.EOF
+	case <-ctx.Done():
+		return false, nil, io.EOF
 	}
 }
 
@@ -196,10 +199,10 @@ func (m *mux) Close() error {
 
 // loop runs the connection machine. It will process packets until an
 // error is encountered. To synchronize on loop exit, use mux.Wait.
-func (m *mux) loop() {
+func (m *mux) loop(ctx context.Context) {
 	var err error
 	for err == nil {
-		err = m.onePacket()
+		err = m.onePacket(ctx)
 	}
 
 	for _, ch := range m.chanList.dropAll() {
@@ -223,8 +226,8 @@ func (m *mux) loop() {
 }
 
 // onePacket reads and processes one packet.
-func (m *mux) onePacket() error {
-	packet, err := m.conn.readPacket()
+func (m *mux) onePacket(ctx context.Context) error {
+	packet, err := m.conn.readPacket(ctx)
 	if err != nil {
 		return err
 	}
@@ -240,9 +243,9 @@ func (m *mux) onePacket() error {
 
 	switch packet[0] {
 	case msgChannelOpen:
-		return m.handleChannelOpen(packet)
+		return m.handleChannelOpen(ctx, packet)
 	case msgGlobalRequest, msgRequestSuccess, msgRequestFailure:
-		return m.handleGlobalPacket(packet)
+		return m.handleGlobalPacket(ctx, packet)
 	}
 
 	// assume a channel packet.
@@ -258,7 +261,7 @@ func (m *mux) onePacket() error {
 	return ch.handlePacket(packet)
 }
 
-func (m *mux) handleGlobalPacket(packet []byte) error {
+func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 	msg, err := decode(packet)
 	if err != nil {
 		return err
@@ -276,11 +279,15 @@ func (m *mux) handleGlobalPacket(packet []byte) error {
 			// just the send
 		case <-m.halt.Done.Chan:
 			return io.EOF
+		case <-ctx.Done():
+			return io.EOF
 		}
 	case *globalRequestSuccessMsg, *globalRequestFailureMsg:
 		select {
 		case m.globalResponses <- msg:
 		case <-m.halt.Done.Chan:
+			return io.EOF
+		case <-ctx.Done():
 			return io.EOF
 		}
 	default:
@@ -291,7 +298,7 @@ func (m *mux) handleGlobalPacket(packet []byte) error {
 }
 
 // handleChannelOpen schedules a channel to be Accept()ed.
-func (m *mux) handleChannelOpen(packet []byte) error {
+func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 	var msg channelOpenMsg
 	if err := Unmarshal(packet, &msg); err != nil {
 		return err
@@ -315,12 +322,14 @@ func (m *mux) handleChannelOpen(packet []byte) error {
 	case m.incomingChannels <- c:
 	case <-m.halt.Done.Chan:
 		return io.EOF
+	case <-ctx.Done():
+		return io.EOF
 	}
 	return nil
 }
 
-func (m *mux) OpenChannel(chanType string, extra []byte) (Channel, <-chan *Request, error) {
-	ch, err := m.openChannel(chanType, extra)
+func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte) (Channel, <-chan *Request, error) {
+	ch, err := m.openChannel(ctx, chanType, extra)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -328,7 +337,7 @@ func (m *mux) OpenChannel(chanType string, extra []byte) (Channel, <-chan *Reque
 	return ch, ch.incomingRequests, nil
 }
 
-func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
+func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*channel, error) {
 	ch := m.newChannel(chanType, channelOutbound, extra)
 
 	ch.maxIncomingPayload = channelMaxPacket
@@ -360,6 +369,8 @@ func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
 			return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msgt)
 		}
 	case <-done:
+		return nil, io.EOF
+	case <-ctx.Done():
 		return nil, io.EOF
 	}
 }

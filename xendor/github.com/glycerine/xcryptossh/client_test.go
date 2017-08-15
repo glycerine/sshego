@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"net"
 	"strings"
 	"testing"
@@ -24,7 +25,9 @@ func testClientVersion(t *testing.T, config *ClientConfig, expected string) {
 		}
 		serverConn.Close()
 	}()
-	NewClientConn(clientConn, "", config)
+	ctx := context.Background()
+
+	NewClientConn(ctx, clientConn, "", config)
 	actual := <-receivedVersion
 	if actual != expected {
 		t.Fatalf("got %s; want %s", actual, expected)
@@ -60,8 +63,9 @@ func TestHostKeyCheck(t *testing.T) {
 			NoClientAuth: true,
 		}
 		serverConf.AddHostKey(testSigners["rsa"])
+		ctx := context.Background()
 
-		go NewServerConn(c1, serverConf)
+		go NewServerConn(ctx, c1, serverConf)
 		clientConf := ClientConfig{
 			User: "user",
 		}
@@ -69,7 +73,7 @@ func TestHostKeyCheck(t *testing.T) {
 			clientConf.HostKeyCallback = FixedHostKey(tt.key)
 		}
 
-		_, _, _, err = NewClientConn(c2, "", &clientConf)
+		_, _, _, err = NewClientConn(ctx, c2, "", &clientConf)
 		if err != nil {
 			if tt.wantError == "" || !strings.Contains(err.Error(), tt.wantError) {
 				t.Errorf("%s: got error %q, missing %q", tt.name, err.Error(), tt.wantError)

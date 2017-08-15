@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -31,12 +32,12 @@ type streamLocalChannelForwardMsg struct {
 }
 
 // ListenUnix is similar to ListenTCP but uses a Unix domain socket.
-func (c *Client) ListenUnix(socketPath string) (net.Listener, error) {
+func (c *Client) ListenUnix(ctx context.Context, socketPath string) (net.Listener, error) {
 	m := streamLocalChannelForwardMsg{
 		socketPath,
 	}
 	// send message
-	ok, _, err := c.SendRequest("streamlocal-forward@openssh.com", true, Marshal(&m))
+	ok, _, err := c.SendRequest(ctx, "streamlocal-forward@openssh.com", true, Marshal(&m))
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +46,19 @@ func (c *Client) ListenUnix(socketPath string) (net.Listener, error) {
 	}
 	ch := c.forwards.add(&net.UnixAddr{Name: socketPath, Net: "unix"})
 
-	return &unixListener{socketPath, c, ch}, nil
+	return &unixListener{
+		socketPath: socketPath,
+		conn:       c,
+		in:         ch,
+		tmpctx:     ctx,
+	}, nil
 }
 
-func (c *Client) dialStreamLocal(socketPath string) (Channel, error) {
+func (c *Client) dialStreamLocal(ctx context.Context, socketPath string) (Channel, error) {
 	msg := streamLocalChannelOpenDirectMsg{
 		socketPath: socketPath,
 	}
-	ch, in, err := c.OpenChannel("direct-streamlocal@openssh.com", Marshal(&msg))
+	ch, in, err := c.OpenChannel(ctx, "direct-streamlocal@openssh.com", Marshal(&msg))
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +71,9 @@ type unixListener struct {
 
 	conn *Client
 	in   <-chan forward
+
+	// must be set before calling Close()/Accept()
+	tmpctx context.Context
 }
 
 // Accept waits for and returns the next connection to the listener.
@@ -105,7 +114,7 @@ func (l *unixListener) Close() error {
 	m := streamLocalChannelForwardMsg{
 		l.socketPath,
 	}
-	ok, _, err := l.conn.SendRequest("cancel-streamlocal-forward@openssh.com", true, Marshal(&m))
+	ok, _, err := l.conn.SendRequest(l.tmpctx, "cancel-streamlocal-forward@openssh.com", true, Marshal(&m))
 	if err == nil && !ok {
 		err = errors.New("ssh: cancel-streamlocal-forward@openssh.com failed")
 	}

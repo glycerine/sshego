@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"context"
 	"io"
 	"sync"
 	"testing"
@@ -20,7 +21,7 @@ type memTransport struct {
 	*sync.Cond
 }
 
-func (t *memTransport) readPacket() ([]byte, error) {
+func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 	t.Lock()
 	defer t.Unlock()
 	for {
@@ -84,14 +85,16 @@ func TestMemPipe(t *testing.T) {
 	if err := a.Close(); err != nil {
 		t.Fatal("Close: ", err)
 	}
-	p, err := b.readPacket()
+	ctx := context.Background()
+
+	p, err := b.readPacket(ctx)
 	if err != nil {
 		t.Fatal("readPacket: ", err)
 	}
 	if len(p) != 1 || p[0] != 42 {
 		t.Fatalf("got %v, want {42}", p)
 	}
-	p, err = b.readPacket()
+	p, err = b.readPacket(ctx)
 	if err != io.EOF {
 		t.Fatalf("got %v, %v, want EOF", p, err)
 	}
