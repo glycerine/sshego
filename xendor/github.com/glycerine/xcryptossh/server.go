@@ -170,7 +170,7 @@ func NewServerConn(ctx context.Context, c net.Conn, config *ServerConfig) (*Serv
 		fullConf.MaxAuthTries = 6
 	}
 
-	s := newConnection(c, config.Halt)
+	s := newConnection(c, fullConf.Halt)
 	perms, err := s.serverHandshake(ctx, &fullConf)
 	if err != nil {
 		c.Close()

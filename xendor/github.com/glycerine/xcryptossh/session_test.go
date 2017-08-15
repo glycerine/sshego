@@ -76,8 +76,8 @@ func dial(handler serverType, t *testing.T) *Client {
 	if err != nil {
 		t.Fatalf("unable to dial remote side: %v", err)
 	}
-
-	return NewClient(ctx, conn, chans, reqs)
+	halter := NewHalter()
+	return NewClient(ctx, conn, chans, reqs, halter)
 }
 
 // Test a simple string is returned to session.Stdout.

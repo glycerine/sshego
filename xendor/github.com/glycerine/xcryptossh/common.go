@@ -241,9 +241,9 @@ func (c *Config) SetDefaults() {
 		c.RekeyThreshold = math.MaxInt64
 	}
 
-	//	if c.Halt == nil {
-	//		c.Halt = NewHalter()
-	//	}
+	if c.Halt == nil {
+		c.Halt = NewHalter()
+	}
 }
 
 // buildDataSignedForAuth returns the data that is signed in order to prove

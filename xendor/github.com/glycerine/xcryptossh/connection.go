@@ -115,6 +115,9 @@ type connection struct {
 }
 
 func newConnection(c net.Conn, halt *Halter) *connection {
+	if halt == nil {
+		panic("assert: halt cannot be nil in newConnection()")
+	}
 	return &connection{
 		sshConn: sshConn{conn: c},
 		halt:    halt,

@@ -79,7 +79,10 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		c.Close()
 		return nil, nil, nil, errors.New("ssh: must specify HostKeyCallback")
 	}
-
+	if fullConf.Halt == nil {
+		c.Close()
+		return nil, nil, nil, errors.New("ssh: config must provide Halt")
+	}
 	conn := newConnection(c, fullConf.Halt)
 
 	// can block on conn here, we need to get a close
