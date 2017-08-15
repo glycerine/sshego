@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/glycerine/idem"
-
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
@@ -34,7 +32,7 @@ func NewBasicServer(cfg *SshegoConfig) *BasicServer {
 // Close releases all server port bindings.
 func (b *BasicServer) Close() error {
 	// In case we haven't yet actually started, close Done too.
-	// Multiple Close() calls on an idem.Halter are fine.
+	// Multiple Close() calls on Halter are fine.
 	b.cfg.Esshd.Halt.Done.Close()
 	return b.cfg.Esshd.Stop()
 }
@@ -63,7 +61,7 @@ type BasicListener struct {
 	dom     string
 	lsn     net.Listener
 	attempt uint64
-	halt    idem.Halter
+	halt    ssh.Halter
 	mut     sync.Mutex
 }
 
@@ -130,7 +128,7 @@ func (e *Esshd) Listen(bs *BasicServer) (*BasicListener, error) {
 		esshd: e,
 		dom:   domain,
 		lsn:   listener,
-		halt:  *idem.NewHalter(),
+		halt:  *ssh.NewHalter(),
 	}, nil
 }
 

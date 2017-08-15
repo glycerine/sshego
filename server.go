@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/glycerine/greenpack/msgp"
-	"github.com/glycerine/idem"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
@@ -25,7 +24,7 @@ import (
 // running from inside this libary.
 type Esshd struct {
 	cfg                  *SshegoConfig
-	Halt                 idem.Halter
+	Halt                 ssh.Halter
 	addUserToDatabase    chan *User
 	replyWithCreatedUser chan *User
 
@@ -52,7 +51,7 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 	p("top of SshegoConfig.NewEsshd()...")
 	srv := &Esshd{
 		cfg:                  cfg,
-		Halt:                 *idem.NewHalter(),
+		Halt:                 *ssh.NewHalter(),
 		addUserToDatabase:    make(chan *User),
 		replyWithCreatedUser: make(chan *User),
 		delUserReq:           make(chan *User),
