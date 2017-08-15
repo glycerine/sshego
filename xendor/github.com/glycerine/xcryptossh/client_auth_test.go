@@ -64,7 +64,7 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 			return nil, errors.New("password auth failed")
 		},
 		PublicKeyCallback: certChecker.Authenticate,
-		KeyboardInteractiveCallback: func(conn ConnMetadata, challenge KeyboardInteractiveChallenge) (*Permissions, error) {
+		KeyboardInteractiveCallback: func(ctx context.Context, conn ConnMetadata, challenge KeyboardInteractiveChallenge) (*Permissions, error) {
 			ans, err := challenge(ctx, "user",
 				"instruction",
 				[]string{"question1", "question2"},

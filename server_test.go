@@ -158,12 +158,12 @@ type server struct {
 	chans <-chan ssh.NewChannel
 }
 
-func newServer(c net.Conn, conf *ssh.ServerConfig) (*server, error) {
-	sconn, chans, reqs, err := ssh.NewServerConn(c, conf)
+func newServer(ctx context.Context, c net.Conn, conf *ssh.ServerConfig) (*server, error) {
+	sconn, chans, reqs, err := ssh.NewServerConn(ctx, c, conf)
 	if err != nil {
 		return nil, err
 	}
-	go ssh.DiscardRequests(reqs, nil)
+	go ssh.DiscardRequests(ctx, reqs, nil)
 	return &server{sconn, chans}, nil
 }
 

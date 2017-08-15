@@ -98,7 +98,7 @@ func (a *PerAttempt) handleChannel(ctx context.Context, newChannel ssh.NewChanne
 	t := newChannel.ChannelType()
 
 	if t == "direct-tcpip" {
-		handleDirectTcp(newChannel, ca)
+		handleDirectTcp(ctx, newChannel, ca)
 	}
 
 	if t != "session" {

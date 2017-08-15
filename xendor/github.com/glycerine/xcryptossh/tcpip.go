@@ -371,7 +371,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		ch, err = c.dial(net.IPv4zero.String(), 0, host, int(port))
+		ch, err = c.dial(c.tmpctx, net.IPv4zero.String(), 0, host, int(port))
 		if err != nil {
 			return nil, err
 		}
@@ -417,7 +417,7 @@ func (c *Client) DialTCP(n string, laddr, raddr *net.TCPAddr) (net.Conn, error) 
 			Port: 0,
 		}
 	}
-	ch, err := c.dial(laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
+	ch, err := c.dial(c.tmpctx, laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
 	if err != nil {
 		return nil, err
 	}
@@ -436,18 +436,18 @@ type channelOpenDirectMsg struct {
 	lport uint32
 }
 
-func (c *Client) dial(laddr string, lport int, raddr string, rport int) (Channel, error) {
+func (c *Client) dial(ctx context.Context, laddr string, lport int, raddr string, rport int) (Channel, error) {
 	msg := channelOpenDirectMsg{
 		raddr: raddr,
 		rport: uint32(rport),
 		laddr: laddr,
 		lport: uint32(lport),
 	}
-	ch, in, err := c.OpenChannel(c.tmpctx, "direct-tcpip", Marshal(&msg))
+	ch, in, err := c.OpenChannel(ctx, "direct-tcpip", Marshal(&msg))
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(c.tmpctx, in, c.Halt)
+	go DiscardRequests(ctx, in, c.Halt)
 	return ch, err
 }
 

@@ -133,6 +133,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	// that we do a simple retry logic after a brief pause here.
 	retryCount := 3
 	try := 0
+	var okCtx context.Context
 
 	for ; try < retryCount; try++ {
 		ctx, cancelctx := context.WithCancel(parCtx)
@@ -146,6 +147,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 		if err == nil {
 			// tie ctx and childHalt together
 			go ssh.MAD(ctx, cancelctx, childHalt)
+			okCtx = ctx
 			break
 		} else {
 			cancelctx()
@@ -198,7 +200,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	}
 	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
 		// a unix-domain socket request
-		nc, err := DialRemoteUnixDomain(sshClientConn, host)
+		nc, err := DialRemoteUnixDomain(okCtx, sshClientConn, host)
 		p("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}
@@ -207,7 +209,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	// Start keepalives on the tcp, unless turned off.
 	if err == nil {
 		if !dc.SkipKeepAlive {
-			err, cancel := StartKeepalives(sshClientConn)
+			err, cancel := StartKeepalives(okCtx, sshClientConn)
 			dc.CancelKeepAlive = cancel
 			panicOn(err)
 		}

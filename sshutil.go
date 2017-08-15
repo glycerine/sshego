@@ -23,7 +23,7 @@ type kiCliHelp struct {
 // helper assists ssh client with keyboard-interactive
 // password and TOPT login. Must match the
 // prototype KeyboardInteractiveChallenge.
-func (ki *kiCliHelp) helper(user string, instruction string, questions []string, echos []bool) ([]string, error) {
+func (ki *kiCliHelp) helper(ctx context.Context, user string, instruction string, questions []string, echos []bool) ([]string, error) {
 	var answers []string
 	for _, q := range questions {
 		switch q {
@@ -289,7 +289,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		}
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
-			err = cfg.StartupReverseListener(sshClientConn)
+			err = cfg.StartupReverseListener(ctx, sshClientConn)
 			if err != nil {
 				return nil, nil, fmt.Errorf("StartupReverseListener failed: %s", err)
 			}
@@ -386,7 +386,7 @@ type Reverse struct {
 
 // StartupReverseListener is called when a reverse tunnel is requested, to listen
 // and tunnel those connections.
-func (cfg *SshegoConfig) StartupReverseListener(sshClientConn *ssh.Client) error {
+func (cfg *SshegoConfig) StartupReverseListener(ctx context.Context, sshClientConn *ssh.Client) error {
 	p("StartupReverseListener called")
 
 	addr, err := net.ResolveTCPAddr("tcp", cfg.RemoteToLocal.Listen.Addr)
@@ -394,7 +394,7 @@ func (cfg *SshegoConfig) StartupReverseListener(sshClientConn *ssh.Client) error
 		return err
 	}
 
-	lsn, err := sshClientConn.ListenTCP(addr)
+	lsn, err := sshClientConn.ListenTCP(ctx, addr)
 	if err != nil {
 		return err
 	}
@@ -532,9 +532,9 @@ func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConf
 			conn.Close()
 		}()
 	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	c, chans, reqs, err := ssh.NewClientConn(ctx, conn, addr, config)
 	if err != nil {
 		return nil, nil, err
 	}
-	return ssh.NewClient(c, chans, reqs), conn, nil
+	return ssh.NewClient(ctx, c, chans, reqs), conn, nil
 }

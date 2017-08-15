@@ -1,6 +1,7 @@
 package sshego
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -25,7 +26,7 @@ const minus10_uint32 uint32 = 0xFFFFFFF6
 
 // server side: handle channel type "direct-tcpip"  - RFC 4254 7.2
 // ca can be nil.
-func handleDirectTcp(newChannel ssh.NewChannel, ca *ConnectionAlert) {
+func handleDirectTcp(ctx context.Context, newChannel ssh.NewChannel, ca *ConnectionAlert) {
 	//pp("handleDirectTcp called!")
 
 	p := &channelOpenDirectMsg{}
@@ -36,7 +37,7 @@ func handleDirectTcp(newChannel ssh.NewChannel, ca *ConnectionAlert) {
 
 	channel, req, err := newChannel.Accept() // (Channel, <-chan *Request, error)
 	panicOn(err)
-	go ssh.DiscardRequests(req, nil)
+	go ssh.DiscardRequests(ctx, req, nil)
 
 	go func(ch ssh.Channel, host string, port uint32) {
 
@@ -86,6 +87,6 @@ func dialDirect(ctx context.Context, c *ssh.Client, laddr string, lport int, rad
 	if err != nil {
 		return nil, err
 	}
-	go ssh.DiscardRequests(in, nil)
+	go ssh.DiscardRequests(ctx, in, nil)
 	return ch, err
 }

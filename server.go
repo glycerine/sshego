@@ -435,7 +435,7 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 	// Before use, a handshake must be performed on the incoming
 	// net.Conn.
 
-	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, a.Config)
+	sshConn, chans, reqs, err := ssh.NewServerConn(ctx, nConn, a.Config)
 	if err != nil {
 		msg := fmt.Errorf("%v sshego PerAttempt.PerConnection() did not handshake: %v", loc, err)
 		p(msg.Error())
@@ -573,7 +573,7 @@ var keyFail = errors.New("keyboard-interactive failed")
 const passwordChallenge = "password: "
 const gauthChallenge = "google-authenticator-code: "
 
-func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+func (a *PerAttempt) KeyboardInteractiveCallback(ctx context.Context, conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
 	//p("KeyboardInteractiveCallback top: a.PublicKeyOK=%v, a.OneTimeOK=%v", a.PublicKeyOK, a.OneTimeOK)
 
 	// no matter what happens, temper DDOS/many fast login attemps by
@@ -613,7 +613,7 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 		echoAnswers = append(echoAnswers, true)
 	}
 
-	ans, err := challenge(mylogin,
+	ans, err := challenge(ctx, mylogin,
 		fmt.Sprintf("login for %s:", mylogin),
 		chal,
 		echoAnswers)
@@ -651,7 +651,7 @@ func (a *PerAttempt) KeyboardInteractiveCallback(conn ssh.ConnMetadata, challeng
 		}
 		prev := fmt.Sprintf("last login was at %v, from '%s'",
 			user.LastLoginTime.UTC(), user.LastLoginAddr)
-		challenge(fmt.Sprintf("user '%s' succesfully logged in", mylogin),
+		challenge(ctx, fmt.Sprintf("user '%s' succesfully logged in", mylogin),
 			prev, nil, nil)
 		a.NoteLogin(user, now, conn)
 		return nil, nil
