@@ -315,7 +315,7 @@ func (e *Esshd) Start(ctx context.Context) {
 	}
 
 	go func() {
-		log.Printf("%s Esshd.Start() called, for binding '%s'. %s",
+		p("%s Esshd.Start() called, for binding '%s'. %s",
 			e.cfg.Nickname, e.cfg.EmbeddedSSHd.Addr, SourceVersion())
 
 		// most of the auth state is per user, so it has
@@ -342,7 +342,7 @@ func (e *Esshd) Start(ctx context.Context) {
 			msg := fmt.Sprintf("failed to listen for connection on %v: %v",
 				e.cfg.EmbeddedSSHd.Addr, err)
 			log.Printf(msg)
-			panic(msg)
+			//panic(msg)
 			return
 		}
 
