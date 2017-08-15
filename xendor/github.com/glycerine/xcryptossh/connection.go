@@ -81,7 +81,7 @@ type Conn interface {
 
 // DiscardRequests consumes and rejects all requests from the
 // passed-in channel.
-func DiscardRequests(in <-chan *Request, halt *Halter) {
+func DiscardRequests(ctx context.Context, in <-chan *Request, halt *Halter) {
 
 	var done chan struct{}
 	if halt != nil {
@@ -94,6 +94,8 @@ func DiscardRequests(in <-chan *Request, halt *Halter) {
 				req.Reply(false, nil)
 			}
 		case <-done:
+			return
+		case <-ctx.Done():
 			return
 		}
 	}

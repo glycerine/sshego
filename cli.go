@@ -219,9 +219,9 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 // that will send a keepalive on sshClientConn
 // every 60 seconds. Closing the returned
 // channel will exit the goroutine.
-func StartKeepalives(sshClientConn *ssh.Client) (error, chan struct{}) {
+func StartKeepalives(ctx context.Context, sshClientConn *ssh.Client) (error, chan struct{}) {
 	cancel := make(chan struct{})
-	_, _, err := sshClientConn.SendRequest("keepalive@openssh.com", true, nil)
+	_, _, err := sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
 	if err != nil {
 		return err, cancel
 	}
@@ -229,7 +229,7 @@ func StartKeepalives(sshClientConn *ssh.Client) (error, chan struct{}) {
 		for {
 			select {
 			case <-time.After(time.Minute):
-				sshClientConn.SendRequest("keepalive@openssh.com", true, nil)
+				sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
 			case <-cancel:
 				return
 			}

@@ -44,7 +44,7 @@ func dial(handler serverType, t *testing.T) *Client {
 		if err != nil {
 			t.Fatalf("Unable to handshake: %v", err)
 		}
-		go DiscardRequests(reqs, conf.Halt)
+		go DiscardRequests(ctx, reqs, conf.Halt)
 
 		for newCh := range chans {
 			if newCh.ChannelType() != "session" {
@@ -687,7 +687,7 @@ func TestSessionID(t *testing.T) {
 			t.Fatalf("server handshake: %v", err)
 		}
 		serverID <- conn.SessionID()
-		go DiscardRequests(reqs, serverConf.Halt)
+		go DiscardRequests(ctx, reqs, serverConf.Halt)
 		for ch := range chans {
 			ch.Reject(Prohibited, "")
 		}
@@ -700,7 +700,7 @@ func TestSessionID(t *testing.T) {
 			t.Fatalf("client handshake: %v", err)
 		}
 		clientID <- conn.SessionID()
-		go DiscardRequests(reqs, clientConf.Halt)
+		go DiscardRequests(ctx, reqs, clientConf.Halt)
 		for ch := range chans {
 			ch.Reject(Prohibited, "")
 		}

@@ -22,7 +22,7 @@ func newServer(ctx context.Context, c net.Conn, conf *ServerConfig) (*server, er
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(reqs, conf.Halt)
+	go DiscardRequests(ctx, reqs, conf.Halt)
 	return &server{sconn, chans}, nil
 }
 
@@ -65,7 +65,7 @@ func sshPipe() (Conn, *server, error) {
 	if server == nil {
 		return nil, nil, errors.New("server handshake failed.")
 	}
-	go DiscardRequests(reqs, nil)
+	go DiscardRequests(ctx, reqs, nil)
 
 	return client, server, nil
 }
@@ -95,7 +95,7 @@ func BenchmarkEndToEnd(b *testing.B) {
 			b.Fatalf("Client: %v", err)
 		}
 		ch, incoming, err := newCh.Accept()
-		go DiscardRequests(incoming, nil)
+		go DiscardRequests(ctx, incoming, nil)
 		for i := 0; i < b.N; i++ {
 			if _, err := io.ReadFull(ch, output); err != nil {
 				b.Fatalf("ReadFull: %v", err)
@@ -109,7 +109,7 @@ func BenchmarkEndToEnd(b *testing.B) {
 	if err != nil {
 		b.Fatalf("OpenChannel: %v", err)
 	}
-	go DiscardRequests(in, nil)
+	go DiscardRequests(ctx, in, nil)
 
 	b.ResetTimer()
 	b.StartTimer()

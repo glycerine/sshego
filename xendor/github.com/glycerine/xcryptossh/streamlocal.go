@@ -62,7 +62,7 @@ func (c *Client) dialStreamLocal(ctx context.Context, socketPath string) (Channe
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(in, c.Halt)
+	go DiscardRequests(ctx, in, c.Halt)
 	return ch, err
 }
 
@@ -92,7 +92,7 @@ func (l *unixListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(incoming, l.conn.Halt)
+	go DiscardRequests(l.tmpctx, incoming, l.conn.Halt)
 
 	return &chanConn{
 		Channel: ch,
