@@ -50,7 +50,7 @@ func (c *Client) ListenUnix(ctx context.Context, socketPath string) (net.Listene
 		socketPath: socketPath,
 		conn:       c,
 		in:         ch,
-		tmpctx:     ctx,
+		TmpCtx:     ctx,
 	}, nil
 }
 
@@ -73,7 +73,7 @@ type unixListener struct {
 	in   <-chan forward
 
 	// must be set before calling Close()/Accept()
-	tmpctx context.Context
+	TmpCtx context.Context
 }
 
 // Accept waits for and returns the next connection to the listener.
@@ -92,7 +92,7 @@ func (l *unixListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(l.tmpctx, incoming, l.conn.Halt)
+	go DiscardRequests(l.TmpCtx, incoming, l.conn.Halt)
 
 	return &chanConn{
 		Channel: ch,
@@ -114,7 +114,7 @@ func (l *unixListener) Close() error {
 	m := streamLocalChannelForwardMsg{
 		l.socketPath,
 	}
-	ok, _, err := l.conn.SendRequest(l.tmpctx, "cancel-streamlocal-forward@openssh.com", true, Marshal(&m))
+	ok, _, err := l.conn.SendRequest(l.TmpCtx, "cancel-streamlocal-forward@openssh.com", true, Marshal(&m))
 	if err == nil && !ok {
 		err = errors.New("ssh: cancel-streamlocal-forward@openssh.com failed")
 	}

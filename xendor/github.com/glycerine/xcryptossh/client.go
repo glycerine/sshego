@@ -24,7 +24,7 @@ type Client struct {
 	mu              sync.Mutex
 	channelHandlers map[string]chan NewChannel
 
-	tmpctx context.Context
+	TmpCtx context.Context
 }
 
 // HandleChannelOpen returns a channel on which NewChannel requests

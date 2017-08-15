@@ -29,9 +29,9 @@ func (c *Client) Listen(n, addr string) (net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		return c.ListenTCP(c.tmpctx, laddr)
+		return c.ListenTCP(c.TmpCtx, laddr)
 	case "unix":
-		return c.ListenUnix(c.tmpctx, addr)
+		return c.ListenUnix(c.TmpCtx, addr)
 	default:
 		return nil, fmt.Errorf("ssh: unsupported protocol: %s", n)
 	}
@@ -131,7 +131,7 @@ func (c *Client) ListenTCP(ctx context.Context, laddr *net.TCPAddr) (*tcpListene
 		laddr:  laddr,
 		conn:   c,
 		in:     ch,
-		tmpctx: c.tmpctx}, nil
+		TmpCtx: c.TmpCtx}, nil
 }
 
 // forwardList stores a mapping between remote
@@ -305,7 +305,7 @@ type tcpListener struct {
 	in   <-chan forward
 
 	// must be set for Accept() and Close() call.
-	tmpctx context.Context
+	TmpCtx context.Context
 }
 
 // Accept waits for and returns the next connection to the listener.
@@ -315,7 +315,7 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	select {
 	case <-l.conn.Done():
 		return nil, io.EOF
-	case <-l.tmpctx.Done():
+	case <-l.TmpCtx.Done():
 		return nil, io.EOF
 	case s, ok = <-l.in:
 		if !ok {
@@ -326,7 +326,7 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	go DiscardRequests(l.tmpctx, incoming, l.conn.Halt)
+	go DiscardRequests(l.TmpCtx, incoming, l.conn.Halt)
 
 	return &chanConn{
 		Channel: ch,
@@ -344,7 +344,7 @@ func (l *tcpListener) Close() error {
 
 	// this also closes the listener.
 	l.conn.forwards.remove(l.laddr)
-	ok, _, err := l.conn.SendRequest(l.tmpctx, "cancel-tcpip-forward", true, Marshal(&m))
+	ok, _, err := l.conn.SendRequest(l.TmpCtx, "cancel-tcpip-forward", true, Marshal(&m))
 	if err == nil && !ok {
 		err = errors.New("ssh: cancel-tcpip-forward failed")
 	}
@@ -371,7 +371,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		ch, err = c.dial(c.tmpctx, net.IPv4zero.String(), 0, host, int(port))
+		ch, err = c.dial(c.TmpCtx, net.IPv4zero.String(), 0, host, int(port))
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +387,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		}, nil
 	case "unix":
 		var err error
-		ch, err = c.dialStreamLocal(c.tmpctx, addr)
+		ch, err = c.dialStreamLocal(c.TmpCtx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -417,7 +417,7 @@ func (c *Client) DialTCP(n string, laddr, raddr *net.TCPAddr) (net.Conn, error) 
 			Port: 0,
 		}
 	}
-	ch, err := c.dial(c.tmpctx, laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
+	ch, err := c.dial(c.TmpCtx, laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
 	if err != nil {
 		return nil, err
 	}

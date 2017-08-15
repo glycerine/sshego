@@ -204,6 +204,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 		p("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClientConn, err
 	}
+	sshClientConn.TmpCtx = okCtx
 	nc, err := sshClientConn.Dial("tcp", hp)
 
 	// Start keepalives on the tcp, unless turned off.

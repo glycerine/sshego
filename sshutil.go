@@ -295,7 +295,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			}
 		}
 		if cfg.LocalToRemote.Listen.Addr != "" {
-			err = cfg.StartupForwardListener(sshClientConn)
+			err = cfg.StartupForwardListener(ctx, sshClientConn)
 			if err != nil {
 				return nil, nil, fmt.Errorf("StartupFowardListener failed: %s", err)
 			}
@@ -306,7 +306,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 
 // StartupForwardListener is called when a forward tunnel is the
 // be listened for.
-func (cfg *SshegoConfig) StartupForwardListener(sshClientConn *ssh.Client) error {
+func (cfg *SshegoConfig) StartupForwardListener(ctx context.Context, sshClientConn *ssh.Client) error {
 
 	p("sshego: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
 	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(cfg.LocalToRemote.Listen.Host), Port: int(cfg.LocalToRemote.Listen.Port)})
@@ -336,7 +336,7 @@ func (cfg *SshegoConfig) StartupForwardListener(sshClientConn *ssh.Client) error
 			// if you want to collect them...
 			//cfg.Fwd = append(cfg.Fwd, NewForward(cfg, sshClientConn, fromBrowser))
 			// or just fire and forget...
-			NewForward(cfg, sshClientConn, fromBrowser)
+			NewForward(ctx, cfg, sshClientConn, fromBrowser)
 		}
 	}()
 
@@ -358,9 +358,10 @@ type Forwarder struct {
 }
 
 // NewForward is called to produce a Forwarder structure for each new forward connection.
-func NewForward(cfg *SshegoConfig, sshClientConn *ssh.Client, fromBrowser net.Conn) *Forwarder {
+func NewForward(ctx context.Context, cfg *SshegoConfig, sshClientConn *ssh.Client, fromBrowser net.Conn) *Forwarder {
 
 	sp := newShovelPair(false)
+	sshClientConn.TmpCtx = ctx
 	channelToSSHd, err := sshClientConn.Dial("tcp", cfg.LocalToRemote.Remote.Addr)
 	if err != nil {
 		msg := fmt.Errorf("Remote dial to '%s' error: %s", cfg.LocalToRemote.Remote.Addr, err)
