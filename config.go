@@ -18,7 +18,7 @@ import (
 // SshegoConfig is the top level, main config
 type SshegoConfig struct {
 	Nickname string
-	Halter   *ssh.Halter
+	Halt     *ssh.Halter
 
 	ConfigPath string
 
@@ -113,7 +113,7 @@ func NewSshegoConfig() *SshegoConfig {
 
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
-		Halter:        ssh.NewHalter(),
+		Halt:          ssh.NewHalter(),
 	}
 	return cfg
 }
