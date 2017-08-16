@@ -112,6 +112,9 @@ func (c *connection) clientHandshake(ctx context.Context, dialAddress string, co
 	c.transport = newClientTransport(ctx,
 		newTransport(c.sshConn.conn, config.Rand, true /* is client */, &config.Config),
 		c.clientVersion, c.serverVersion, config, dialAddress, c.sshConn.RemoteAddr())
+	if c.transport == nil {
+		return ErrShutDown
+	}
 	if err := c.transport.waitSession(ctx); err != nil {
 		return err
 	}

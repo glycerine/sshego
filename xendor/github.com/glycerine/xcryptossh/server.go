@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+var ErrShutDown = fmt.Errorf("ssh: shutting down.")
+
 // The Permissions type holds fine-grained permissions that are
 // specific to a user or a specific authentication method for a user.
 // The Permissions value for a successful authentication attempt is
@@ -214,7 +216,7 @@ func (s *connection) serverHandshake(ctx context.Context, config *ServerConfig) 
 	tr := newTransport(s.sshConn.conn, config.Rand, false /* not client */, &config.Config)
 	s.transport = newServerTransport(ctx, tr, s.clientVersion, s.serverVersion, config)
 	if s.transport == nil {
-		return nil, fmt.Errorf("ssh: shutting down.")
+		return nil, ErrShutDown
 	}
 	if err := s.transport.waitSession(ctx); err != nil {
 		return nil, err

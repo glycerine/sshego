@@ -123,7 +123,15 @@ func newHandshakeTransport(ctx context.Context, conn keyingTransport, config *Co
 }
 
 func newClientTransport(ctx context.Context, conn keyingTransport, clientVersion, serverVersion []byte, config *ClientConfig, dialAddr string, addr net.Addr) *handshakeTransport {
+	if conn == nil || config == nil {
+		// happens on shutdown
+		return nil
+	}
 	t := newHandshakeTransport(ctx, conn, &config.Config, clientVersion, serverVersion)
+	if t == nil {
+		// happens on shutdown
+		return nil
+	}
 	t.dialAddress = dialAddr
 	t.remoteAddr = addr
 	t.hostKeyCallback = config.HostKeyCallback
