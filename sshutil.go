@@ -169,7 +169,9 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 	defer cfg.Mut.Unlock()
 
 	ctx, cancelctx := context.WithCancel(ctxPar)
-	go ssh.MAD(ctx, cancelctx, halt)
+	if halt != nil {
+		go ssh.MAD(ctx, cancelctx, halt)
+	}
 
 	var sshClientConn *ssh.Client
 	var nc net.Conn
