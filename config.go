@@ -98,6 +98,16 @@ type SshegoConfig struct {
 	SkipCommandRecv bool
 
 	Mut sync.Mutex
+
+	// once running:
+
+	// Underling TCP network connection
+	Underlying net.Conn
+
+	// once started, the SSHConnect() call
+	// will set this, so that cfg becomes
+	// all self-contained.
+	SshClient *ssh.Client
 }
 
 func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {

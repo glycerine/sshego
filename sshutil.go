@@ -303,6 +303,8 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			}
 		}
 	}
+	cfg.Underlying = nc
+	cfg.SshClient = sshClientConn
 	return sshClientConn, nc, nil
 }
 
