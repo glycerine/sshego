@@ -285,7 +285,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
 		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
+		sshClientConn, nc, err = cfg.mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
@@ -509,7 +509,7 @@ func getCiphers() []string {
 	*/
 }
 
-func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
+func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
 	conn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
@@ -541,5 +541,5 @@ func mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConf
 	if err != nil {
 		return nil, nil, err
 	}
-	return ssh.NewClient(ctx, c, chans, reqs, halt), conn, nil
+	return cfg.NewSSHClient(ctx, c, chans, reqs, halt), conn, nil
 }

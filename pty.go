@@ -62,7 +62,7 @@ type ConnectionAlert struct {
 	ShutDown chan struct{}
 }
 
-func (a *PerAttempt) handleChannels(ctx context.Context, chans <-chan ssh.NewChannel, ca *ConnectionAlert) {
+func (cfg *SshegoConfig) handleChannels(ctx context.Context, chans <-chan ssh.NewChannel, sshconn ssh.Conn, ca *ConnectionAlert) {
 	// Service the incoming Channel channel in go routine
 	var shut chan struct{}
 	if ca != nil {
@@ -74,8 +74,8 @@ func (a *PerAttempt) handleChannels(ctx context.Context, chans <-chan ssh.NewCha
 			if !stillOpen {
 				return
 			}
-			go a.handleChannel(ctx, newChannel, ca)
-		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
+			go cfg.handleChannel(ctx, newChannel, sshconn, ca)
+		case <-cfg.Esshd.Halt.ReqStop.Chan:
 			return
 		case <-shut:
 			return
@@ -85,7 +85,7 @@ func (a *PerAttempt) handleChannels(ctx context.Context, chans <-chan ssh.NewCha
 	}
 }
 
-func (a *PerAttempt) handleChannel(ctx context.Context, newChannel ssh.NewChannel, ca *ConnectionAlert) {
+func (cfg *SshegoConfig) handleChannel(ctx context.Context, newChannel ssh.NewChannel, sshconn ssh.Conn, ca *ConnectionAlert) {
 
 	// Since we're handling a shell, we expect a
 	// channel type of "session". The spec also describes
@@ -102,10 +102,10 @@ func (a *PerAttempt) handleChannel(ctx context.Context, newChannel ssh.NewChanne
 	}
 
 	if t != "session" {
-		if len(a.cfg.CustomChannelHandlers) > 0 {
-			cb, ok := a.cfg.CustomChannelHandlers[t]
+		if len(cfg.CustomChannelHandlers) > 0 {
+			cb, ok := cfg.CustomChannelHandlers[t]
 			if ok {
-				go cb(newChannel, ca)
+				go cb(newChannel, sshconn, ca)
 				return
 			}
 		}

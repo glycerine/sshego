@@ -71,7 +71,7 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 // Each will be called on its own goroutine already.
 // For example, "custom-inproc-stream" might
 // serve in-process streaming.
-type CustomChannelHandlerCB func(nc ssh.NewChannel, ca *ConnectionAlert)
+type CustomChannelHandlerCB func(nc ssh.NewChannel, sshconn ssh.Conn, ca *ConnectionAlert)
 
 // PerAttempt holds the auth state
 // that should be reset anew on each
@@ -449,7 +449,7 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 	// Discard all global out-of-band Requests
 	go a.discardRequests(ctx, reqs)
 	// Accept all channels
-	go a.handleChannels(ctx, chans, ca)
+	go a.cfg.handleChannels(ctx, chans, sshConn, ca)
 
 	return nil
 }

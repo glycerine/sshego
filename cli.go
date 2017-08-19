@@ -240,3 +240,38 @@ func StartKeepalives(ctx context.Context, sshClientConn *ssh.Client) (error, cha
 	}()
 	return nil, cancel
 }
+
+// derived from ssh.NewClient: NewSSHClient creates a Client on top of the given connection.
+func (cfg *SshegoConfig) NewSSHClient(ctx context.Context, c ssh.Conn, chans <-chan ssh.NewChannel, reqs <-chan *ssh.Request, halt *ssh.Halter) *ssh.Client {
+	conn := &ssh.Client{
+		Conn:            c,
+		ChannelHandlers: make(map[string]chan ssh.NewChannel, 1),
+		Halt:            halt,
+	}
+
+	go conn.HandleGlobalRequests(ctx, reqs)
+	go conn.HandleChannelOpens(ctx, chans)
+	go func() {
+		conn.Wait()
+		conn.Forwards.CloseAll()
+	}()
+	go conn.Forwards.HandleChannels(ctx, conn.HandleChannelOpen("forwarded-tcpip"), c)
+	go conn.Forwards.HandleChannels(ctx, conn.HandleChannelOpen("forwarded-streamlocal@openssh.com"), c)
+
+	// custom-inproc-stream is how reptile replication requests are sent,
+	// originating from the server and sent to the client.
+	if len(cfg.CustomChannelHandlers) > 0 && cfg.CustomChannelHandlers["custom-inproc-stream"] != nil {
+		var ca *ConnectionAlert
+		// or ???
+		//		ca := &ConnectionAlert{
+		//			PortOne:  make(chan ssh.Channel),
+		//			ShutDown: cfg.Halt.ReqStop.Chan,
+		//		}
+
+		newChanChan := conn.HandleChannelOpen("custom-inproc-stream")
+		if newChanChan != nil {
+			go cfg.handleChannels(ctx, newChanChan, c, ca)
+		}
+	}
+	return conn
+}
