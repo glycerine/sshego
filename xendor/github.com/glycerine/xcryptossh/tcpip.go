@@ -125,7 +125,7 @@ func (c *Client) ListenTCP(ctx context.Context, laddr *net.TCPAddr) (*tcpListene
 	}
 
 	// Register this forward, using the port number we obtained.
-	ch := c.forwards.add(laddr)
+	ch := c.Forwards.add(laddr)
 
 	return &tcpListener{
 		laddr:  laddr,
@@ -136,7 +136,7 @@ func (c *Client) ListenTCP(ctx context.Context, laddr *net.TCPAddr) (*tcpListene
 
 // forwardList stores a mapping between remote
 // forward requests and the tcpListeners.
-type forwardList struct {
+type ForwardList struct {
 	sync.Mutex
 	entries []forwardEntry
 }
@@ -156,7 +156,7 @@ type forward struct {
 	raddr net.Addr   // the raddr of the incoming connection
 }
 
-func (l *forwardList) add(addr net.Addr) chan forward {
+func (l *ForwardList) add(addr net.Addr) chan forward {
 	l.Lock()
 	defer l.Unlock()
 	f := forwardEntry{
@@ -187,7 +187,7 @@ func parseTCPAddr(addr string, port uint32) (*net.TCPAddr, error) {
 	return &net.TCPAddr{IP: ip, Port: int(port)}, nil
 }
 
-func (l *forwardList) handleChannels(ctx context.Context, in <-chan NewChannel, conn Conn) {
+func (l *ForwardList) HandleChannels(ctx context.Context, in <-chan NewChannel, conn Conn) {
 	var ch NewChannel
 	for {
 		select {
@@ -242,7 +242,7 @@ func (l *forwardList) handleChannels(ctx context.Context, in <-chan NewChannel, 
 			default:
 				panic(fmt.Errorf("ssh: unknown channel type %s", channelType))
 			}
-			ok, err := l.forward(ctx, laddr, raddr, ch, conn)
+			ok, err := l.Forward(ctx, laddr, raddr, ch, conn)
 			if err != nil {
 				return
 			}
@@ -258,7 +258,7 @@ func (l *forwardList) handleChannels(ctx context.Context, in <-chan NewChannel, 
 
 // remove removes the forward entry, and the channel feeding its
 // listener.
-func (l *forwardList) remove(addr net.Addr) {
+func (l *ForwardList) Remove(addr net.Addr) {
 	l.Lock()
 	defer l.Unlock()
 	for i, f := range l.entries {
@@ -271,7 +271,7 @@ func (l *forwardList) remove(addr net.Addr) {
 }
 
 // closeAll closes and clears all forwards.
-func (l *forwardList) closeAll() {
+func (l *ForwardList) CloseAll() {
 	l.Lock()
 	defer l.Unlock()
 	for _, f := range l.entries {
@@ -280,7 +280,7 @@ func (l *forwardList) closeAll() {
 	l.entries = nil
 }
 
-func (l *forwardList) forward(ctx context.Context, laddr, raddr net.Addr, ch NewChannel, conn Conn) (bool, error) {
+func (l *ForwardList) Forward(ctx context.Context, laddr, raddr net.Addr, ch NewChannel, conn Conn) (bool, error) {
 	l.Lock()
 	defer l.Unlock()
 	for _, f := range l.entries {
@@ -343,7 +343,7 @@ func (l *tcpListener) Close() error {
 	}
 
 	// this also closes the listener.
-	l.conn.forwards.remove(l.laddr)
+	l.conn.Forwards.Remove(l.laddr)
 	ok, _, err := l.conn.SendRequest(l.TmpCtx, "cancel-tcpip-forward", true, Marshal(&m))
 	if err == nil && !ok {
 		err = errors.New("ssh: cancel-tcpip-forward failed")

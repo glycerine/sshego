@@ -20,9 +20,9 @@ type Client struct {
 	Conn
 	Halt *Halter
 
-	forwards        forwardList // forwarded tcpip connections from the remote side
-	mu              sync.Mutex
-	channelHandlers map[string]chan NewChannel
+	Forwards        ForwardList // forwarded tcpip connections from the remote side
+	Mu              sync.Mutex
+	ChannelHandlers map[string]chan NewChannel
 
 	TmpCtx context.Context
 }
@@ -31,22 +31,22 @@ type Client struct {
 // for the given type are sent. If the type already is being handled,
 // nil is returned. The channel is closed when the connection is closed.
 func (c *Client) HandleChannelOpen(channelType string) <-chan NewChannel {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.channelHandlers == nil {
+	c.Mu.Lock()
+	defer c.Mu.Unlock()
+	if c.ChannelHandlers == nil {
 		// The SSH channel has been closed.
 		c := make(chan NewChannel)
 		close(c)
 		return c
 	}
 
-	ch := c.channelHandlers[channelType]
+	ch := c.ChannelHandlers[channelType]
 	if ch != nil {
 		return nil
 	}
 
 	ch = make(chan NewChannel, chanSize)
-	c.channelHandlers[channelType] = ch
+	c.ChannelHandlers[channelType] = ch
 	return ch
 }
 
@@ -54,18 +54,18 @@ func (c *Client) HandleChannelOpen(channelType string) <-chan NewChannel {
 func NewClient(ctx context.Context, c Conn, chans <-chan NewChannel, reqs <-chan *Request, halt *Halter) *Client {
 	conn := &Client{
 		Conn:            c,
-		channelHandlers: make(map[string]chan NewChannel, 1),
+		ChannelHandlers: make(map[string]chan NewChannel, 1),
 		Halt:            halt,
 	}
 
-	go conn.handleGlobalRequests(ctx, reqs)
-	go conn.handleChannelOpens(ctx, chans)
+	go conn.HandleGlobalRequests(ctx, reqs)
+	go conn.HandleChannelOpens(ctx, chans)
 	go func() {
 		conn.Wait()
-		conn.forwards.closeAll()
+		conn.Forwards.CloseAll()
 	}()
-	go conn.forwards.handleChannels(ctx, conn.HandleChannelOpen("forwarded-tcpip"), c)
-	go conn.forwards.handleChannels(ctx, conn.HandleChannelOpen("forwarded-streamlocal@openssh.com"), c)
+	go conn.Forwards.HandleChannels(ctx, conn.HandleChannelOpen("forwarded-tcpip"), c)
+	go conn.Forwards.HandleChannels(ctx, conn.HandleChannelOpen("forwarded-streamlocal@openssh.com"), c)
 	return conn
 }
 
@@ -144,7 +144,7 @@ func (c *Client) NewSession(ctx context.Context) (*Session, error) {
 	return newSession(ch, in)
 }
 
-func (c *Client) handleGlobalRequests(ctx context.Context, incoming <-chan *Request) {
+func (c *Client) HandleGlobalRequests(ctx context.Context, incoming <-chan *Request) {
 
 	for {
 		select {
@@ -165,7 +165,7 @@ func (c *Client) handleGlobalRequests(ctx context.Context, incoming <-chan *Requ
 }
 
 // handleChannelOpens channel open messages from the remote side.
-func (c *Client) handleChannelOpens(ctx context.Context, in <-chan NewChannel) {
+func (c *Client) HandleChannelOpens(ctx context.Context, in <-chan NewChannel) {
 
 	for {
 		select {
@@ -177,9 +177,9 @@ func (c *Client) handleChannelOpens(ctx context.Context, in <-chan NewChannel) {
 			return
 		case ch := <-in:
 			if ch != nil {
-				c.mu.Lock()
-				handler := c.channelHandlers[ch.ChannelType()]
-				c.mu.Unlock()
+				c.Mu.Lock()
+				handler := c.ChannelHandlers[ch.ChannelType()]
+				c.Mu.Unlock()
 				if handler != nil {
 					select {
 					case handler <- ch:
@@ -196,12 +196,12 @@ func (c *Client) handleChannelOpens(ctx context.Context, in <-chan NewChannel) {
 			}
 		}
 	}
-	c.mu.Lock()
-	for _, ch := range c.channelHandlers {
+	c.Mu.Lock()
+	for _, ch := range c.ChannelHandlers {
 		close(ch)
 	}
-	c.channelHandlers = nil
-	c.mu.Unlock()
+	c.ChannelHandlers = nil
+	c.Mu.Unlock()
 }
 
 // Dial starts a client connection to the given SSH server. It is a
