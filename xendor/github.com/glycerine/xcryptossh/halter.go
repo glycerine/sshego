@@ -62,9 +62,9 @@ func (c *IdemCloseChan) IsClosed() bool {
 // overall lifecycle of a resource.
 type Halter struct {
 
-	// Registered is closed when the request
-	// is on file/ready to be verified/used.
-	Registered IdemCloseChan
+	// Ready is closed when
+	// the resouce embedding the Halter is ready.
+	Ready IdemCloseChan
 
 	// The owning goutine should call Done.Close() as its last
 	// actual once it has received the ReqStop() signal.
@@ -79,9 +79,9 @@ type Halter struct {
 
 func NewHalter() *Halter {
 	return &Halter{
-		Registered: *NewIdemCloseChan(),
-		Done:       *NewIdemCloseChan(),
-		ReqStop:    *NewIdemCloseChan(),
+		Ready:   *NewIdemCloseChan(),
+		Done:    *NewIdemCloseChan(),
+		ReqStop: *NewIdemCloseChan(),
 	}
 }
 
@@ -90,6 +90,13 @@ func NewHalter() *Halter {
 // multiple goroutine access.
 func (h *Halter) RequestStop() {
 	h.ReqStop.Close()
+}
+
+// MarkReady closes the h.Ready channel
+// if it has not already done so. Safe for
+// multiple goroutine access.
+func (h *Halter) MarkReady() {
+	h.Done.Close()
 }
 
 // MarkDone closes the h.Done channel
