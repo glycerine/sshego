@@ -801,6 +801,8 @@ func (a *AuthState) LoadPublicKeys(authorizedKeysPath string) error {
 }
 
 func (a *PerAttempt) SetupAuthRequirements() {
+	a.cfg.Mut.Lock()
+	defer a.cfg.Mut.Unlock()
 	a.SetTripleConfig()
 	if a.cfg.SkipRSA {
 		a.Config.PublicKeyCallback = nil
