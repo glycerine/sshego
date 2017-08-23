@@ -58,8 +58,14 @@ func (c *IdemCloseChan) IsClosed() bool {
 	return c.closed
 }
 
-// Halter helps shutdown a goroutine
+// Halter helps shutdown a goroutine, and manage
+// overall lifecycle of a resource.
 type Halter struct {
+
+	// Registered is closed when the request
+	// is on file/ready to be verified/used.
+	Registered IdemCloseChan
+
 	// The owning goutine should call Done.Close() as its last
 	// actual once it has received the ReqStop() signal.
 	Done IdemCloseChan
@@ -73,8 +79,9 @@ type Halter struct {
 
 func NewHalter() *Halter {
 	return &Halter{
-		Done:    *NewIdemCloseChan(),
-		ReqStop: *NewIdemCloseChan(),
+		Registered: *NewIdemCloseChan(),
+		Done:       *NewIdemCloseChan(),
+		ReqStop:    *NewIdemCloseChan(),
 	}
 }
 
