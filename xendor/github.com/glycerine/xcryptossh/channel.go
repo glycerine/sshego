@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -244,6 +245,11 @@ type channel struct {
 	// packetPool has a buffer for each extended channel ID to
 	// save allocations during writes.
 	packetPool map[uint32][]byte
+
+	// hasClosed makes Close() idempotent. Only
+	// the first invocation of Close() has any
+	// effect; the result return nil immediately.
+	hasClosed int32
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -608,6 +614,11 @@ func (ch *channel) CloseWrite() error {
 }
 
 func (ch *channel) Close() error {
+	if !atomic.CompareAndSwapInt32(&ch.hasClosed, 0, 1) {
+		// idempotent Close
+		return nil
+	}
+
 	if !ch.decided {
 		return errUndecided
 	}
