@@ -1,15 +1,16 @@
 package ssh
 
 import (
-	"runtime/debug"
+	//"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-func init() {
-	debug.SetTraceback("all")
-}
+//func init() {
+//  // see all goroutines on panic for proper debugging.
+//	debug.SetTraceback("all")
+//}
 
 // idleTimer allows a client of the ssh
 // library to notice if there has been a

@@ -434,6 +434,7 @@ func (c *channel) close() {
 	c.writeMu.Unlock()
 	// Unblock writers.
 	c.remoteWin.close()
+	c.idleTimer.Stop()
 }
 
 func (c *channel) timeout() {
