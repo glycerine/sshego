@@ -263,23 +263,14 @@ type channel struct {
 	rline time.Time
 	wline time.Time
 
-	// IdleWriteTimer provides a means
+	// IdleTimer provides a means
 	// for ssh.Channel users to check how
 	// many nanoseconds have elapsed since the last
-	// error-free write. It is safe for
+	// error-free read/write. It is safe for
 	// use by multiple goroutines. Users
 	// should call SetIdleDur() and Reset() on it to before
 	// any subsequent calls to TimedOut().
-	IdleWriteTimer IdleTimer
-
-	// IdleReadTimer provides a means
-	// for ssh.Channel users to check how
-	// many nanoseconds have elapsed since the last
-	// error-free read. It is safe for
-	// use by multiple goroutines. Users
-	// should call SetIdleDur() and Reset() on it to before
-	// any subsequent calls to TimedOut().
-	IdleReadTimer IdleTimer
+	IdleTimer *IdleTimer
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -293,7 +284,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
 	if err != nil {
-		c.IdleWriteTimer.Reset()
+		c.IdleTimer.Reset()
 	}
 	c.writeMu.Unlock()
 	return err
@@ -435,7 +426,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
 	if err != nil {
-		c.IdleReadTimer.Reset()
+		c.IdleTimer.Reset()
 	}
 
 	if n > 0 {
@@ -464,6 +455,13 @@ func (c *channel) close() {
 	c.writeMu.Unlock()
 	// Unblock writers.
 	c.remoteWin.close()
+}
+
+func (c *channel) timeout() {
+	c.pending.timeout()
+	c.extPending.timeout()
+	// Unblock writers.
+	c.remoteWin.timeout()
 }
 
 // responseMessageReceived is called when a success or failure message is
@@ -560,11 +558,12 @@ func (c *channel) handlePacket(packet []byte) error {
 }
 
 func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
+	idle := &IdleTimer{}
 	ch := &channel{
-		remoteWin:        window{Cond: newCond()},
+		remoteWin:        window{Cond: newCond(), idle: idle},
 		myWindow:         channelWindowSize,
-		pending:          newBuffer(),
-		extPending:       newBuffer(),
+		pending:          newBuffer(idle),
+		extPending:       newBuffer(idle),
 		direction:        direction,
 		incomingRequests: make(chan *Request, chanSize),
 		msg:              make(chan interface{}, chanSize),
@@ -572,6 +571,7 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		extraData:        extraData,
 		mux:              m,
 		packetPool:       make(map[uint32][]byte),
+		IdleTimer:        idle,
 	}
 	ch.localId = m.chanList.add(ch)
 	return ch
@@ -825,5 +825,10 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 // A zero value for t means Write will not time out.
 func (c *channel) SetWriteDeadline(t time.Time) error {
 	c.wline = t
+	return nil
+}
+
+func (c *channel) SetIdleTimeout(dur time.Duration) error {
+	c.IdleTimer.SetIdleTimeout(dur)
 	return nil
 }

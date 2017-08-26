@@ -11,29 +11,31 @@ import (
 
 var alphabet = []byte("abcdefghijklmnopqrstuvwxyz")
 
+var testIdle = &IdleTimer{}
+
 func TestBufferReadwrite(t *testing.T) {
-	b := newBuffer()
+	b := newBuffer(testIdle)
 	b.write(alphabet[:10])
 	r, _ := b.Read(make([]byte, 10))
 	if r != 10 {
 		t.Fatalf("Expected written == read == 10, written: 10, read %d", r)
 	}
 
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(alphabet[:5])
 	r, _ = b.Read(make([]byte, 10))
 	if r != 5 {
 		t.Fatalf("Expected written == read == 5, written: 5, read %d", r)
 	}
 
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(alphabet[:10])
 	r, _ = b.Read(make([]byte, 5))
 	if r != 5 {
 		t.Fatalf("Expected written == 10, read == 5, written: 10, read %d", r)
 	}
 
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(alphabet[:5])
 	b.write(alphabet[5:15])
 	r, _ = b.Read(make([]byte, 10))
@@ -44,14 +46,14 @@ func TestBufferReadwrite(t *testing.T) {
 }
 
 func TestBufferClose(t *testing.T) {
-	b := newBuffer()
+	b := newBuffer(testIdle)
 	b.write(alphabet[:10])
 	b.eof()
 	_, err := b.Read(make([]byte, 5))
 	if err != nil {
 		t.Fatal("expected read of 5 to not return EOF")
 	}
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(alphabet[:10])
 	b.eof()
 	r, err := b.Read(make([]byte, 5))
@@ -60,7 +62,7 @@ func TestBufferClose(t *testing.T) {
 		t.Fatal("expected reads of 5 and 5")
 	}
 
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(alphabet[:10])
 	b.eof()
 	r, err = b.Read(make([]byte, 5))
@@ -70,7 +72,7 @@ func TestBufferClose(t *testing.T) {
 		t.Fatal("expected reads of 5 and 5 and 0, with EOF")
 	}
 
-	b = newBuffer()
+	b = newBuffer(testIdle)
 	b.write(make([]byte, 5))
 	b.write(make([]byte, 10))
 	b.eof()

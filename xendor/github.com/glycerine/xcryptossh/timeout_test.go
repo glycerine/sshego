@@ -32,7 +32,7 @@ import (
 // because we didn't know it was going
 // to be a large and lengthy file transfer.
 // We call this facility
-// SetPersistantAutoUpdatedTimeoutDur().
+// SetIdleTimeout(dur time.Duration).
 // It avoids client users needing to
 // re-impliment timeout handling logic
 // again and again. Thus it provides an idle timeout,
@@ -49,28 +49,25 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	magic := "expected saluations"
 	go func() {
 		// use a quick timeout so the test runs quickly.
-		err := w.SetWriteDeadline(time.Now().Add(100 * time.Second))
+		err := w.SetIdleTimeout(time.Millisecond)
 		if err != nil {
-			t.Fatalf("SetWriteDeadline: %v", err)
+			t.Fatalf("SetIdleTimeout: %v", err)
 		}
+		time.Sleep(2 * time.Millisecond)
 		_, err = w.Write([]byte(abandon))
 		if err == nil || !err.(net.Error).Timeout() {
 			t.Fatalf("expected to get a net.Error that had Timeout() true")
 		}
 
-		err = w.SetWriteDeadline(time.Time{})
+		err = w.SetIdleTimeout(0) // disable idle timeout
 		if err != nil {
-			t.Fatalf("canceling SetWriteDeadline: %v", err)
+			t.Fatalf("canceling idle timeout: %v", err)
 		}
 		_, err = w.Write([]byte(magic))
 		if err != nil {
 			t.Fatalf("write after cancelling write deadline: %v", err)
 		}
 
-		err = w.Close()
-		if err != nil {
-			t.Fatalf("Close: %v", err)
-		}
 	}()
 
 	var buf [1024]byte
@@ -83,4 +80,8 @@ func TestSimpleWriteTimeout(t *testing.T) {
 		t.Fatalf("server: got %q want %q", got, magic)
 	}
 
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 }

@@ -48,12 +48,13 @@ type element struct {
 }
 
 // newBuffer returns an empty buffer that is not closed.
-func newBuffer() *buffer {
+func newBuffer(idle *IdleTimer) *buffer {
 	e := new(element)
 	b := &buffer{
 		Cond: newCond(),
 		head: e,
 		tail: e,
+		idle: idle,
 	}
 	return b
 }

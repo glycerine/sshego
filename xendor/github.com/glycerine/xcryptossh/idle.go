@@ -33,19 +33,20 @@ func (t *IdleTimer) NanosecSince() uint64 {
 	return monoNow() - atomic.LoadUint64(&t.last)
 }
 
-// GetIdleDur returns the current idle timeout duration in use.
-func (t *IdleTimer) GetIdleDur() (dur time.Duration) {
+// GetIdleTimeout returns the current idle timeout duration in use.
+// It will return 0 if timeouts are disabled.
+func (t *IdleTimer) GetIdleTimeout() (dur time.Duration) {
 	t.mut.Lock()
 	dur = t.idleDur
 	t.mut.Unlock()
 	return
 }
 
-// SetIdleDur stores a new idle timeout duration. This
+// SetIdleTimeout stores a new idle timeout duration. This
 // activates the IdleTimer if dur > 0. Set dur of 0
 // to disable the IdleTimer. A disabled IdleTimer
 // always returns false from TimedOut().
-func (t *IdleTimer) SetIdleDur(dur time.Duration) {
+func (t *IdleTimer) SetIdleTimeout(dur time.Duration) {
 	t.mut.Lock()
 	t.idleDur = dur
 	t.mut.Unlock()
@@ -54,7 +55,7 @@ func (t *IdleTimer) SetIdleDur(dur time.Duration) {
 // TimedOut returns true if it has been longer
 // than t.GetIdleDur() since the last call to t.Reset().
 func (t *IdleTimer) TimedOut() bool {
-	dur := t.GetIdleDur()
+	dur := t.GetIdleTimeout()
 	if dur == 0 {
 		return false
 	}
