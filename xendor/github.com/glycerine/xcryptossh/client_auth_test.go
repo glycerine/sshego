@@ -113,7 +113,11 @@ func TestAuthMethodPassword(t *testing.T) {
 			Password(clientPassword),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -133,7 +137,11 @@ func TestAuthMethodFallback(t *testing.T) {
 				}),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -152,7 +160,11 @@ func TestAuthMethodWrongPassword(t *testing.T) {
 			PublicKeys(testSigners["rsa"]),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -170,7 +182,11 @@ func TestAuthMethodKeyboardInteractive(t *testing.T) {
 			KeyboardInteractive(answers.Challenge),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -187,7 +203,11 @@ func TestAuthMethodWrongKeyboardInteractive(t *testing.T) {
 		Auth: []AuthMethod{
 			KeyboardInteractive(answers.Challenge),
 		},
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err == nil {
 		t.Fatalf("wrong answers should not have authenticated with KeyboardInteractive")
@@ -201,7 +221,11 @@ func TestAuthMethodInvalidPublicKey(t *testing.T) {
 		Auth: []AuthMethod{
 			PublicKeys(testSigners["dsa"]),
 		},
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err == nil {
 		t.Fatalf("dsa private key should not have authenticated with rsa public key")
@@ -216,7 +240,11 @@ func TestAuthMethodRSAandDSA(t *testing.T) {
 			PublicKeys(testSigners["dsa"], testSigners["rsa"]),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("client could not authenticate with rsa key: %v", err)
 	}
@@ -231,9 +259,12 @@ func TestClientHMAC(t *testing.T) {
 			},
 			Config: Config{
 				MACs: []string{mac},
+				Halt: NewHalter(),
 			},
 			HostKeyCallback: InsecureIgnoreHostKey(),
 		}
+		defer config.Halt.ReqStop.Close()
+
 		if err := tryAuth(t, config); err != nil {
 			t.Fatalf("client could not authenticate with mac algo %s: %v", mac, err)
 		}
@@ -249,8 +280,11 @@ func TestClientUnsupportedCipher(t *testing.T) {
 		},
 		Config: Config{
 			Ciphers: []string{"aes128-cbc"}, // not currently supported
+			Halt:    NewHalter(),
 		},
 	}
+	defer config.Halt.ReqStop.Close()
+
 	if err := tryAuth(t, config); err == nil {
 		t.Errorf("expected no ciphers in common")
 	}
@@ -267,9 +301,12 @@ func TestClientUnsupportedKex(t *testing.T) {
 		},
 		Config: Config{
 			KeyExchanges: []string{"diffie-hellman-group-exchange-sha256"}, // not currently supported
+			Halt:         NewHalter(),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
 	}
+	defer config.Halt.ReqStop.Close()
+
 	if err := tryAuth(t, config); err == nil || !strings.Contains(err.Error(), "common algorithm") {
 		t.Errorf("got %v, expected 'common algorithm'", err)
 	}
@@ -290,7 +327,12 @@ func TestClientLoginCert(t *testing.T) {
 	clientConfig := &ClientConfig{
 		User:            "user",
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer clientConfig.Halt.ReqStop.Close()
+
 	clientConfig.Auth = append(clientConfig.Auth, PublicKeys(certSigner))
 
 	// should succeed
@@ -460,7 +502,11 @@ func ExampleRetryableAuthMethod(t *testing.T) {
 		Auth: []AuthMethod{
 			RetryableAuthMethod(KeyboardInteractiveChallenge(Cb), NumberOfPrompts),
 		},
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -476,6 +522,7 @@ func TestClientAuthNone(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
+	defer serverConfig.Halt.ReqStop.Close()
 	serverConfig.AddHostKey(testSigners["rsa"])
 
 	clientConfig := &ClientConfig{
@@ -485,6 +532,7 @@ func TestClientAuthNone(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
+	defer clientConfig.Halt.ReqStop.Close()
 
 	c1, c2, err := netPipe()
 	if err != nil {
@@ -494,9 +542,8 @@ func TestClientAuthNone(t *testing.T) {
 	defer c2.Close()
 	ctx := context.Background()
 	go NewClientConn(ctx, c2, "", clientConfig)
-	defer clientConfig.Halt.ReqStop.Close()
 	serverConn, err := newServer(ctx, c1, serverConfig)
-	defer serverConfig.Halt.ReqStop.Close()
+
 	if err != nil {
 		t.Fatalf("newServer: %v", err)
 	}
@@ -521,6 +568,7 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
+	defer serverConfig.Halt.ReqStop.Close()
 	serverConfig.AddHostKey(testSigners["rsa"])
 
 	expectedErr := fmt.Errorf("ssh: handshake failed: %v", &disconnectMsg{
@@ -546,6 +594,7 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 				Halt: NewHalter(),
 			},
 		}
+		defer clientConfig.Halt.ReqStop.Close()
 
 		c1, c2, err := netPipe()
 		if err != nil {
@@ -556,9 +605,8 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 		ctx := context.Background()
 
 		go newServer(ctx, c1, serverConfig)
-		defer serverConfig.Halt.ReqStop.Close()
 		_, _, _, err = NewClientConn(ctx, c2, "", clientConfig)
-		defer clientConfig.Halt.ReqStop.Close()
+
 		if tries > 2 {
 			if err == nil {
 				t.Fatalf("client: got no error, want %s", expectedErr)
@@ -587,7 +635,12 @@ func TestClientAuthMaxAuthTriesPublicKey(t *testing.T) {
 			PublicKeys(append([]Signer{testSigners["rsa"]}, signers...)...),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer validConfig.Halt.ReqStop.Close()
+
 	if err := tryAuth(t, validConfig); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
 	}
@@ -602,7 +655,12 @@ func TestClientAuthMaxAuthTriesPublicKey(t *testing.T) {
 			PublicKeys(append(signers, testSigners["rsa"])...),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer invalidConfig.Halt.ReqStop.Close()
+
 	if err := tryAuth(t, invalidConfig); err == nil {
 		t.Fatalf("client: got no error, want %s", expectedErr)
 	} else if err.Error() != expectedErr.Error() {
@@ -624,6 +682,8 @@ func TestClientAuthErrorList(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
+	defer clientConfig.Halt.ReqStop.Close()
+
 	serverConfig := &ServerConfig{
 		PublicKeyCallback: func(_ ConnMetadata, _ PublicKey) (*Permissions, error) {
 			return nil, publicKeyErr
@@ -632,6 +692,8 @@ func TestClientAuthErrorList(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
+	defer serverConfig.Halt.ReqStop.Close()
+
 	serverConfig.AddHostKey(testSigners["rsa"])
 
 	c1, c2, err := netPipe()
@@ -643,9 +705,8 @@ func TestClientAuthErrorList(t *testing.T) {
 	ctx := context.Background()
 
 	go NewClientConn(ctx, c2, "", clientConfig)
-	defer clientConfig.Halt.ReqStop.Close()
 	_, err = newServer(ctx, c1, serverConfig)
-	defer serverConfig.Halt.ReqStop.Close()
+
 	if err == nil {
 		t.Fatal("newServer: got nil, expected errors")
 	}
