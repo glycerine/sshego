@@ -3,9 +3,15 @@ package ssh
 import (
 	"fmt"
 	"net"
+	"runtime/debug"
 	"testing"
 	"time"
 )
+
+func init() {
+	// see all goroutines on panic for proper debugging.
+	debug.SetTraceback("all")
+}
 
 // Tests of the Timeout factility.
 //
@@ -62,7 +68,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 		time.Sleep(2 * time.Millisecond)
 		_, err = w.Write([]byte(abandon))
 		if err == nil || !err.(net.Error).Timeout() {
-			panic("expected to get a net.Error that had Timeout() true")
+			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'", err))
 		}
 
 		err = w.SetIdleTimeout(0) // disable idle timeout
