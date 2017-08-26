@@ -179,9 +179,9 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						// since we were just using timeouts, the machinery
 						// may still be stuck waiting for one. nudge it now
 
-						fmt.Printf("\n\n idleTimer: go t.timeoutCallback() being " +
-							"called now: timer going from active to inactive!\n\n")
-						go t.timeoutCallback()
+						//					fmt.Printf("\n\n idleTimer: go t.timeoutCallback() being " +
+						//						"called now: timer going from active to inactive!\n\n")
+						//					go t.timeoutCallback()
 
 						continue
 					}
