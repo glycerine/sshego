@@ -34,6 +34,9 @@ type idleTimer struct {
 	// GetIdleTimeoutCh returns the current idle timeout duration in use.
 	// It will return 0 if timeouts are disabled.
 	getIdleTimeoutCh chan time.Duration
+
+	// SetIdleTimeout() will always set the timeOutRaised state to false.
+	// Likewise for sending on setIdleTimeoutCh.
 	setIdleTimeoutCh chan *setTimeoutTicket
 	TimedOut         chan bool
 
@@ -167,6 +170,9 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				continue
 
 			case tk := <-t.setIdleTimeoutCh:
+				/* change state, maybe */
+				t.timeOutRaised = false
+				t.Reset()
 				if dur > 0 {
 					// timeouts active currently
 					if tk.newdur == dur {
@@ -181,8 +187,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						dur = tk.newdur
 						heartbeat = nil
 						heartch = nil
-						/* change state, maybe */
-						t.timeOutRaised = false
 						close(tk.done)
 						continue
 					}
@@ -205,7 +209,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						continue
 					}
 					// heartbeats activating
-					t.timeOutRaised = false
 					dur = tk.newdur
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
