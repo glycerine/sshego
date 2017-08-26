@@ -48,8 +48,10 @@ func init() {
 // manually re-impliment timeout handling logic
 // after every Read and Write. In contrast, when
 // using net.Conn deadlines, idle timeouts must
-// be done manually.
-// repro: go test -v -timeout 60m -run Test[AS]
+// be done very manually. Moreover cannot use
+// standard appliances like io.Copy() because
+// the Reads inside each require a prior
+// deadline setting.
 
 func TestSimpleWriteTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
