@@ -250,6 +250,10 @@ type channel struct {
 	// the first invocation of Close() has any
 	// effect; the result return nil immediately.
 	hasClosed int32
+
+	// read and write deadlines
+	rline time.Time
+	wline time.Time
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -767,13 +771,18 @@ func (c *channel) RemoteAddr() net.Addr {
 //
 // A zero value for t means I/O operations will not time out.
 func (c *channel) SetDeadline(t time.Time) error {
-	return nil
+	err := c.SetReadDeadline(t)
+	if err != nil {
+		return err
+	}
+	return c.SetWriteDeadline(t)
 }
 
 // SetReadDeadline sets the deadline for future Read calls
 // and any currently-blocked Read call.
 // A zero value for t means Read will not time out.
 func (c *channel) SetReadDeadline(t time.Time) error {
+	c.rline = t
 	return nil
 }
 
@@ -783,5 +792,6 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 // some of the data was successfully written.
 // A zero value for t means Write will not time out.
 func (c *channel) SetWriteDeadline(t time.Time) error {
+	c.wline = t
 	return nil
 }
