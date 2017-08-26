@@ -1,6 +1,6 @@
 # xcryptossh
 
-This is an evolution of golang.org/x/crypto/ssh to fix memory leaks, provide for graceful shutdown, and implement idle timeouts. It is not API backwards compatible.
+This is an evolution of golang.org/x/crypto/ssh to fix memory leaks, provide for graceful shutdown, and implement idle timeouts. It is not API backwards compatible. It also provides `context.Context` based cancelation.
 
 New feature: idle timeouts
 --------------------------
