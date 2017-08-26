@@ -174,6 +174,8 @@ func TestHostKeyCert(t *testing.T) {
 		},
 	}
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
 	certSigner, err := NewCertSigner(cert, testSigners["rsa"])
 	if err != nil {
 		t.Errorf("NewCertSigner: %v", err)
@@ -199,6 +201,9 @@ func TestHostKeyCert(t *testing.T) {
 		go func() {
 			conf := ServerConfig{
 				NoClientAuth: true,
+				Config: Config{
+					Halt: halt,
+				},
 			}
 			conf.AddHostKey(certSigner)
 			_, _, _, err := NewServerConn(ctx, c1, &conf)
