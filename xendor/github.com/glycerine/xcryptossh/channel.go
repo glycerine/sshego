@@ -94,9 +94,9 @@ type Channel interface {
 	//
 	// Idle timeouts are easier to use than deadlines,
 	// as they don't need to be refreshed after
-	// every read and write. Hence an io.Copy() routine
+	// every read and write. Hence routines like io.Copy()
 	// that makes many calls to Read() and Write()
-	// can utilized while still having a timeout in
+	// can be leveraged, while still having a timeout in
 	// the case of no activity.
 	//
 	// Moreover idle timeouts are more
@@ -104,7 +104,9 @@ type Channel interface {
 	// deadline and then interrupt a perfectly
 	// good ongoing copy that happens to be
 	// taking a few seconds longer than our
-	// guesstimate.
+	// guesstimate. We avoid the pain of trying
+	// to restart long interrupted transfers that
+	// were making fine progress.
 	//
 	SetIdleTimeout(dur time.Duration) error
 }
