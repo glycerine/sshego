@@ -20,15 +20,11 @@ type memTransport struct {
 	sync.Mutex
 	*sync.Cond
 
-	timedOut bool
-	idle     *idleTimer
+	idle *idleTimer
 }
 
 func (t *memTransport) timeout() {
-	t.Lock()
-	t.timedOut = true
 	t.Signal()
-	t.Unlock()
 }
 
 func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {

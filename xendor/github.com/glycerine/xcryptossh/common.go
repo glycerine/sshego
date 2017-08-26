@@ -313,7 +313,6 @@ type window struct {
 	win          uint32 // RFC 4254 5.2 says the window size can grow to 2^32-1
 	writeWaiters int
 	closed       bool
-	timedOut     bool
 	idle         *idleTimer
 }
 
@@ -348,10 +347,7 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
-	w.L.Lock()
-	w.timedOut = true
 	w.Broadcast()
-	w.L.Unlock()
 }
 
 // reserve reserves win from the available window capacity.
