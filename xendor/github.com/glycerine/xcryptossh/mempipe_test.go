@@ -46,7 +46,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 		if t.timedOut || (t.idle != nil && t.idle.TimedOut()) {
 			return nil, ErrTimeout
 		}
-		t.Cond.Wait() // hung here
+		t.Cond.Wait()
 	}
 }
 

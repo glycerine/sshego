@@ -129,7 +129,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 			break
 		}
 		// out of buffers, wait for producer
-		b.Cond.Wait() // hung here
+		b.Cond.Wait()
 	}
 	return
 }
