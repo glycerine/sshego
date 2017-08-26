@@ -83,8 +83,8 @@ func (t *memTransport) writePacket(p []byte) error {
 func memPipe() (a, b packetConn) {
 	t1 := memTransport{}
 	t2 := memTransport{}
-	t1.idle = newIdleTimer(t1.timeout)
-	t2.idle = newIdleTimer(t2.timeout)
+	t1.idle = newIdleTimer(t1.timeout, 0)
+	t2.idle = newIdleTimer(t2.timeout, 0)
 	t1.write = &t2
 	t2.write = &t1
 	t1.Cond = sync.NewCond(&t1.Mutex)

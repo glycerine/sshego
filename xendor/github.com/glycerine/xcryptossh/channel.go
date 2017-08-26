@@ -538,7 +538,7 @@ func (c *channel) handlePacket(packet []byte) error {
 }
 
 func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
-	idle := newIdleTimer(nil)
+	idle := newIdleTimer(nil, 0)
 	ch := &channel{
 		remoteWin:        window{Cond: newCond(), idle: idle},
 		myWindow:         channelWindowSize,

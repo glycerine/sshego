@@ -16,8 +16,8 @@ func muxPair() (*mux, *mux) {
 	a, b := memPipe()
 
 	halt := NewHalter()
-	si := newIdleTimer(nil)
-	ci := newIdleTimer(nil)
+	si := newIdleTimer(nil, 0)
+	ci := newIdleTimer(nil, 0)
 	ctx := context.Background()
 
 	s := newMux(ctx, a, halt, si)

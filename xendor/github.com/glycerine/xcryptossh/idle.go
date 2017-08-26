@@ -39,10 +39,14 @@ type idleTimer struct {
 	setCallback chan func()
 }
 
-// if callback is nil, you must use setTimeoutCallback()
+// newIdleTimer creates a new idleTimer which will call
+// the `callback` function provided after `dur` inactivity.
+// If callback is nil, you must use setTimeoutCallback()
 // to establish the callback before activating the timer
-// with SetIdleTimeout.
-func newIdleTimer(callback func()) *idleTimer {
+// with SetIdleTimeout. The `dur` can be 0 to begin with no
+// timeout, in which case the timer will be inactive until
+// SetIdleTimeout is called.
+func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan time.Duration),
@@ -50,7 +54,7 @@ func newIdleTimer(callback func()) *idleTimer {
 		halt:             NewHalter(),
 		timeoutCallback:  callback,
 	}
-	go t.backgroundStart(0)
+	go t.backgroundStart(dur)
 	return t
 }
 
@@ -58,8 +62,6 @@ func (t *idleTimer) setTimeoutCallback(f func()) {
 	select {
 	case t.setCallback <- f:
 	case <-t.halt.ReqStop.Chan:
-	case <-time.After(10 * time.Second):
-		panic("SetIdleTimeoutCh not sent after 10sec! serious problem")
 	}
 }
 
@@ -89,8 +91,6 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 	select {
 	case t.setIdleTimeoutCh <- dur:
 	case <-t.halt.ReqStop.Chan:
-	case <-time.After(10 * time.Second):
-		panic("SetIdleTimeoutCh not sent after 10sec! serious problem")
 	}
 }
 
@@ -100,8 +100,6 @@ func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
 	select {
 	case dur = <-t.getIdleTimeoutCh:
 	case <-t.halt.ReqStop.Chan:
-	case <-time.After(10 * time.Second):
-		panic("SetIdleTimeoutCh not sent after 10sec! serious problem")
 	}
 	return
 }
@@ -116,7 +114,8 @@ func (t *idleTimer) TimedOut() bool {
 	case <-t.halt.ReqStop.Chan:
 		return false
 	case <-time.After(10 * time.Second):
-		panic("GetIdleTimeoutCh not sent after 10sec! serious problem")
+		// assume its not active???
+		return false
 	}
 	if dur == 0 {
 		return false
