@@ -440,16 +440,10 @@ func (c *channel) close() {
 }
 
 func (c *channel) timeout() {
-	fmt.Printf("\nchannel.timeout() called!\n")
-
 	c.pending.timeout()
 	c.extPending.timeout()
 	// Unblock writers.
 	c.remoteWin.timeout()
-
-	//	time.Sleep(time.Second) // this delay causes the crash again
-	//	fmt.Printf("\n end of channel.timeout()\n")
-
 }
 
 // responseMessageReceived is called when a success or failure message is

@@ -1,13 +1,12 @@
 package ssh
 
 import (
-	"fmt"
-	//"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+// with	import "runtime/debug"
 //func init() {
 //  // see all goroutines on panic for proper debugging.
 //	debug.SetTraceback("all")
@@ -148,7 +147,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 			heartch = heartbeat.C
 		}
 		defer func() {
-			fmt.Printf("\n\n backgroundStart goro is exiting!!! \n\n")
 			if heartbeat != nil {
 				heartbeat.Stop() // allow GC
 			}
@@ -166,8 +164,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				t.timeoutCallback = f.onTimeout
 
 			case t.getIdleTimeoutCh <- dur:
-				fmt.Printf("\n\n backgroundStart goro sent dur %v on getIdleTimeoutCh\n\n", dur)
-				// nothing more
+				continue
 
 			case tk := <-t.setIdleTimeoutCh:
 				if dur > 0 {
@@ -213,9 +210,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()
-
-					//fmt.Printf("\n\n idleTimer: go t.timeoutCallback() begin called now: timer going from inactive to active!\n\n")
-					//go t.timeoutCallback()
 					close(tk.done)
 					continue
 				}
@@ -244,7 +238,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					// and timeoutCallback will want locks...
 					// so unless we start timeoutCallback() on its
 					// own goroutine, we are likely to deadlock.
-					fmt.Printf("\n\n idleTimer: go t.timeoutCallback() begin called now! heartbeat happened after timeout.\n\n")
 					go t.timeoutCallback()
 				}
 			}

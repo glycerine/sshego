@@ -348,8 +348,6 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
-	fmt.Printf("\nwindow.timeout() called!\n")
-
 	w.L.Lock()
 	w.timedOut = true
 	w.Broadcast()
@@ -360,12 +358,6 @@ func (w *window) timeout() {
 // If no capacity remains, reserve will block. reserve may
 // return less than requested.
 func (w *window) reserve(win uint32) (num uint32, err error) {
-	defer func() {
-		if err == ErrTimeout {
-			fmt.Printf("\n DEBUG: window.reserve returning with err = %v\n", err)
-		}
-	}()
-	//var err error
 	w.L.Lock()
 	defer w.L.Unlock()
 
@@ -373,7 +365,6 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	select {
 	case timedOut = <-w.idle.TimedOut:
 		if timedOut {
-			fmt.Printf("\n window.reserve timing out...\n")
 			return 0, ErrTimeout
 		}
 	case <-w.idle.halt.ReqStop.Chan:
@@ -387,7 +378,6 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	select {
 	case timedOut = <-w.idle.TimedOut:
 		if timedOut {
-			fmt.Printf("\n window.reserve timing out...\n")
 			return 0, ErrTimeout
 		}
 	case <-w.idle.halt.ReqStop.Chan:
