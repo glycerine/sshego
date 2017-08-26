@@ -89,12 +89,17 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 }
 
 func TestClientAuthPublicKey(t *testing.T) {
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
 	config := &ClientConfig{
 		User: "testuser",
 		Auth: []AuthMethod{
 			PublicKeys(testSigners["rsa"]),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: halt,
+		},
 	}
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
@@ -366,6 +371,9 @@ func testPermissionsPassing(withPermissions bool, t *testing.T) {
 			}
 			return &Permissions{}, nil
 		},
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
 
@@ -374,6 +382,9 @@ func testPermissionsPassing(withPermissions bool, t *testing.T) {
 			PublicKeys(testSigners["rsa"]),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	if withPermissions {
 		clientConfig.User = "permissions"
@@ -389,7 +400,9 @@ func testPermissionsPassing(withPermissions bool, t *testing.T) {
 	defer c2.Close()
 	ctx := context.Background()
 	go NewClientConn(ctx, c2, "", clientConfig)
+	defer clientConfig.Halt.ReqStop.Close()
 	serverConn, err := newServer(ctx, c1, serverConfig)
+	defer serverConfig.Halt.ReqStop.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -459,12 +472,18 @@ func TestClientAuthNone(t *testing.T) {
 	user := "testuser"
 	serverConfig := &ServerConfig{
 		NoClientAuth: true,
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
 
 	clientConfig := &ClientConfig{
 		User:            user,
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 
 	c1, c2, err := netPipe()
@@ -475,7 +494,9 @@ func TestClientAuthNone(t *testing.T) {
 	defer c2.Close()
 	ctx := context.Background()
 	go NewClientConn(ctx, c2, "", clientConfig)
+	defer clientConfig.Halt.ReqStop.Close()
 	serverConn, err := newServer(ctx, c1, serverConfig)
+	defer serverConfig.Halt.ReqStop.Close()
 	if err != nil {
 		t.Fatalf("newServer: %v", err)
 	}
@@ -495,6 +516,9 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 				return nil, nil
 			}
 			return nil, errors.New("password auth failed")
+		},
+		Config: Config{
+			Halt: NewHalter(),
 		},
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
@@ -518,6 +542,9 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 				}), tries),
 			},
 			HostKeyCallback: InsecureIgnoreHostKey(),
+			Config: Config{
+				Halt: NewHalter(),
+			},
 		}
 
 		c1, c2, err := netPipe()
@@ -529,7 +556,9 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 		ctx := context.Background()
 
 		go newServer(ctx, c1, serverConfig)
+		defer serverConfig.Halt.ReqStop.Close()
 		_, _, _, err = NewClientConn(ctx, c2, "", clientConfig)
+		defer clientConfig.Halt.ReqStop.Close()
 		if tries > 2 {
 			if err == nil {
 				t.Fatalf("client: got no error, want %s", expectedErr)
@@ -591,10 +620,16 @@ func TestClientAuthErrorList(t *testing.T) {
 			PublicKeys(testSigners["rsa"]),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConfig := &ServerConfig{
 		PublicKeyCallback: func(_ ConnMetadata, _ PublicKey) (*Permissions, error) {
 			return nil, publicKeyErr
+		},
+		Config: Config{
+			Halt: NewHalter(),
 		},
 	}
 	serverConfig.AddHostKey(testSigners["rsa"])
@@ -608,7 +643,9 @@ func TestClientAuthErrorList(t *testing.T) {
 	ctx := context.Background()
 
 	go NewClientConn(ctx, c2, "", clientConfig)
+	defer clientConfig.Halt.ReqStop.Close()
 	_, err = newServer(ctx, c1, serverConfig)
+	defer serverConfig.Halt.ReqStop.Close()
 	if err == nil {
 		t.Fatal("newServer: got nil, expected errors")
 	}

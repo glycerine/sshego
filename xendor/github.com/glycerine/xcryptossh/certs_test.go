@@ -208,8 +208,12 @@ func TestHostKeyCert(t *testing.T) {
 		config := &ClientConfig{
 			User:            "user",
 			HostKeyCallback: checker.CheckHostKey,
+			Config: Config{
+				Halt: NewHalter(),
+			},
 		}
 		_, _, _, err = NewClientConn(ctx, c2, test.addr, config)
+		defer config.Halt.ReqStop.Close()
 
 		if (err == nil) != test.succeed {
 			t.Fatalf("NewClientConn(%q): %v", test.addr, err)

@@ -777,6 +777,5 @@ func (c *channel) RemoteAddr() net.Addr {
 // A dur of zero will disable timeouts.
 func (c *channel) SetIdleTimeout(dur time.Duration) error {
 	c.idleTimer.SetIdleTimeout(dur)
-	c.idleTimer.Reset()
 	return nil
 }

@@ -66,9 +66,9 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			t.Fatalf("SetIdleTimeout: %v", err)
 		}
 		time.Sleep(2 * time.Millisecond)
-		_, err = w.Write([]byte(abandon))
+		n, err := w.Write([]byte(abandon))
 		if err == nil || !err.(net.Error).Timeout() {
-			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'", err))
+			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
 		}
 
 		err = w.SetIdleTimeout(0) // disable idle timeout

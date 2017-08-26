@@ -60,7 +60,7 @@ func sshPipe() (Conn, *server, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
+	defer clientConf.Halt.ReqStop.Close()
 	server := <-done
 	if server == nil {
 		return nil, nil, errors.New("server handshake failed.")

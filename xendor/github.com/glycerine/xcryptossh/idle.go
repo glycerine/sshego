@@ -113,9 +113,11 @@ func (t *idleTimer) TimedOut() bool {
 	case dur = <-t.getIdleTimeoutCh:
 	case <-t.halt.ReqStop.Chan:
 		return false
-	case <-time.After(10 * time.Second):
-		// assume its not active???
-		return false
+		// I think at the end of long test, this was
+		// timeout out, causing us to produce the wrong result.
+		//	case <-time.After(10 * time.Second):
+		//		// assume its not active???
+		//		return false
 	}
 	if dur == 0 {
 		return false
@@ -179,6 +181,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = newdur
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
+					t.Reset()
 					continue
 				} else {
 					// heartbeats not currently active
@@ -191,6 +194,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = newdur
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
+					t.Reset()
 					continue
 				}
 

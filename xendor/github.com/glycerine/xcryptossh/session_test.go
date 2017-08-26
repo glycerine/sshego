@@ -76,8 +76,7 @@ func dial(handler serverType, t *testing.T) *Client {
 	if err != nil {
 		t.Fatalf("unable to dial remote side: %v", err)
 	}
-	halter := NewHalter()
-	return NewClient(ctx, conn, chans, reqs, halter)
+	return NewClient(ctx, conn, chans, reqs, config.Halt)
 }
 
 // Test a simple string is returned to session.Stdout.
@@ -673,12 +672,20 @@ func TestSessionID(t *testing.T) {
 
 	serverConf := &ServerConfig{
 		NoClientAuth: true,
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	clientConf := &ClientConfig{
 		HostKeyCallback: InsecureIgnoreHostKey(),
 		User:            "user",
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer clientConf.Halt.ReqStop.Close()
+	defer serverConf.Halt.ReqStop.Close()
 
 	go func() {
 		ctx := context.Background()
@@ -757,7 +764,11 @@ func TestInvalidServerConfiguration(t *testing.T) {
 func TestHostKeyAlgorithms(t *testing.T) {
 	serverConf := &ServerConfig{
 		NoClientAuth: true,
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer serverConf.Halt.ReqStop.Close()
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.AddHostKey(testSigners["ecdsa"])
 
@@ -789,7 +800,11 @@ func TestHostKeyAlgorithms(t *testing.T) {
 
 	clientConf := &ClientConfig{
 		HostKeyCallback: InsecureIgnoreHostKey(),
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
+	defer clientConf.Halt.ReqStop.Close()
 	connect(clientConf, KeyAlgoECDSA256)
 
 	// Client asks for RSA explicitly.
