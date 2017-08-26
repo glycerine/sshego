@@ -76,13 +76,13 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
 		time.Sleep(200 * time.Millisecond)
-		fmt.Printf("\n\n SimpleTimeout: about to write which should succeed\n\n")
+		//fmt.Printf("\n\n SimpleTimeout: about to write which should succeed\n\n")
 		_, err = w.Write([]byte(magic))
 		if err != nil {
-			fmt.Printf("\n\n SimpleTimeout: just write failed unexpectedly\n")
+			//fmt.Printf("\n\n SimpleTimeout: just write failed unexpectedly\n")
 			panic(fmt.Sprintf("write after cancelling write deadline: %v", err)) // timeout after canceling!
 		}
-		fmt.Printf("\n\n SimpleTimeout: justwrite which did succeed\n\n")
+		//fmt.Printf("\n\n SimpleTimeout: justwrite which did succeed\n\n")
 	}()
 
 	var buf [1024]byte
