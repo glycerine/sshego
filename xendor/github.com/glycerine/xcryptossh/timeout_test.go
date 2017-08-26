@@ -29,14 +29,19 @@ import (
 // more importantly, so transfers that
 // take a long time but are actively
 // moving bytes don't timeout simply
-// because we didn't know it was going
+// because we didn't magically anticipate
+// this and know it was going
 // to be a large and lengthy file transfer.
+//
 // We call this facility
 // SetIdleTimeout(dur time.Duration).
-// It avoids client users needing to
-// re-impliment timeout handling logic
-// again and again. Thus it provides an idle timeout,
-// which with net.Conn must be done manually.
+//
+// It is the main API for ssh timeouts, and
+// avoids requiring that client users need to
+// manually re-impliment timeout handling logic
+// after every Read and Write. In contrast, when
+// using net.Conn deadlines, idle timeouts must
+// be done manually.
 //
 
 func TestSimpleWriteTimeout(t *testing.T) {
@@ -56,7 +61,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 		time.Sleep(2 * time.Millisecond)
 		_, err = w.Write([]byte(abandon))
 		if err == nil || !err.(net.Error).Timeout() {
-			t.Fatalf("expected to get a net.Error that had Timeout() true")
+			panic("expected to get a net.Error that had Timeout() true")
 		}
 
 		err = w.SetIdleTimeout(0) // disable idle timeout
@@ -72,13 +77,110 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	}()
 
 	var buf [1024]byte
-	n, err := r.Read(buf[:])
+	n, err := r.Read(buf[:]) // hang here
 	if err != nil {
-		t.Fatalf("server Read: %v", err)
+		t.Fatalf("Read: %v", err)
 	}
 	got := string(buf[:n])
 	if got != magic {
-		t.Fatalf("server: got %q want %q", got, magic)
+		t.Fatalf("Read: got %q want %q", got, magic)
+	}
+
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+}
+
+func TestSimpleReadTimeout(t *testing.T) {
+	r, w, mux := channelPair(t)
+	defer w.Close()
+	defer r.Close()
+	defer mux.Close()
+
+	var buf [1024]byte
+	cancel := make(chan bool)
+
+	go func() {
+		select {
+		case <-time.After(1000 * time.Millisecond):
+			panic("2 msec Read timeout did not fire after 1000 msec")
+		case <-cancel:
+		}
+	}()
+
+	// use a quick timeout so the test runs quickly.
+	err := r.SetIdleTimeout(2 * time.Millisecond)
+	if err != nil {
+		t.Fatalf("SetIdleTimeout: %v", err)
+	}
+
+	// no writer, so this should timeout.
+	n, err := r.Read(buf[:])
+
+	if err == nil || !err.(net.Error).Timeout() || n > 0 {
+		t.Fatalf("expected to get a net.Error that had Timeout() true with n = 0")
+	}
+	cancel <- true
+
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+}
+
+func TestSimpleReadAfterTimeout(t *testing.T) {
+	r, w, mux := channelPair(t)
+	defer w.Close()
+	defer r.Close()
+	defer mux.Close()
+
+	var buf [1024]byte
+	cancel := make(chan bool)
+
+	go func() {
+		select {
+		case <-time.After(1000 * time.Millisecond):
+			panic("2 msec Read timeout did not fire after 1000 msec")
+		case <-cancel:
+		}
+	}()
+
+	// use a quick timeout so the test runs quickly.
+	err := r.SetIdleTimeout(2 * time.Millisecond)
+	if err != nil {
+		t.Fatalf("SetIdleTimeout: %v", err)
+	}
+
+	// no writer, so this should timeout.
+	n, err := r.Read(buf[:])
+
+	if err == nil || !err.(net.Error).Timeout() || n > 0 {
+		t.Fatalf("expected to get a net.Error that had Timeout() true with n = 0")
+	}
+	cancel <- true
+
+	// now start a writer and verify that we can read okay
+	// even after a prior timeout.
+
+	magic := "expected saluations"
+	go func() {
+		_, werr := w.Write([]byte(magic))
+		if werr != nil {
+			t.Fatalf("write after cancelling write deadline: %v", werr)
+		}
+	}()
+
+	n, err = r.Read(buf[:])
+	if err != nil {
+		t.Fatalf("Read after timed-out Read: %v", err)
+	}
+	if n != len(magic) {
+		t.Fatalf("short Read after timed-out Read")
+	}
+	got := string(buf[:n])
+	if got != magic {
+		t.Fatalf("Read: got %q want %q", got, magic)
 	}
 
 	err = w.Close()

@@ -19,6 +19,16 @@ type memTransport struct {
 	write   *memTransport
 	sync.Mutex
 	*sync.Cond
+
+	timedOut bool
+	idle     *idleTimer
+}
+
+func (t *memTransport) timeout() {
+	t.Lock()
+	t.timedOut = true
+	t.Signal()
+	t.Unlock()
 }
 
 func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
@@ -32,6 +42,9 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 		}
 		if t.eof {
 			return nil, io.EOF
+		}
+		if t.timedOut || (t.idle != nil && t.idle.TimedOut()) {
+			return nil, ErrTimeout
 		}
 		t.Cond.Wait()
 	}
@@ -70,6 +83,9 @@ func (t *memTransport) writePacket(p []byte) error {
 func memPipe() (a, b packetConn) {
 	t1 := memTransport{}
 	t2 := memTransport{}
+	i1, i2 := newIdleTimer(), newIdleTimer()
+	i1.setTimeoutCallback(t1.timeout)
+	i2.setTimeoutCallback(t2.timeout)
 	t1.write = &t2
 	t2.write = &t1
 	t1.Cond = sync.NewCond(&t1.Mutex)
