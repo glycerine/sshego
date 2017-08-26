@@ -42,9 +42,15 @@ func sshPipe() (Conn, *server, error) {
 	ctx := context.Background()
 	clientConf := ClientConfig{
 		User: "user",
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConf := ServerConfig{
 		NoClientAuth: true,
+		Config: Config{
+			Halt: NewHalter(),
+		},
 	}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	done := make(chan *server, 1)
@@ -60,7 +66,6 @@ func sshPipe() (Conn, *server, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer clientConf.Halt.ReqStop.Close()
 	server := <-done
 	if server == nil {
 		return nil, nil, errors.New("server handshake failed.")
