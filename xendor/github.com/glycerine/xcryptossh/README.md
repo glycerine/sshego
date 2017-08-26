@@ -1,6 +1,6 @@
 # xcryptossh
 
-This is an evolution of golang.org/x/crypto/ssh to fix memory leaks, provide for graceful shutdown, and implement idle timeouts. It is not API backwards compatible. It also provides `context.Context` based cancelation.
+This is an evolution of golang.org/x/crypto/ssh to fix memory leaks, provide for graceful shutdown, and implement idle timeouts. It is not API backwards compatible, as it provides `context.Context` based cancellation.
 
 New feature: idle timeouts
 --------------------------
@@ -71,6 +71,14 @@ type Channel interface {
 
 See the tests in `timeout_test.go` for example use.
 
+## install
+
+Probably requires go1.9 or later. Not difficult to backport, but not on my priority list.
+
+~~~
+$ go get -t -u -v github.com/glycerine/xcryptossh/...
+~~~
+
 ## author
 
 Jason E. Aten, Ph.D.
@@ -82,10 +90,18 @@ See the LICENSE file.
 
 ## current status
 
+All functionality is working, but I still consider it experimental until
+I've gotten more feedback and experience with it. Please try it out and
+give feedback.
+
 As of 2017 Aug 26:
 
 All tests pass under -race. Some tests leak goroutines. There are
 two types of leaked goroutine, the kexLoop and the idleTimer.
+The large number of existing tests means that I haven't had
+time to comb through all of them and make them behave properly.
+Since these leaks are when running tests only, its not
+a big issue.
 
 ~~~
 goroutine 786 [runnable]:
