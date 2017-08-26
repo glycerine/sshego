@@ -49,7 +49,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	magic := "expected saluations"
 	go func() {
 		// use a quick timeout so the test runs quickly.
-		err := w.SetWriteDeadline(time.Now().Add(time.Millisecond))
+		err := w.SetWriteDeadline(time.Now().Add(100 * time.Second))
 		if err != nil {
 			t.Fatalf("SetWriteDeadline: %v", err)
 		}
