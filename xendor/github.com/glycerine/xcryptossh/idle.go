@@ -1,10 +1,15 @@
 package ssh
 
 import (
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+func init() {
+	debug.SetTraceback("all")
+}
 
 // idleTimer allows a client of the ssh
 // library to notice if there has been a
@@ -79,8 +84,14 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 	t.mut.Lock()
 	if t.idleDur != 0 && dur == 0 {
 		// background goroutine is active. shut it down.
+		t.mut.Unlock() // can't hold lock or we'll deadlock with background goro.
 		t.halt.ReqStop.Close()
-		t.halt.Done.Close()
+		select {
+		case <-t.halt.Done.Chan:
+		case <-time.After(10 * time.Second):
+			panic("could not SetIdleTimeout(0) after 10 sec. serious internal idleTimer problem!")
+		}
+		t.mut.Lock()
 	}
 	if t.idleDur == 0 && dur > 0 {
 		// start a background goroutine

@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -69,15 +70,17 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
 		time.Sleep(2 * time.Millisecond)
+		fmt.Printf("\n\n SimpleTimeout: about to write which should succeed\n\n")
 		_, err = w.Write([]byte(magic))
 		if err != nil {
-			t.Fatalf("write after cancelling write deadline: %v", err)
+			fmt.Printf("\n\n SimpleTimeout: just write failed unexpectedly\n")
+			panic(fmt.Sprintf("write after cancelling write deadline: %v", err)) // timeout after canceling!
 		}
-
+		fmt.Printf("\n\n SimpleTimeout: justwrite which did succeed\n\n")
 	}()
 
 	var buf [1024]byte
-	n, err := r.Read(buf[:]) // hang here
+	n, err := r.Read(buf[:]) // hang here. there is a race.
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
