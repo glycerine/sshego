@@ -447,9 +447,8 @@ func (c *channel) timeout() {
 	// Unblock writers.
 	c.remoteWin.timeout()
 
-	//
-	c.remoteWin.clearTimeout()
-	fmt.Printf("\n end of channel.timeout(). c.remoteWin.timedOut=%v\n", c.remoteWin.timedOut)
+	//	time.Sleep(time.Second) // this delay causes the crash again
+	//	fmt.Printf("\n end of channel.timeout()\n")
 
 }
 

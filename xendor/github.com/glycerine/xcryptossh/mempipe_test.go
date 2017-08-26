@@ -43,9 +43,13 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 		if t.eof {
 			return nil, io.EOF
 		}
-		if t.timedOut || (t.idle != nil && t.idle.TimedOut()) {
-			t.timedOut = false
-			return nil, ErrTimeout
+		select {
+		case timedOut := <-t.idle.TimedOut:
+			if timedOut {
+				return nil, ErrTimeout
+			}
+		case <-t.idle.halt.ReqStop.Chan:
+			return nil, ErrShutDown
 		}
 		t.Cond.Wait()
 	}

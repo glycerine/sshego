@@ -169,6 +169,12 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	}
 	cancel <- true
 
+	// And we *must* reset the timeout status before trying to Read again.
+	err = r.SetIdleTimeout(0)
+	if err != nil {
+		t.Fatalf("reset with SetIdleTimeout: %v", err)
+	}
+
 	// now start a writer and verify that we can read okay
 	// even after a prior timeout.
 
@@ -182,7 +188,7 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 
 	n, err = r.Read(buf[:])
 	if err != nil {
-		t.Fatalf("Read after timed-out Read: %v", err)
+		t.Fatalf("Read after timed-out Read got err: %v", err)
 	}
 	if n != len(magic) {
 		t.Fatalf("short Read after timed-out Read")

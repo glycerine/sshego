@@ -35,9 +35,15 @@ type idleTimer struct {
 	// GetIdleTimeoutCh returns the current idle timeout duration in use.
 	// It will return 0 if timeouts are disabled.
 	getIdleTimeoutCh chan time.Duration
-	setIdleTimeoutCh chan time.Duration
+	setIdleTimeoutCh chan *setTimeoutTicket
+	TimedOut         chan bool
 
-	setCallback chan func()
+	setCallback   chan *callbacks
+	timeOutRaised bool
+}
+
+type callbacks struct {
+	onTimeout func()
 }
 
 // newIdleTimer creates a new idleTimer which will call
@@ -50,8 +56,9 @@ type idleTimer struct {
 func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
-		setIdleTimeoutCh: make(chan time.Duration),
-		setCallback:      make(chan func()),
+		setIdleTimeoutCh: make(chan *setTimeoutTicket),
+		setCallback:      make(chan *callbacks),
+		TimedOut:         make(chan bool),
 		halt:             NewHalter(),
 		timeoutCallback:  callback,
 	}
@@ -59,9 +66,9 @@ func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 	return t
 }
 
-func (t *idleTimer) setTimeoutCallback(f func()) {
+func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 	select {
-	case t.setCallback <- f:
+	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
 	case <-t.halt.ReqStop.Chan:
 	}
 }
@@ -89,10 +96,16 @@ func (t *idleTimer) NanosecSince() uint64 {
 // only need to use this call.
 //
 func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
+	tk := newSetTimeoutTicket(dur)
 	select {
-	case t.setIdleTimeoutCh <- dur:
+	case t.setIdleTimeoutCh <- tk:
 	case <-t.halt.ReqStop.Chan:
 	}
+	select {
+	case <-tk.done:
+	case <-t.halt.ReqStop.Chan:
+	}
+
 }
 
 // GetIdleTimeout returns the current idle timeout duration in use.
@@ -105,33 +118,24 @@ func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
 	return
 }
 
-// TimedOut returns true if it has been longer
-// than t.GetIdleDur() since the last call to t.Reset().
-func (t *idleTimer) TimedOut() bool {
-
-	var dur time.Duration
-	select { // hung here, so not unlocking... is our goro not live???, nope our goro died.
-	case dur = <-t.getIdleTimeoutCh:
-	case <-t.halt.ReqStop.Chan:
-		return false
-		// I think at the end of long test, this was
-		// timeout out, causing us to produce the wrong result.
-		//	case <-time.After(10 * time.Second):
-		//		// assume its not active???
-		//		return false
-	}
-	if dur == 0 {
-		return false
-	}
-	return t.NanosecSince() > uint64(dur)
-}
-
 func (t *idleTimer) Stop() {
 	t.halt.ReqStop.Close()
 	select {
 	case <-t.halt.Done.Chan:
 	case <-time.After(10 * time.Second):
 		panic("idleTimer.Stop() problem! t.halt.Done.Chan not received  after 10sec! serious problem")
+	}
+}
+
+type setTimeoutTicket struct {
+	newdur time.Duration
+	done   chan struct{}
+}
+
+func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
+	return &setTimeoutTicket{
+		newdur: dur,
+		done:   make(chan struct{}),
 	}
 }
 
@@ -155,61 +159,64 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 			case <-t.halt.ReqStop.Chan:
 				return
 
+			case t.TimedOut <- t.timeOutRaised:
+				continue
+
 			case f := <-t.setCallback:
-				t.timeoutCallback = f
+				t.timeoutCallback = f.onTimeout
 
 			case t.getIdleTimeoutCh <- dur:
 				fmt.Printf("\n\n backgroundStart goro sent dur %v on getIdleTimeoutCh\n\n", dur)
 				// nothing more
-			case newdur := <-t.setIdleTimeoutCh:
+
+			case tk := <-t.setIdleTimeoutCh:
 				if dur > 0 {
 					// timeouts active currently
-					if newdur == dur {
+					if tk.newdur == dur {
+						close(tk.done)
 						continue
 					}
-					if newdur <= 0 {
+					if tk.newdur <= 0 {
 						// stopping timeouts
 						if heartbeat != nil {
 							heartbeat.Stop() // allow GC
 						}
-						dur = newdur
+						dur = tk.newdur
 						heartbeat = nil
 						heartch = nil
-
-						// since we were just using timeouts, the machinery
-						// may still be stuck waiting for one. nudge it now
-
-						//					fmt.Printf("\n\n idleTimer: go t.timeoutCallback() being " +
-						//						"called now: timer going from active to inactive!\n\n")
-						//					go t.timeoutCallback()
-
+						/* change state, maybe */
+						t.timeOutRaised = false
+						close(tk.done)
 						continue
 					}
 					// changing an active timeout dur
 					if heartbeat != nil {
 						heartbeat.Stop() // allow GC
 					}
-					dur = newdur
+					dur = tk.newdur
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()
+					close(tk.done)
 					continue
 				} else {
 					// heartbeats not currently active
-					if newdur <= 0 {
+					if tk.newdur <= 0 {
 						dur = 0
 						// staying inactive
+						close(tk.done)
 						continue
 					}
 					// heartbeats activating
-					dur = newdur
+					t.timeOutRaised = false
+					dur = tk.newdur
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()
 
 					//fmt.Printf("\n\n idleTimer: go t.timeoutCallback() begin called now: timer going from inactive to active!\n\n")
 					//go t.timeoutCallback()
-
+					close(tk.done)
 					continue
 				}
 
@@ -218,6 +225,9 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					panic("should be impossible to get heartbeat.C on dur == 0")
 				}
 				if t.NanosecSince() > uint64(dur) {
+					/* change state */
+					t.timeOutRaised = true
+
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take
 					// many, many heartbeats before a timeout, if one happens

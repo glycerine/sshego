@@ -356,15 +356,6 @@ func (w *window) timeout() {
 	w.L.Unlock()
 }
 
-func (w *window) clearTimeout() {
-	fmt.Printf("\nwindow.clearTimeout() called!\n")
-
-	w.L.Lock()
-	w.timedOut = false
-	w.Broadcast()
-	w.L.Unlock()
-}
-
 // reserve reserves win from the available window capacity.
 // If no capacity remains, reserve will block. reserve may
 // return less than requested.
@@ -377,21 +368,32 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	//var err error
 	w.L.Lock()
 	defer w.L.Unlock()
-	if w.timedOut || w.idle.TimedOut() {
-		fmt.Printf("\n window.reserve timing out... w.timedOut was %v\n", w.timedOut)
-		w.timedOut = false
-		return 0, ErrTimeout
+
+	timedOut := false
+	select {
+	case timedOut = <-w.idle.TimedOut:
+		if timedOut {
+			fmt.Printf("\n window.reserve timing out...\n")
+			return 0, ErrTimeout
+		}
+	case <-w.idle.halt.ReqStop.Chan:
+		return 0, ErrShutDown
 	}
 	w.writeWaiters++
 	w.Broadcast()
 	for w.win == 0 && !w.closed {
 		w.Wait()
 	}
-	if w.timedOut || w.idle.TimedOut() {
-		fmt.Printf("\n window.reserve timing out... w.timedOut was %v\n", w.timedOut)
-		w.timedOut = false
-		return 0, ErrTimeout
+	select {
+	case timedOut = <-w.idle.TimedOut:
+		if timedOut {
+			fmt.Printf("\n window.reserve timing out...\n")
+			return 0, ErrTimeout
+		}
+	case <-w.idle.halt.ReqStop.Chan:
+		return 0, ErrShutDown
 	}
+
 	w.writeWaiters--
 	if w.win < win {
 		win = w.win

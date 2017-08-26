@@ -125,8 +125,12 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 			err = io.EOF
 			break
 		}
-		if b.timedOut || b.idle.TimedOut() {
-			b.timedOut = false
+		timedOut := false
+		select {
+		case timedOut = <-b.idle.TimedOut:
+		case <-b.idle.halt.ReqStop.Chan:
+		}
+		if timedOut {
 			err = ErrTimeout
 			break
 		}
