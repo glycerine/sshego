@@ -16,15 +16,10 @@ func muxPair() (*mux, *mux) {
 	a, b := memPipe()
 
 	halt := NewHalter()
-	si := newIdleTimer(nil, 0)
-	ci := newIdleTimer(nil, 0)
 	ctx := context.Background()
 
-	s := newMux(ctx, a, halt, si)
-	c := newMux(ctx, b, halt, ci)
-
-	si.setTimeoutCallback(a.(*memTransport).timeout)
-	ci.setTimeoutCallback(b.(*memTransport).timeout)
+	s := newMux(ctx, a, halt)
+	c := newMux(ctx, b, halt)
 
 	return s, c
 }

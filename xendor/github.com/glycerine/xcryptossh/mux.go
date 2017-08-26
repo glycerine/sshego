@@ -117,7 +117,7 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(ctx context.Context, p packetConn, halt *Halter, idle *idleTimer) *mux {
+func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
@@ -125,7 +125,6 @@ func newMux(ctx context.Context, p packetConn, halt *Halter, idle *idleTimer) *m
 		incomingRequests: make(chan *Request, chanSize),
 		errCond:          newCond(),
 		halt:             halt,
-		idleTimer:        idle,
 	}
 
 	if debugMux {
