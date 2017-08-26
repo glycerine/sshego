@@ -262,6 +262,24 @@ type channel struct {
 	// read and write deadlines
 	rline time.Time
 	wline time.Time
+
+	// IdleWriteTimer provides a means
+	// for ssh.Channel users to check how
+	// many nanoseconds have elapsed since the last
+	// error-free write. It is safe for
+	// use by multiple goroutines. Users
+	// should call SetIdleDur() and Reset() on it to before
+	// any subsequent calls to TimedOut().
+	IdleWriteTimer IdleTimer
+
+	// IdleReadTimer provides a means
+	// for ssh.Channel users to check how
+	// many nanoseconds have elapsed since the last
+	// error-free read. It is safe for
+	// use by multiple goroutines. Users
+	// should call SetIdleDur() and Reset() on it to before
+	// any subsequent calls to TimedOut().
+	IdleReadTimer IdleTimer
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -274,6 +292,9 @@ func (c *channel) writePacket(packet []byte) error {
 	}
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
+	if err != nil {
+		c.IdleWriteTimer.Reset()
+	}
 	c.writeMu.Unlock()
 	return err
 }
@@ -412,6 +433,9 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		n, err = c.pending.Read(data)
 	default:
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
+	}
+	if err != nil {
+		c.IdleReadTimer.Reset()
 	}
 
 	if n > 0 {

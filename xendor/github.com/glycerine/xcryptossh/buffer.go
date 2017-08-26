@@ -9,6 +9,23 @@ import (
 	"sync"
 )
 
+// ErrTimeout is a value that satisfies net.Error
+var ErrTimeout = errTimeout{}
+
+type errTimeout struct{}
+
+func (e errTimeout) Error() string {
+	return "timeout"
+}
+func (e errTimeout) Timeout() bool {
+	// Is the error a timeout?
+	return true
+}
+func (e errTimeout) Temporary() bool {
+	// Is the error temporary?
+	return true
+}
+
 // buffer provides a linked list buffer for data exchange
 // between producer and consumer. Theoretically the buffer is
 // of unlimited capacity as it does no allocation of its own.
@@ -19,7 +36,9 @@ type buffer struct {
 	head *element // the buffer that will be read first
 	tail *element // the buffer that will be read last
 
-	closed bool
+	closed   bool
+	timedOut bool
+	idle     *IdleTimer
 }
 
 // An element represents a single link in a linked list.
@@ -60,6 +79,18 @@ func (b *buffer) eof() error {
 	return nil
 }
 
+// timeout does not close the buffer. Reads from the buffer once all
+// the data has been consumed will receive ErrTimeout.
+// b.idle.TimeOut() must return true when queried for
+// this to be succesful.
+func (b *buffer) timeout() error {
+	b.Cond.L.Lock()
+	b.timedOut = true
+	b.Cond.Signal()
+	b.Cond.L.Unlock()
+	return nil
+}
+
 // Read reads data from the internal buffer in buf.  Reads will block
 // if no data is available, or until the buffer is closed.
 func (b *buffer) Read(buf []byte) (n int, err error) {
@@ -89,6 +120,11 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		// check to see if the buffer is closed.
 		if b.closed {
 			err = io.EOF
+			break
+		}
+		if b.timedOut || b.idle.TimedOut() {
+			b.timedOut = false
+			err = ErrTimeout
 			break
 		}
 		// out of buffers, wait for producer
