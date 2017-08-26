@@ -5,6 +5,7 @@
 package ssh
 
 import (
+	"fmt"
 	"io"
 	"sync"
 )
@@ -85,6 +86,7 @@ func (b *buffer) eof() error {
 // b.idle.TimeOut() must return true when queried for
 // this to be succesful.
 func (b *buffer) timeout() error {
+	fmt.Printf("\nbuffer.timeout() called!\n")
 	b.Cond.L.Lock()
 	b.timedOut = true
 	b.Cond.Signal()

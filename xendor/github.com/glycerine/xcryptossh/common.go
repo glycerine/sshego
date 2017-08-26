@@ -348,8 +348,19 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
+	fmt.Printf("\nwindow.timeout() called!\n")
+
 	w.L.Lock()
 	w.timedOut = true
+	w.Broadcast()
+	w.L.Unlock()
+}
+
+func (w *window) clearTimeout() {
+	fmt.Printf("\nwindow.clearTimeout() called!\n")
+
+	w.L.Lock()
+	w.timedOut = false
 	w.Broadcast()
 	w.L.Unlock()
 }
@@ -357,11 +368,17 @@ func (w *window) timeout() {
 // reserve reserves win from the available window capacity.
 // If no capacity remains, reserve will block. reserve may
 // return less than requested.
-func (w *window) reserve(win uint32) (uint32, error) {
-	var err error
+func (w *window) reserve(win uint32) (num uint32, err error) {
+	defer func() {
+		if err == ErrTimeout {
+			fmt.Printf("\n DEBUG: window.reserve returning with err = %v\n", err)
+		}
+	}()
+	//var err error
 	w.L.Lock()
 	defer w.L.Unlock()
 	if w.timedOut || w.idle.TimedOut() {
+		fmt.Printf("\n window.reserve timing out... w.timedOut was %v\n", w.timedOut)
 		w.timedOut = false
 		return 0, ErrTimeout
 	}
@@ -371,6 +388,7 @@ func (w *window) reserve(win uint32) (uint32, error) {
 		w.Wait()
 	}
 	if w.timedOut || w.idle.TimedOut() {
+		fmt.Printf("\n window.reserve timing out... w.timedOut was %v\n", w.timedOut)
 		w.timedOut = false
 		return 0, ErrTimeout
 	}

@@ -440,10 +440,17 @@ func (c *channel) close() {
 }
 
 func (c *channel) timeout() {
+	fmt.Printf("\nchannel.timeout() called!\n")
+
 	c.pending.timeout()
 	c.extPending.timeout()
 	// Unblock writers.
 	c.remoteWin.timeout()
+
+	//
+	c.remoteWin.clearTimeout()
+	fmt.Printf("\n end of channel.timeout(). c.remoteWin.timedOut=%v\n", c.remoteWin.timedOut)
+
 }
 
 // responseMessageReceived is called when a success or failure message is

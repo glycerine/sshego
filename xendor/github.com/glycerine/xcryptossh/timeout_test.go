@@ -49,7 +49,7 @@ func init() {
 // after every Read and Write. In contrast, when
 // using net.Conn deadlines, idle timeouts must
 // be done manually.
-//
+// repro: go test -v -timeout 60m -run Test[AS]
 
 func TestSimpleWriteTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
@@ -75,7 +75,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 		if err != nil {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
-		time.Sleep(2 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		fmt.Printf("\n\n SimpleTimeout: about to write which should succeed\n\n")
 		_, err = w.Write([]byte(magic))
 		if err != nil {

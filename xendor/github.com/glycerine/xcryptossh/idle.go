@@ -175,6 +175,14 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						dur = newdur
 						heartbeat = nil
 						heartch = nil
+
+						// since we were just using timeouts, the machinery
+						// may still be stuck waiting for one. nudge it now
+
+						fmt.Printf("\n\n idleTimer: go t.timeoutCallback() being " +
+							"called now: timer going from active to inactive!\n\n")
+						go t.timeoutCallback()
+
 						continue
 					}
 					// changing an active timeout dur
@@ -198,6 +206,10 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()
+
+					//fmt.Printf("\n\n idleTimer: go t.timeoutCallback() begin called now: timer going from inactive to active!\n\n")
+					//go t.timeoutCallback()
+
 					continue
 				}
 
@@ -222,6 +234,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					// and timeoutCallback will want locks...
 					// so unless we start timeoutCallback() on its
 					// own goroutine, we are likely to deadlock.
+					fmt.Printf("\n\n idleTimer: go t.timeoutCallback() begin called now! heartbeat happened after timeout.\n\n")
 					go t.timeoutCallback()
 				}
 			}
