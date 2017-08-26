@@ -63,6 +63,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 		if err != nil {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
+		time.Sleep(2 * time.Millisecond)
 		_, err = w.Write([]byte(magic))
 		if err != nil {
 			t.Fatalf("write after cancelling write deadline: %v", err)

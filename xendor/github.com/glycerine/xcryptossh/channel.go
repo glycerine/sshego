@@ -828,7 +828,11 @@ func (c *channel) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
+// SetIdleTimeout establishes a new timeout duration
+// and calls c.IdleTimer.Reset() to start the timing
+// anew. A dur of zero will disable timeouts.
 func (c *channel) SetIdleTimeout(dur time.Duration) error {
 	c.IdleTimer.SetIdleTimeout(dur)
+	c.IdleTimer.Reset()
 	return nil
 }
