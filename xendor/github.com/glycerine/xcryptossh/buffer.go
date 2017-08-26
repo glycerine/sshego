@@ -38,7 +38,7 @@ type buffer struct {
 
 	closed   bool
 	timedOut bool
-	idle     *IdleTimer
+	idle     *idleTimer
 }
 
 // An element represents a single link in a linked list.
@@ -48,7 +48,7 @@ type element struct {
 }
 
 // newBuffer returns an empty buffer that is not closed.
-func newBuffer(idle *IdleTimer) *buffer {
+func newBuffer(idle *idleTimer) *buffer {
 	e := new(element)
 	b := &buffer{
 		Cond: newCond(),

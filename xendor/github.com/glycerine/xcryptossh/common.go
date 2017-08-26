@@ -314,7 +314,7 @@ type window struct {
 	writeWaiters int
 	closed       bool
 	timedOut     bool
-	idle         *IdleTimer
+	idle         *idleTimer
 }
 
 // add adds win to the amount of window available

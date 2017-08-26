@@ -11,7 +11,7 @@ import (
 
 var alphabet = []byte("abcdefghijklmnopqrstuvwxyz")
 
-var testIdle = &IdleTimer{}
+var testIdle = &idleTimer{}
 
 func TestBufferReadwrite(t *testing.T) {
 	b := newBuffer(testIdle)
