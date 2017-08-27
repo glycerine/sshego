@@ -661,6 +661,7 @@ func (ch *channel) Close() error {
 		return errUndecided
 	}
 
+	pp("channel %p Closing, halting idleTimer", ch)
 	ch.idleTimer.halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{

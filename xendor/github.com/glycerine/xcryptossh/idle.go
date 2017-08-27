@@ -89,7 +89,7 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
 	tlast := atomic.LoadUint64(&t.last)
-	p("8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
+	pp("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
 }
 
@@ -135,6 +135,7 @@ func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
 }
 
 func (t *idleTimer) Stop() {
+	pp("idleTimer.Stop() called.")
 	t.halt.ReqStop.Close()
 	select {
 	case <-t.halt.Done.Chan:

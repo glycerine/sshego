@@ -533,7 +533,7 @@ func fixedOutputHandler(ch Channel, in <-chan *Request, t *testing.T) {
 }
 
 func readLine(shell *terminal.Terminal, t *testing.T) {
-	if _, err := shell.ReadLine(); err != nil && err != io.EOF {
+	if _, err := shell.ReadLine(); err != nil && !IsEOF(err) {
 		t.Errorf("unable to read line: %v", err)
 	}
 }

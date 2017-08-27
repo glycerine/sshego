@@ -377,6 +377,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 			return 0, newErrTimeout(w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
+		// happens when channel is closed
 		return 0, newErrEOF("w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
 	}
 
