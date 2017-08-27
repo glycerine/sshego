@@ -89,19 +89,22 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 	return numword * 8, nil
 }
 
-// Given a 100 msec idle read timeout, if we continuously transfer
-// for 3 seconds, we should not see any timeout since
+// Given a 100 msec idle *read* or *write* timeout, if we continuously transfer
+// for 3 seconds (or 30x our idle timeout), we should not see any timeout since
 // our activity is ongoing continuously.
-func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
+func TestCtsReadWithNoIdleTimeout(t *testing.T) {
+	testCts(true, t)
+}
+func TestCtsWriteWithNoIdleTimeout(t *testing.T) {
+	testCts(false, t)
+}
+
+func testCts(timeOutOnReader bool, t *testing.T) {
 	r, w, mux := channelPair(t)
 
 	p("r.idleTimer = %p", r.idleTimer)
 	p("w.idleTimer = %p", w.idleTimer)
 
-	defer w.Close()
-	defer r.Close()
-	defer mux.Close()
-
 	idleout := 500 * time.Millisecond
 	overall := 30 * idleout
 
@@ -111,12 +114,18 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	haltr := NewHalter()
 	haltw := NewHalter()
 
-	// set the timeout on the reader
-	if true {
+	// set the timeout on the reader/writer
+	if timeOutOnReader {
 		err := r.SetIdleTimeout(idleout)
 		if err != nil {
 			t.Fatalf("r.SetIdleTimeout: %v", err)
 		}
+	} else {
+		// set the timeout on the writer
+		err := w.SetIdleTimeout(idleout)
+		if err != nil {
+			t.Fatalf("w.SetIdleTimeout: %v", err)
+		}
 	}
 	readErr := make(chan error)
 	writeErr := make(chan error)
@@ -129,7 +138,6 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	// wait for our overall time, and for both to return
 	var rerr, werr error
 	var rok, wok bool
-	overallPass := false
 	var haltrDone, haltwDone bool
 	complete := func() bool {
 		return rok && wok && haltrDone && haltwDone
@@ -149,21 +157,21 @@ collectionLoop:
 			}
 		case <-after:
 			p("after fired!")
-			haltr.ReqStop.Close()
-			haltw.ReqStop.Close()
 
 			after = nil
+
+			// the main point of the test: did after timeout
+			// fire before r or w returned?
+			if rok || wok {
+				panic("sadness, failed test: rok || wok happened before overall elapsed")
+			}
+
+			haltr.ReqStop.Close()
+			haltw.ReqStop.Close()
 
 			if complete() {
 				break collectionLoop
 			}
-			/*
-				//timeout the writes too...
-				err := w.SetIdleTimeout(time.Second)
-				if err != nil {
-					t.Fatalf("w.SetIdleTimeout: %v", err)
-				}
-			*/
 
 		case rerr = <-readErr:
 			p("got rerr")
@@ -190,147 +198,13 @@ collectionLoop:
 
 	}
 	p("done with collection loop")
-
-	// the main point of the test: did after timeout
-	// fire before r or w returned?
-	if rok || wok {
-		overallPass = false
-	} else {
-		overallPass = true
-	}
-	if !overallPass {
-		panic("sadness, failed test: rok || wok happened before overall elapsed")
-	}
-
-	p("overallPass = %v", overallPass)
 
 	// actually shutdown is pretty racy, lots of possible errors on Close,
 	// such as EOF
-	/*
-		if rerr != readOk {
-			now := time.Now()
-			panic(fmt.Sprintf("Continuous read for a "+
-				"period of '%v': reader did not give us the readOk,"+
-				" instead err=%v, stopping short by %v. at now=%v",
-				overall, rerr, now.Sub(tstop), now))
-		}
-	*/
-}
-
-// Given a 100 msec idle *write* timeout, if we continuously transfer
-// for 3 seconds (or 30x our idle timeout), we should not see any timeout since
-// our activity is ongoing continuously.
-func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
-	r, w, mux := channelPair(t)
-
-	idleout := 500 * time.Millisecond
-	overall := 30 * idleout
-
-	t0 := time.Now()
-	tstop := t0.Add(overall)
-
-	haltr := NewHalter()
-	haltw := NewHalter()
-
-	// set the timeout on the writer
-	if true {
-		err := w.SetIdleTimeout(idleout)
-		if err != nil {
-			t.Fatalf("r.SetIdleTimeout: %v", err)
-		}
-	}
-	readErr := make(chan error)
-	writeErr := make(chan error)
-	go readerToRing(idleout, r, haltr, overall, tstop, readErr)
-
-	go seqWordsToWriter(w, haltw, tstop, writeErr)
-
-	after := time.After(overall)
-
-	// wait for our overall time, and for both to return
-	// wait for our overall time, and for both to return
-	var rerr, werr error
-	var rok, wok bool
-	overallPass := false
-	var haltrDone, haltwDone bool
-	complete := func() bool {
-		return rok && wok && haltrDone && haltwDone
-	}
-collectionLoop:
-	for {
-		select {
-		case <-haltr.Done.Chan:
-			haltrDone = true
-			if complete() {
-				break collectionLoop
-			}
-		case <-haltw.Done.Chan:
-			haltwDone = true
-			if complete() {
-				break collectionLoop
-			}
-		case <-after:
-			p("after fired!")
-			haltr.ReqStop.Close()
-			haltw.ReqStop.Close()
-
-			after = nil
-
-			if complete() {
-				break collectionLoop
-			}
-			/*
-				//timeout the writes too...
-				err := w.SetIdleTimeout(time.Second)
-				if err != nil {
-					t.Fatalf("w.SetIdleTimeout: %v", err)
-				}
-			*/
-
-		case rerr = <-readErr:
-			p("got rerr")
-			now := time.Now()
-			if now.Before(tstop) {
-				p("historyOfResets for w is: '%s'", r.idleTimer.historyOfResets())
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop))) // panicing here
-			}
-			rok = true
-			if complete() {
-				break collectionLoop
-			}
-
-		case werr = <-writeErr:
-			p("got werr")
-			now := time.Now()
-			if now.Before(tstop) {
-				p("historyOfResets for w is: '%s'", w.idleTimer.historyOfResets())
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
-			}
-			wok = true
-			if complete() {
-				break collectionLoop
-			}
-		}
-
-	}
-	p("done with collection loop")
-
-	// the main point of the test: did after timeout
-	// fire before r or w returned?
-	if rok || wok {
-		overallPass = false
-	} else {
-		overallPass = true
-	}
-	if !overallPass {
-		panic("sadness, failed test: rok || wok happened before overall elapsed")
-	}
-
-	p("overallPass = %v", overallPass)
-
 	w.Close()
 	r.Close()
 	mux.Close()
+
 }
 
 // setup reader r -> infiniteRing ring. returns
@@ -384,7 +258,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 // returns writeOk upon success
 func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error) (err error) {
 	defer func() {
-		p("seqWordsToWriter returning err = '%v'", err)
+		//p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
 		halt.Done.Close()
 	}()
@@ -396,7 +270,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
 			if ew != nil {
-				p("seqWriter sees Write err %v", ew)
+				//p("seqWriter sees Write err %v", ew)
 				err = ew
 				break
 			}

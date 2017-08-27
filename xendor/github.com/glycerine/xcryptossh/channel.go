@@ -289,9 +289,9 @@ func (c *channel) sendMessage(msg interface{}) error {
 // WriteExtended writes data to a specific extended stream. These streams are
 // used, for example, for stderr.
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
-	p("%p channel.WriteExtended called. c.idleTimer=%p", c, c.idleTimer)
+	//p("%p channel.WriteExtended called. c.idleTimer=%p", c, c.idleTimer)
 	defer func() {
-		p("%p channel.WriteExtended is returning was err='%v'. c.idleTimer=%p", c, err, c.idleTimer)
+		//p("%p channel.WriteExtended is returning was err='%v'. c.idleTimer=%p", c, err, c.idleTimer)
 		if err == nil {
 			c.idleTimer.Reset()
 		}

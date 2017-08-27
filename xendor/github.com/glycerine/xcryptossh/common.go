@@ -346,8 +346,27 @@ func (w *window) close() {
 	w.L.Unlock()
 }
 
+//var windowTimeoutDone = make(chan bool)
+
 func (w *window) timeout() {
+	p("timeout() called for window %p", w)
+	w.L.Lock()
+	//close(windowTimeoutDone)
 	w.Broadcast()
+	w.L.Unlock()
+}
+
+func (w *window) reserveShouldReturn() (bool, error) {
+	timedOut := ""
+	select {
+	case timedOut = <-w.idle.TimedOut:
+		if timedOut != "" {
+			return true, newErrTimeout(timedOut, w.idle)
+		}
+	case <-w.idle.halt.ReqStop.Chan:
+		return true, newErrEOF("<-w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
+	}
+	return false, nil
 }
 
 // reserve reserves win from the available window capacity.
@@ -357,28 +376,21 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	w.L.Lock()
 	defer w.L.Unlock()
 
-	timedOut := ""
-	select {
-	case timedOut = <-w.idle.TimedOut:
-		if timedOut != "" {
-			return 0, newErrTimeout(timedOut, w.idle)
-		}
-	case <-w.idle.halt.ReqStop.Chan:
-		return 0, newErrEOF("<-w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
+	if bye, err := w.reserveShouldReturn(); bye {
+		return 0, err
 	}
 	w.writeWaiters++
 	w.Broadcast()
 	for w.win == 0 && !w.closed {
-		w.Wait()
-	}
-	select {
-	case timedOut = <-w.idle.TimedOut:
-		if timedOut != "" {
-			return 0, newErrTimeout(timedOut, w.idle)
+
+		if bye, err := w.reserveShouldReturn(); bye {
+			return 0, err
 		}
-	case <-w.idle.halt.ReqStop.Chan:
-		// happens when channel is closed
-		return 0, newErrEOF("w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
+		w.Wait() // deadlocked hung here on Write.
+	}
+
+	if bye, err := w.reserveShouldReturn(); bye {
+		return 0, err
 	}
 
 	w.writeWaiters--
