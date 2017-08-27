@@ -347,10 +347,8 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
-	//w.L.Lock()
 	p("timeout() called for window %p", w)
 	w.Broadcast()
-	//w.L.Unlock()
 }
 
 // check for timeout or shutdown
@@ -362,7 +360,10 @@ func (w *window) reserveShouldReturn() (bye bool, err error) {
 			return true, newErrTimeout(timedOut, w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
-		return true, newErrEOF("<-w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
+		// original tests expect io.EOF and not ErrShutDown,
+		// so we continue with an EOF here, even though
+		// we are shutting down.
+		return true, newErrEOF("<-w.idle.halt.ReqStop")
 	}
 	return false, nil
 }

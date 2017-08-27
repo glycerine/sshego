@@ -7,7 +7,7 @@ import (
 
 // debug printing utilities
 
-var verbose bool = true
+var verbose bool = false
 
 func p(format string, a ...interface{}) {
 	if verbose {
