@@ -95,6 +95,9 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
 
+	p("r.idleTimer = %p", r.idleTimer)
+	p("w.idleTimer = %p", w.idleTimer)
+
 	defer w.Close()
 	defer r.Close()
 	defer mux.Close()

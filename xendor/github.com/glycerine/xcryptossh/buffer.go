@@ -5,17 +5,22 @@
 package ssh
 
 import (
+	"fmt"
 	"io"
 	"sync"
 )
 
 // ErrTimeout is a value that satisfies net.Error
-var ErrTimeout = errTimeout{}
+type errTimeout struct {
+	who *idleTimer
+}
 
-type errTimeout struct{}
+func newErrTimeout(who *idleTimer) *errTimeout {
+	return &errTimeout{who: who}
+}
 
 func (e errTimeout) Error() string {
-	return "timeout"
+	return fmt.Sprintf("timeout from idleTimer %p", e.who)
 }
 func (e errTimeout) Timeout() bool {
 	// Is the error a timeout?
@@ -132,7 +137,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		case <-b.idle.halt.ReqStop.Chan:
 		}
 		if timedOut {
-			err = ErrTimeout
+			err = newErrTimeout(b.idle)
 			break
 		}
 		// out of buffers, wait for producer

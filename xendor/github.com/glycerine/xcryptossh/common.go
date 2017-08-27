@@ -361,7 +361,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	select {
 	case timedOut = <-w.idle.TimedOut:
 		if timedOut {
-			return 0, ErrTimeout
+			return 0, newErrTimeout(w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
 		return 0, io.EOF // original tests expect io.EOF and not ErrShutDown
@@ -374,7 +374,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	select {
 	case timedOut = <-w.idle.TimedOut:
 		if timedOut {
-			return 0, ErrTimeout
+			return 0, newErrTimeout(w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
 		return 0, io.EOF // original tests expect io.EOF and not ErrShutDown
