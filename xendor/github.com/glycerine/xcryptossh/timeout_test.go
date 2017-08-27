@@ -78,19 +78,19 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
 		time.Sleep(200 * time.Millisecond)
-		//fmt.Printf("\n\n SimpleTimeout: about to write which should succeed\n\n")
+		p("SimpleTimeout: about to write which should succeed")
 		_, err = w.Write([]byte(magic))
 		if err != nil {
-			//fmt.Printf("\n\n SimpleTimeout: just write failed unexpectedly\n")
+			p("SimpleTimeout: just write failed unexpectedly")
 			panic(fmt.Sprintf("write after cancelling write deadline: %v", err)) // timeout after canceling!
 		}
-		//fmt.Printf("\n\n SimpleTimeout: justwrite which did succeed\n\n")
+		p("SimpleTimeout: justwrite which did succeed")
 	}()
 
 	var buf [1024]byte
-	n, err := r.Read(buf[:]) // hang here. there is a race.
+	n, err := r.Read(buf[:])
 	if err != nil {
-		t.Fatalf("Read: %v", err)
+		panic(fmt.Sprintf("Read: %v", err)) // panic due to EOF here, from buffer.go:171
 	}
 	got := string(buf[:n])
 	if got != magic {
@@ -98,7 +98,12 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	}
 
 	err = w.Close()
-	if err != nil {
+	switch {
+	case err == nil:
+		//ok
+	case IsEOF(err):
+		// ok
+	default:
 		t.Fatalf("Close: %v", err)
 	}
 }
@@ -135,7 +140,12 @@ func TestSimpleReadTimeout(t *testing.T) {
 	cancel <- true
 
 	err = w.Close()
-	if err != nil {
+	switch {
+	case err == nil:
+		//ok
+	case IsEOF(err):
+		// ok
+	default:
 		t.Fatalf("Close: %v", err)
 	}
 }
@@ -184,13 +194,13 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	go func() {
 		_, werr := w.Write([]byte(magic))
 		if werr != nil {
-			t.Fatalf("write after cancelling write deadline: %v", werr)
+			panic(fmt.Sprintf("write after cancelling write deadline: %v", werr))
 		}
 	}()
 
 	n, err = r.Read(buf[:])
 	if err != nil {
-		t.Fatalf("Read after timed-out Read got err: %v", err)
+		panic(fmt.Sprintf("Read after timed-out Read got err: %v", err))
 	}
 	if n != len(magic) {
 		t.Fatalf("short Read after timed-out Read")

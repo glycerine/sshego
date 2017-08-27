@@ -161,7 +161,7 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop))) // panicing here
 			}
 			rok = true
 			if wok {
