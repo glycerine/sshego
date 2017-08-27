@@ -18,8 +18,8 @@ func muxPair() (*mux, *mux) {
 	halt := NewHalter()
 	ctx := context.Background()
 
-	s := newMux(ctx, a, halt, a.idle)
-	c := newMux(ctx, b, halt, b.idle)
+	s := newMux(ctx, a, halt)
+	c := newMux(ctx, b, halt)
 
 	return s, c
 }
@@ -52,14 +52,12 @@ func channelPair(t *testing.T) (*channel, *channel, *mux) {
 	}
 
 	chs := <-res
-	c.idle = chc.idleTimer
 
 	tc := c.conn.(*memTransport)
 	tc.Lock()
 	tc.idle = chc.idleTimer
 	tc.Unlock()
 
-	s.idle = chs.idleTimer
 	ts := s.conn.(*memTransport)
 	ts.Lock()
 	ts.idle = chs.idleTimer

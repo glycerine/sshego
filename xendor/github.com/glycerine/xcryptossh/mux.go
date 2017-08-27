@@ -100,7 +100,6 @@ type mux struct {
 	err     error
 
 	halt *Halter
-	idle *idleTimer
 }
 
 // When debugging, each new chanList instantiation has a different
@@ -117,7 +116,7 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(ctx context.Context, p packetConn, halt *Halter, idle *idleTimer) *mux {
+func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
@@ -125,7 +124,6 @@ func newMux(ctx context.Context, p packetConn, halt *Halter, idle *idleTimer) *m
 		incomingRequests: make(chan *Request, chanSize),
 		errCond:          newCond(),
 		halt:             halt,
-		idle:             idle,
 	}
 
 	if debugMux {
@@ -229,9 +227,6 @@ func (m *mux) onePacket(ctx context.Context) error {
 	packet, err := m.conn.readPacket(ctx)
 	if err != nil {
 		return err
-	}
-	if m.idle != nil {
-		m.idle.Reset()
 	}
 
 	if debugMux {

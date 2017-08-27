@@ -95,9 +95,6 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
 
-	p("r.idle = %p", r.mux.idle)
-	p("w.idle = %p", w.mux.idle)
-
 	defer w.Close()
 	defer r.Close()
 	defer mux.Close()
@@ -272,7 +269,7 @@ collectionLoop:
 	p("done with collection loop")
 
 	if werr != writeOk {
-		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", werr))
+		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", overall, werr))
 	}
 
 }
