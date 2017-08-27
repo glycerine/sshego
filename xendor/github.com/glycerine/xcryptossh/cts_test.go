@@ -261,7 +261,8 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
+				p("historyOfResets for r is: '%s'", r.idleTimer.historyOfResets())
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, goal: '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
 			}
 			rok = true
 			if wok {
@@ -271,6 +272,7 @@ collectionLoop:
 			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
+				p("historyOfResets for w is: '%s'", w.idleTimer.historyOfResets())
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true

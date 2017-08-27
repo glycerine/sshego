@@ -94,7 +94,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	}
 	got := string(buf[:n])
 	if got != magic {
-		t.Fatalf("Read: got %q want %q", got, magic)
+		panic(fmt.Sprintf("Read: got %q want %q", got, magic))
 	}
 
 	err = w.Close()
@@ -104,7 +104,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	case IsEOF(err):
 		// ok
 	default:
-		t.Fatalf("Close: %v", err)
+		panic(fmt.Sprintf("Close: %v", err))
 	}
 }
 
@@ -128,14 +128,14 @@ func TestSimpleReadTimeout(t *testing.T) {
 	// use a quick timeout so the test runs quickly.
 	err := r.SetIdleTimeout(2 * time.Millisecond)
 	if err != nil {
-		t.Fatalf("SetIdleTimeout: %v", err)
+		panic(fmt.Sprintf("SetIdleTimeout: %v", err))
 	}
 
 	// no writer, so this should timeout.
 	n, err := r.Read(buf[:])
 
 	if err == nil || !err.(net.Error).Timeout() || n > 0 {
-		t.Fatalf("expected to get a net.Error that had Timeout() true with n = 0")
+		panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true with n = 0"))
 	}
 	cancel <- true
 
@@ -146,7 +146,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 	case IsEOF(err):
 		// ok
 	default:
-		t.Fatalf("Close: %v", err)
+		panic(fmt.Sprintf("Close: %v", err))
 	}
 }
 
@@ -170,21 +170,21 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	// use a quick timeout so the test runs quickly.
 	err := r.SetIdleTimeout(2 * time.Millisecond)
 	if err != nil {
-		t.Fatalf("SetIdleTimeout: %v", err)
+		panic(fmt.Sprintf("SetIdleTimeout: %v", err))
 	}
 
 	// no writer, so this should timeout.
 	n, err := r.Read(buf[:])
 
 	if err == nil || !err.(net.Error).Timeout() || n > 0 {
-		t.Fatalf("expected to get a net.Error that had Timeout() true with n = 0")
+		panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true with n = 0"))
 	}
 	cancel <- true
 
 	// And we *must* reset the timeout status before trying to Read again.
 	err = r.SetIdleTimeout(0)
 	if err != nil {
-		t.Fatalf("reset with SetIdleTimeout: %v", err)
+		panic(fmt.Sprintf("reset with SetIdleTimeout: %v", err))
 	}
 
 	// now start a writer and verify that we can read okay
@@ -203,15 +203,15 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 		panic(fmt.Sprintf("Read after timed-out Read got err: %v", err))
 	}
 	if n != len(magic) {
-		t.Fatalf("short Read after timed-out Read")
+		panic(fmt.Sprintf("short Read after timed-out Read"))
 	}
 	got := string(buf[:n])
 	if got != magic {
-		t.Fatalf("Read: got %q want %q", got, magic)
+		panic(fmt.Sprintf("Read: got %q want %q", got, magic))
 	}
 
 	err = w.Close()
 	if err != nil {
-		t.Fatalf("Close: %v", err)
+		panic(fmt.Sprintf("Close: %v", err))
 	}
 }

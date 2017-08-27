@@ -357,11 +357,11 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	w.L.Lock()
 	defer w.L.Unlock()
 
-	timedOut := false
+	timedOut := ""
 	select {
 	case timedOut = <-w.idle.TimedOut:
-		if timedOut {
-			return 0, newErrTimeout(w.idle)
+		if timedOut != "" {
+			return 0, newErrTimeout(timedOut, w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
 		return 0, newErrEOF("<-w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
@@ -373,8 +373,8 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	}
 	select {
 	case timedOut = <-w.idle.TimedOut:
-		if timedOut {
-			return 0, newErrTimeout(w.idle)
+		if timedOut != "" {
+			return 0, newErrTimeout(timedOut, w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
 		// happens when channel is closed

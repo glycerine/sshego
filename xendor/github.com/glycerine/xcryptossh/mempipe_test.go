@@ -46,8 +46,8 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 		if t.idle != nil {
 			select {
 			case timedOut := <-t.idle.TimedOut:
-				if timedOut {
-					return nil, newErrTimeout(t.idle)
+				if timedOut != "" {
+					return nil, newErrTimeout(timedOut, t.idle)
 				}
 			case <-t.idle.halt.ReqStop.Chan:
 				return nil, newErrEOF("<-t.idle.halt")

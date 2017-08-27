@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,9 +26,10 @@ import (
 // method on the channel.
 //
 type idleTimer struct {
-	mut             sync.Mutex
-	idleDur         time.Duration
-	last            uint64
+	mut     sync.Mutex
+	idleDur time.Duration
+	last    uint64
+
 	halt            *Halter
 	timeoutCallback func()
 
@@ -38,10 +40,14 @@ type idleTimer struct {
 	// SetIdleTimeout() will always set the timeOutRaised state to false.
 	// Likewise for sending on setIdleTimeoutCh.
 	setIdleTimeoutCh chan *setTimeoutTicket
-	TimedOut         chan bool
+	TimedOut         chan string // sends empty string if no timeout, else details.
 
 	setCallback   chan *callbacks
-	timeOutRaised bool
+	timeOutRaised string
+
+	// optional, debug history of Reset() calls.
+	histmut sync.Mutex // protects history
+	history []time.Time
 }
 
 type callbacks struct {
@@ -67,7 +73,7 @@ func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
 		setCallback:      make(chan *callbacks),
-		TimedOut:         make(chan bool),
+		TimedOut:         make(chan string),
 		halt:             NewHalter(),
 		timeoutCallback:  callback,
 	}
@@ -89,8 +95,28 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
 	tlast := atomic.LoadUint64(&t.last)
-	p("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
+	q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
+
+	// DEBUG:
+	t.histmut.Lock()
+	t.history = append(t.history, time.Now())
+	t.histmut.Unlock()
+}
+
+func (t *idleTimer) historyOfResets() string {
+	t.histmut.Lock()
+	defer t.histmut.Unlock()
+
+	if len(t.history) == 0 {
+		return ""
+	}
+	s := fmt.Sprintf("%v, ", t.history[0])
+	n := len(t.history)
+	for i := 1; i < n; i++ {
+		s += fmt.Sprintf("%v, ", t.history[i].Sub(t.history[i-1]).Truncate(time.Millisecond))
+	}
+	return s
 }
 
 // NanosecSince returns how many nanoseconds it has
@@ -186,7 +212,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 
 			case tk := <-t.setIdleTimeoutCh:
 				/* change state, maybe */
-				t.timeOutRaised = false
+				t.timeOutRaised = ""
 				t.Reset()
 				if dur > 0 {
 					// timeouts active currently
@@ -243,7 +269,9 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 
 					/* change state */
-					t.timeOutRaised = true
+					t.timeOutRaised = fmt.Sprintf("timing out at %v, in %p! "+
+						"since=%v  dur=%v, exceed=%v",
+						time.Now(), t, since, udur, since-udur)
 
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take

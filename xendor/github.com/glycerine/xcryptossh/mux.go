@@ -200,7 +200,7 @@ func (m *mux) loop(ctx context.Context) {
 	for err == nil {
 		err = m.onePacket(ctx)
 	}
-
+	p("mux loop shutting down on err= '%v'", err) // timeout
 	for _, ch := range m.chanList.dropAll() {
 		ch.close()
 	}
