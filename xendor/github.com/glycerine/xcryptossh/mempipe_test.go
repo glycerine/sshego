@@ -26,10 +26,6 @@ func (t *memTransport) timeout() {
 	t.Signal()
 }
 
-type HasTimeout interface {
-	timeout()
-}
-
 func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 	t.Lock()
 	defer t.Unlock()

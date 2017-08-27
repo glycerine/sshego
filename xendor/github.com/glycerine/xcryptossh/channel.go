@@ -26,6 +26,10 @@ const (
 	channelWindowSize = 64 * channelMaxPacket
 )
 
+type HasTimeout interface {
+	timeout()
+}
+
 // NewChannel represents an incoming request to a channel. It must either be
 // accepted for use by calling Accept, or rejected by calling Reject.
 type NewChannel interface {
