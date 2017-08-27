@@ -46,12 +46,27 @@ func channelPair(t *testing.T) (*channel, *channel, *mux) {
 	}()
 	ctx := context.Background()
 
-	ch, err := c.openChannel(ctx, "chan", nil)
+	chc, err := c.openChannel(ctx, "chan", nil)
 	if err != nil {
 		t.Fatalf("OpenChannel: %v", err)
 	}
 
-	return <-res, ch, c
+	chs := <-res
+	c.idle = chc.idleTimer
+
+	tc := c.conn.(*memTransport)
+	tc.Lock()
+	tc.idle = chc.idleTimer
+	tc.Unlock()
+
+	s.idle = chs.idleTimer
+	ts := s.conn.(*memTransport)
+	ts.Lock()
+	ts.idle = chs.idleTimer
+	ts.Unlock()
+	p("done mux_test setting up idle")
+
+	return chs, chc, c
 }
 
 // Test that stderr and stdout can be addressed from different

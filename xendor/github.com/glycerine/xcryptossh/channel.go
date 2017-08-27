@@ -249,8 +249,6 @@ type channel struct {
 	rline time.Time
 	wline time.Time
 
-	// use mux.idle instead of our own
-	//
 	// idleTimer provides a means
 	// for ssh.Channel users to check how
 	// many nanoseconds have elapsed since the last
@@ -258,7 +256,7 @@ type channel struct {
 	// use by multiple goroutines. Users
 	// should call SetIdleDur() and Reset() on it to before
 	// any subsequent calls to TimedOut().
-	// idleTimer *idleTimer
+	idleTimer *idleTimer
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -272,7 +270,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
 	if err != nil {
-		c.mux.idle.Reset()
+		c.idleTimer.Reset()
 	}
 	c.writeMu.Unlock()
 	return err
@@ -291,11 +289,11 @@ func (c *channel) sendMessage(msg interface{}) error {
 // WriteExtended writes data to a specific extended stream. These streams are
 // used, for example, for stderr.
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
-	//fmt.Printf("\n %p channel.WriteExtended called. c.mux.idle=%p\n", c, c.mux.idle)
+	fmt.Printf("\n %p channel.WriteExtended called. c.idleTimer=%p\n", c, c.idleTimer)
 	defer func() {
-		//fmt.Printf("\n %p channel.WriteExtended is returning was err='%v'. c.mux.idle=%p\n", c, err, c.mux.idle)
+		fmt.Printf("\n %p channel.WriteExtended is returning was err='%v'. c.idleTimer=%p\n", c, err, c.idleTimer)
 		if err == nil {
-			c.mux.idle.Reset()
+			c.idleTimer.Reset()
 		}
 	}()
 	if c.sentEOF {
@@ -421,7 +419,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
 	if err != nil {
-		c.mux.idle.Reset()
+		c.idleTimer.Reset()
 	}
 
 	if n > 0 {
@@ -450,7 +448,7 @@ func (c *channel) close() {
 	c.writeMu.Unlock()
 	// Unblock writers.
 	c.remoteWin.close()
-	c.mux.idle.Stop()
+	c.idleTimer.Stop()
 }
 
 func (c *channel) timeout() {
@@ -553,10 +551,8 @@ func (c *channel) handlePacket(packet []byte) error {
 	return nil
 }
 
-func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte, idle *idleTimer) *channel {
-	if idle == nil {
-		panic("must provide non-nil idle")
-	}
+func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
+	idle := newIdleTimer(nil, 0)
 	ch := &channel{
 		remoteWin:        window{Cond: newCond(), idle: idle},
 		myWindow:         channelWindowSize,
@@ -569,6 +565,7 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		extraData:        extraData,
 		mux:              m,
 		packetPool:       make(map[uint32][]byte),
+		idleTimer:        idle,
 	}
 	idle.setTimeoutCallback(ch.timeout)
 	ch.localId = m.chanList.add(ch)
@@ -657,7 +654,7 @@ func (ch *channel) Close() error {
 		return errUndecided
 	}
 
-	ch.mux.idle.halt.ReqStop.Close()
+	ch.idleTimer.halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{
 		PeersId: ch.remoteId})
@@ -797,6 +794,6 @@ func (c *channel) RemoteAddr() net.Addr {
 // the SetIdleTimeout() invocation.
 //
 func (c *channel) SetIdleTimeout(dur time.Duration) error {
-	c.mux.idle.SetIdleTimeout(dur)
+	c.idleTimer.SetIdleTimeout(dur)
 	return nil
 }

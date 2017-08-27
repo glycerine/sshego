@@ -383,7 +383,7 @@ write:
 
 	// drain startKex channel. We don't service t.requestKex
 	// because nobody does blocking sends there.
-	go func() { // leaks lots in tests
+	go func() { // leaks lots
 		defer func() {
 			t.config.Halt.Done.Close()
 		}()

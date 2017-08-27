@@ -316,7 +316,7 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 		return m.sendMessage(failMsg)
 	}
 
-	c := m.newChannel(msg.ChanType, channelInbound, msg.TypeSpecificData, m.idle)
+	c := m.newChannel(msg.ChanType, channelInbound, msg.TypeSpecificData)
 	c.remoteId = msg.PeersId
 	c.maxRemotePayload = msg.MaxPacketSize
 	c.remoteWin.add(msg.PeersWindow)
@@ -340,7 +340,7 @@ func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte) (C
 }
 
 func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*channel, error) {
-	ch := m.newChannel(chanType, channelOutbound, extra, m.idle)
+	ch := m.newChannel(chanType, channelOutbound, extra)
 
 	ch.maxIncomingPayload = channelMaxPacket
 

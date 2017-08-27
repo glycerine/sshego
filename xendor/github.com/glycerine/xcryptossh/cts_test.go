@@ -156,7 +156,7 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
 			}
 			rok = true
 			if wok {
@@ -166,7 +166,7 @@ collectionLoop:
 			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true
 			if rok {
@@ -250,7 +250,7 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
 			}
 			rok = true
 			if wok {
@@ -260,7 +260,7 @@ collectionLoop:
 			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
-				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true
 			if rok {
@@ -281,7 +281,7 @@ collectionLoop:
 // readOk upon success.
 func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error) (err error) {
 	defer func() {
-		//p("readerToRing returning on readErr, err = '%v'", err)
+		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
 	}()
 
@@ -297,6 +297,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 			nw, ew := dst.Write(buf[0:nr])
 			if ew != nil {
 				err = ew
+				p("readerToRing sees Write err %v", ew)
 				break
 			}
 			if nr != nw {
@@ -311,6 +312,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 			}
 		}
 		if er != nil {
+			p("readerToRing sees Read err %v", er)
 			if er != io.EOF {
 				err = er
 			}
@@ -325,7 +327,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 // returns writeOk upon success
 func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error) (err error) {
 	defer func() {
-		//p("seqWordsToWriter returning err = '%v'", err)
+		p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
 	}()
 	src := newSequentialWords()
@@ -336,6 +338,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
 			if ew != nil {
+				p("seqWriter sees Write err %v", ew)
 				err = ew
 				break
 			}
@@ -350,6 +353,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 			}
 		}
 		if er != nil {
+			p("seqWriter sees Read err %v", er)
 			if er != io.EOF {
 				err = er
 			}
