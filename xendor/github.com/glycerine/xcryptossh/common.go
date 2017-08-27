@@ -347,12 +347,13 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
-	w.L.Lock()
+	//w.L.Lock()
 	p("timeout() called for window %p", w)
 	w.Broadcast()
-	w.L.Unlock()
+	//w.L.Unlock()
 }
 
+// check for timeout or shutdown
 func (w *window) reserveShouldReturn() (bye bool, err error) {
 	timedOut := ""
 	select {
@@ -373,24 +374,17 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	w.L.Lock()
 	defer w.L.Unlock()
 
-	//	if bye, err := w.reserveShouldReturn(); bye {
-	//		return 0, err
-	//	}
-	w.writeWaiters++
-	w.Broadcast()
-	for w.win == 0 && !w.closed {
-
-		// check for timeout or shutdown
-		if bye, err := w.reserveShouldReturn(); bye {
-			return 0, err
-		}
-		w.Wait()
-	}
-
 	if bye, err := w.reserveShouldReturn(); bye {
 		return 0, err
 	}
-
+	w.writeWaiters++
+	w.Broadcast()
+	for w.win == 0 && !w.closed {
+		w.Wait()
+		if bye, err := w.reserveShouldReturn(); bye {
+			return 0, err
+		}
+	}
 	w.writeWaiters--
 	if w.win < win {
 		win = w.win

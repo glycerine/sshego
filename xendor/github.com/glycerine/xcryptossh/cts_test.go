@@ -160,7 +160,7 @@ collectionLoop:
 				break collectionLoop
 			}
 		case <-after:
-			p("after fired!")
+			p("after completed!")
 
 			after = nil
 
@@ -172,7 +172,8 @@ collectionLoop:
 				p("success!!!!!")
 			}
 
-			// release the other. e.g. the Writer may be blocked on the reader test.
+			// release the other. e.g. the writer will typically be blocked after
+			// the reader timeout test, since the writer didn't get a timeout.
 			setTo(r, w, !timeOutOnReader, idleout)
 
 			haltr.ReqStop.Close()

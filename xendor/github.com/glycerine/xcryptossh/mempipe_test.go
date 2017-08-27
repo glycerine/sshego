@@ -65,7 +65,6 @@ func (t *memTransport) closeSelf() error {
 		return newErrEOF("t.eof")
 	}
 	t.eof = true
-	p("memTransport.closeSelf() just set t.eof = true, stack='%s'", string(stacktrace()))
 	t.Cond.Broadcast()
 	return nil
 }
