@@ -207,6 +207,7 @@ func (m *mux) loop(ctx context.Context) {
 		if err != nil {
 			nerr, ok := err.(net.Error)
 			if ok && nerr.Timeout() {
+				pp("warning: converting timeout err into nil: '%v'", err)
 				err = nil
 			}
 		}

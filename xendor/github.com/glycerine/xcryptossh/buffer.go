@@ -66,8 +66,7 @@ func (e errWhere) Error() string {
 }
 
 func (e errWhere) Timeout() bool {
-	// Is the error a timeout?
-	return true
+	return strings.HasPrefix(e.msg, "timeout:")
 }
 
 func (e errWhere) Temporary() bool {

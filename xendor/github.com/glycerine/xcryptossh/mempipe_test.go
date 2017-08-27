@@ -40,7 +40,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 			return r, nil
 		}
 		if t.eof {
-			return nil, newErrEOF("t.eof") // causing early shutdown in TestSimpleWriteTimeout timeout_test.go
+			return nil, newErrEOF("t.eof")
 		}
 
 		if t.idle != nil {
@@ -130,7 +130,7 @@ func TestDoubleClose(t *testing.T) {
 		t.Errorf("Close: %v", err)
 	}
 	err = a.Close()
-	if err != io.EOF {
+	if !IsEOF(err) {
 		t.Errorf("expect EOF on double close.")
 	}
 }
