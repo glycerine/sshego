@@ -92,7 +92,14 @@ func (b *buffer) timeout() error {
 // if no data is available, or until the buffer is closed.
 func (b *buffer) Read(buf []byte) (n int, err error) {
 	b.Cond.L.Lock()
-	defer b.Cond.L.Unlock()
+	defer func() {
+		b.Cond.L.Unlock()
+		if err == nil {
+			b.idle.Reset()
+		}
+	}()
+
+	//fmt.Printf("\n\n buffer.Read() on buf size %v \n\n", len(buf))
 
 	for len(buf) > 0 {
 		// if there is data in b.head, copy it

@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -42,6 +43,7 @@ type idleTimer struct {
 
 	setCallback   chan *callbacks
 	timeOutRaised bool
+	resetNum      int64
 }
 
 type callbacks struct {
@@ -80,13 +82,21 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 // returned from an immediate next call to NanosecSince().
 //
 func (t *idleTimer) Reset() {
-	atomic.StoreUint64(&t.last, monoNow())
+	mnow := monoNow()
+	//tlast := atomic.LoadUint64(&t.last)
+	//	fmt.Printf("\n\n 8888888888    idleTimer.Reset() called! at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", time.Now(), mnow, time.Duration(mnow-tlast))
+	t.resetNum++
+	atomic.StoreUint64(&t.last, mnow)
 }
 
 // NanosecSince returns how many nanoseconds it has
 // been since the last call to Reset().
 func (t *idleTimer) NanosecSince() uint64 {
-	return monoNow() - atomic.LoadUint64(&t.last)
+	mnow := monoNow()
+	tlast := atomic.LoadUint64(&t.last)
+	res := mnow - tlast
+	//fmt.Printf("\n\n NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", mnow, tlast, res)
+	return res
 }
 
 // SetIdleTimeout stores a new idle timeout duration. This
@@ -221,7 +231,12 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				if dur == 0 {
 					panic("should be impossible to get heartbeat.C on dur == 0")
 				}
-				if t.NanosecSince() > uint64(dur) {
+				since := t.NanosecSince()
+				udur := uint64(dur)
+				if since > udur {
+
+					fmt.Printf("\n\n timeing out! since=%v  dur=%v, exceed=%v  \n\n", since, udur, since-udur)
+
 					/* change state */
 					t.timeOutRaised = true
 
