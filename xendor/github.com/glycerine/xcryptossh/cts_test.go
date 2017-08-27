@@ -131,6 +131,52 @@ func TestContinuousReadWithNoIdleOut(t *testing.T) {
 
 }
 
+// Given a 100 msec idle *write* timeout, if we continuously transfer
+// for 3 seconds, we should not see any timeout since
+// our activity is ongoing continuously.
+func TestContinuousWriteWithNoIdleOut(t *testing.T) {
+	r, w, mux := channelPair(t)
+	defer w.Close()
+	defer r.Close()
+	defer mux.Close()
+
+	idleout := 100 * time.Millisecond
+	overall := 30 * idleout
+
+	t0 := time.Now()
+	tstop := t0.Add(overall)
+
+	writeDone := make(chan bool)
+
+	// set the timeout on the writer
+	err := w.SetIdleTimeout(idleout)
+	if err != nil {
+		t.Fatalf("SetIdleTimeout: %v", err)
+	}
+	go readerToRing(t, idleout, r, writeDone, overall, tstop)
+
+	err = seqWordsToWriter(w, tstop)
+
+	if err != timeGood {
+		panic(fmt.Sprintf("Continuous write for a period of '%v' did not give us the timeGood error, instead err=%v", overall, err))
+	}
+	now := time.Now()
+	if now.Before(tstop) {
+		panic(fmt.Sprintf("stopped too early, before '%v'. now=%v", tstop, now))
+	}
+
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("w Close: %v", err)
+	}
+
+	err = r.Close()
+	if err != nil {
+		t.Fatalf("r Close: %v", err)
+	}
+
+}
+
 // setup reader r -> infiniteRing ring
 func readerToRing(t *testing.T, idleout time.Duration, r Channel, writeDone chan bool, overall time.Duration, tstop time.Time) {
 
