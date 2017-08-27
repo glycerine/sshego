@@ -1,10 +1,11 @@
 package ssh
 
 import (
-	"fmt"
+	//"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 // with	import "runtime/debug"
@@ -84,7 +85,12 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
 	//tlast := atomic.LoadUint64(&t.last)
-	//	fmt.Printf("\n\n 8888888888    idleTimer.Reset() called! at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", time.Now(), mnow, time.Duration(mnow-tlast))
+	if uintptr(unsafe.Pointer(t)) == 0xc42005e960 {
+		//fmt.Printf("\n\n 8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", t, time.Now(), mnow, time.Duration(mnow-tlast))
+		if t.resetNum == 2 {
+			//panic("where?")
+		}
+	}
 	t.resetNum++
 	atomic.StoreUint64(&t.last, mnow)
 }
@@ -95,7 +101,7 @@ func (t *idleTimer) NanosecSince() uint64 {
 	mnow := monoNow()
 	tlast := atomic.LoadUint64(&t.last)
 	res := mnow - tlast
-	//fmt.Printf("\n\n NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", mnow, tlast, res)
+	//fmt.Printf("\n\n idleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
 	return res
 }
 
@@ -235,7 +241,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				udur := uint64(dur)
 				if since > udur {
 
-					fmt.Printf("\n\n timeing out! since=%v  dur=%v, exceed=%v  \n\n", since, udur, since-udur)
+					//fmt.Printf("\n\n timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 
 					/* change state */
 					t.timeOutRaised = true
