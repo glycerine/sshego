@@ -144,7 +144,7 @@ collectionLoop:
 			}
 
 			//timeout the writes too...
-			err := w.SetIdleTimeout(time.Nanosecond)
+			err := w.SetIdleTimeout(time.Second)
 			if err != nil {
 				t.Fatalf("w.SetIdleTimeout: %v", err)
 			}
@@ -238,7 +238,7 @@ collectionLoop:
 			}
 
 			//timeout the reads too...
-			err := r.SetIdleTimeout(time.Nanosecond)
+			err := r.SetIdleTimeout(time.Second)
 			if err != nil {
 				t.Fatalf("r.SetIdleTimeout: %v", err)
 			}
