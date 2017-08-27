@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -163,7 +162,7 @@ func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payl
 	select {
 	case msg, ok := <-m.globalResponses:
 		if !ok {
-			return false, nil, io.EOF
+			return false, nil, newErrEOF("!ok <-m.globalResponses")
 		}
 		switch msg := msg.(type) {
 		case *globalRequestFailureMsg:
@@ -175,9 +174,9 @@ func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payl
 		}
 
 	case <-m.halt.ReqStop.Chan:
-		return false, nil, io.EOF
+		return false, nil, newErrEOF("<-m.halt")
 	case <-ctx.Done():
-		return false, nil, io.EOF
+		return false, nil, newErrEOF("<-ctx.Done")
 	}
 }
 
@@ -275,17 +274,17 @@ func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 		}:
 			// just the send
 		case <-m.halt.ReqStop.Chan:
-			return io.EOF
+			return newErrEOF("<-m.halt")
 		case <-ctx.Done():
-			return io.EOF
+			return newErrEOF("<-ctx.Done")
 		}
 	case *globalRequestSuccessMsg, *globalRequestFailureMsg:
 		select {
 		case m.globalResponses <- msg:
 		case <-m.halt.ReqStop.Chan:
-			return io.EOF
+			return newErrEOF("<-m.halt")
 		case <-ctx.Done():
-			return io.EOF
+			return newErrEOF("<-ctx.Done")
 		}
 	default:
 		panic(fmt.Sprintf("not a global message %#v", msg))
@@ -318,9 +317,9 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 	select {
 	case m.incomingChannels <- c:
 	case <-m.halt.ReqStop.Chan:
-		return io.EOF
+		return newErrEOF("<-m.halt")
 	case <-ctx.Done():
-		return io.EOF
+		return newErrEOF("<-ctx.Done")
 	}
 	return nil
 }
@@ -366,8 +365,8 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 			return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msgt)
 		}
 	case <-done:
-		return nil, io.EOF
+		return nil, newErrEOF("<-done")
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, newErrEOF("<-ctx.Done")
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"strconv"
@@ -289,9 +288,9 @@ func (l *ForwardList) Forward(ctx context.Context, laddr, raddr net.Addr, ch New
 			case f.c <- forward{newCh: ch, raddr: raddr}:
 				return true, nil
 			case <-conn.Done():
-				return false, io.EOF
+				return false, newErrEOF("")
 			case <-ctx.Done():
-				return false, io.EOF
+				return false, newErrEOF("")
 			}
 		}
 	}
@@ -314,12 +313,12 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	var s forward
 	select {
 	case <-l.conn.Done():
-		return nil, io.EOF
+		return nil, newErrEOF("")
 	case <-l.TmpCtx.Done():
-		return nil, io.EOF
+		return nil, newErrEOF("")
 	case s, ok = <-l.in:
 		if !ok {
-			return nil, io.EOF
+			return nil, newErrEOF("")
 		}
 	}
 	ch, incoming, err := s.newCh.Accept()

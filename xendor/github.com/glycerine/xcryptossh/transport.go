@@ -86,9 +86,9 @@ func (t *transport) prepareKeyChange(ctx context.Context, algs *algorithms, kexR
 		select {
 		case t.reader.pendingKeyChange <- ciph:
 		case <-config.Halt.ReqStop.Chan:
-			return io.EOF
+			return newErrEOF("")
 		case <-ctx.Done():
-			return io.EOF
+			return newErrEOF("")
 		}
 	}
 
@@ -98,9 +98,9 @@ func (t *transport) prepareKeyChange(ctx context.Context, algs *algorithms, kexR
 		select {
 		case t.writer.pendingKeyChange <- ciph:
 		case <-config.Halt.ReqStop.Chan:
-			return io.EOF
+			return newErrEOF("")
 		case <-ctx.Done():
-			return io.EOF
+			return newErrEOF("")
 		}
 	}
 

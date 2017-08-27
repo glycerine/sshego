@@ -205,9 +205,9 @@ func (t *handshakeTransport) readPacket(ctx context.Context) ([]byte, error) {
 		}
 		return p, nil
 	case <-t.config.Halt.ReqStop.Chan:
-		return nil, io.EOF
+		return nil, newErrEOF("<-t.config.Halt.ReqStop")
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, newErrEOF("<-ctx.Done")
 	}
 }
 
@@ -470,14 +470,14 @@ func (t *handshakeTransport) readOnePacket(ctx context.Context, first bool) ([]b
 		select {
 		case err = <-kex.done:
 		case <-t.config.Halt.ReqStop.Chan:
-			return nil, io.EOF
+			return nil, newErrEOF("<-t.config.Halt.ReqStop")
 		case <-ctx.Done():
-			return nil, io.EOF
+			return nil, newErrEOF("<-ctx.Done")
 		}
 	case <-t.config.Halt.ReqStop.Chan:
-		return nil, io.EOF
+		return nil, newErrEOF("<-t.config.Halt.ReqStop")
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, newErrEOF("<-ctx.Done")
 	}
 
 	if debugHandshake {

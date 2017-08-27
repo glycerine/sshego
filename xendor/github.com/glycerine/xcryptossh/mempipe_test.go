@@ -26,6 +26,10 @@ func (t *memTransport) timeout() {
 	t.Signal()
 }
 
+type HasTimeout interface {
+	timeout()
+}
+
 func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 	t.Lock()
 	defer t.Unlock()
@@ -36,7 +40,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 			return r, nil
 		}
 		if t.eof {
-			return nil, io.EOF
+			return nil, newErrEOF("t.eof")
 		}
 
 		if t.idle != nil {
@@ -46,11 +50,11 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 					return nil, newErrTimeout(t.idle)
 				}
 			case <-t.idle.halt.ReqStop.Chan:
-				return nil, io.EOF
+				return nil, newErrEOF("<-t.idle.halt")
 			}
 		}
 		//p("memTransport has idle %p, about to wait", t.idle)
-		t.Cond.Wait()
+		t.Cond.Wait() // deadlock hung here 15 minutes.
 	}
 }
 
@@ -58,7 +62,7 @@ func (t *memTransport) closeSelf() error {
 	t.Lock()
 	defer t.Unlock()
 	if t.eof {
-		return io.EOF
+		return newErrEOF("t.eof")
 	}
 	t.eof = true
 	t.Cond.Broadcast()
@@ -75,7 +79,7 @@ func (t *memTransport) writePacket(p []byte) error {
 	t.write.Lock()
 	defer t.write.Unlock()
 	if t.write.eof {
-		return io.EOF
+		return newErrEOF("t.write.eof")
 	}
 	c := make([]byte, len(p))
 	copy(c, p)

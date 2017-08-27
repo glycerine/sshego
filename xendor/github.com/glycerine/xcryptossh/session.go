@@ -406,7 +406,7 @@ func (s *Session) Wait() error {
 	}
 	select {
 	case <-s.ch.Done():
-		return io.EOF
+		return newErrEOF("s.ch.Done")
 
 	case waitErr := <-s.exitStatus:
 
@@ -417,7 +417,7 @@ func (s *Session) Wait() error {
 		for _ = range s.copyFuncs {
 			select {
 			case <-s.ch.Done():
-				return io.EOF
+				return newErrEOF("<-s.ch.Done")
 			case err := <-s.errors:
 				if err != nil && copyError == nil {
 					copyError = err

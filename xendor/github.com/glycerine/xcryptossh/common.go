@@ -364,7 +364,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 			return 0, newErrTimeout(w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
-		return 0, io.EOF // original tests expect io.EOF and not ErrShutDown
+		return 0, newErrEOF("<-w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
 	}
 	w.writeWaiters++
 	w.Broadcast()
@@ -377,7 +377,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 			return 0, newErrTimeout(w.idle)
 		}
 	case <-w.idle.halt.ReqStop.Chan:
-		return 0, io.EOF // original tests expect io.EOF and not ErrShutDown
+		return 0, newErrEOF("w.idle.halt.ReqStop") // original tests expect io.EOF and not ErrShutDown
 	}
 
 	w.writeWaiters--
@@ -386,7 +386,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	}
 	w.win -= win
 	if w.closed {
-		err = io.EOF
+		err = newErrEOF("w.closed")
 	}
 	return win, err
 }

@@ -265,7 +265,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.writeMu.Lock()
 	if c.sentClose {
 		c.writeMu.Unlock()
-		return io.EOF
+		return newErrEOF("c.sentClose")
 	}
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
@@ -297,7 +297,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		}
 	}()
 	if c.sentEOF {
-		return 0, io.EOF
+		return 0, newErrEOF("c.sentEOF")
 	}
 	// 1 byte message type, 4 bytes remoteId, 4 bytes data length
 	opCode := byte(msgChannelData)
@@ -458,6 +458,10 @@ func (c *channel) timeout() {
 	c.extPending.timeout()
 	// Unblock writers.
 	c.remoteWin.timeout()
+	mt, ok := c.mux.conn.(HasTimeout)
+	if ok {
+		mt.timeout() // unblock goroutines stuck in *memTransport
+	}
 }
 
 // responseMessageReceived is called when a success or failure message is
@@ -511,7 +515,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return io.EOF
+			return newErrEOF("<-reqStop")
 		}
 	case *channelOpenConfirmMsg:
 		if err := c.responseMessageReceived(); err != nil {
@@ -526,7 +530,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return io.EOF
+			return newErrEOF("<-reqStop")
 		}
 	case *windowAdjustMsg:
 		if !c.remoteWin.add(msg.AdditionalBytes) {
@@ -542,13 +546,13 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.incomingRequests <- &req:
 		case <-reqStop:
-			return io.EOF
+			return newErrEOF("<-reqStop")
 		}
 	default:
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return io.EOF
+			return newErrEOF("<-reqStop")
 		}
 	}
 	return nil
@@ -711,10 +715,10 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 	if wantReply {
 		select {
 		case <-reqStop:
-			return false, io.EOF
+			return false, newErrEOF("<-reqStop")
 		case m, ok := (<-ch.msg):
 			if !ok {
-				return false, io.EOF
+				return false, newErrEOF("<-ch.msg not ok")
 			}
 			switch m.(type) {
 			case *channelRequestFailureMsg:

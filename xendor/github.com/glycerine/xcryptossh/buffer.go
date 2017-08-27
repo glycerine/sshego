@@ -8,18 +8,39 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
 
-// ErrTimeout is a value that satisfies net.Error
-type errTimeout struct {
+// ErrWhere is a value that satisfies net.Error
+type errWhere struct {
+	msg   string
 	who   *idleTimer
 	when  time.Time
 	where []byte
 }
 
-func newErrTimeout(who *idleTimer) *errTimeout {
+func newErrTimeout(who *idleTimer) *errWhere {
+	return newErrWhere("timeout", who)
+}
+
+func IsEOF(err error) bool {
+	if err == io.EOF {
+		return true
+	}
+	switch x := err.(type) {
+	case *errWhere:
+		return strings.HasPrefix(x.msg, "eof:")
+	}
+	return false
+}
+
+func newErrEOF(note string) *errWhere {
+	return newErrWhere("eof:"+note, nil)
+}
+
+func newErrWhere(msg string, who *idleTimer) *errWhere {
 	sz := 512
 	var stack []byte
 	for {
@@ -32,17 +53,20 @@ func newErrTimeout(who *idleTimer) *errTimeout {
 			break
 		}
 	}
-	return &errTimeout{who: who, when: time.Now(), where: stack}
+	return &errWhere{msg: msg, who: who, when: time.Now(), where: stack}
 }
 
-func (e errTimeout) Error() string {
-	return fmt.Sprintf("timeout from idleTimer %p, generated at '%v'. stack='\n%v\n'", e.who, e.when, string(e.where))
+func (e errWhere) Error() string {
+	return fmt.Sprintf("%s, from idleTimer %p, generated at '%v'. stack='\n%v\n'",
+		e.msg, e.who, e.when, string(e.where))
 }
-func (e errTimeout) Timeout() bool {
+
+func (e errWhere) Timeout() bool {
 	// Is the error a timeout?
 	return true
 }
-func (e errTimeout) Temporary() bool {
+
+func (e errWhere) Temporary() bool {
 	// Is the error temporary?
 	return true
 }
@@ -144,7 +168,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		// if nothing was read, and there is nothing outstanding
 		// check to see if the buffer is closed.
 		if b.closed {
-			err = io.EOF
+			err = newErrEOF("closed")
 			break
 		}
 		timedOut := false
