@@ -53,6 +53,8 @@ func init() {
 // standard appliances like io.Copy() because
 // the Reads inside each require a prior
 // deadline setting.
+//
+// See cts_test.go in addition to this file.
 
 func TestSimpleWriteTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
@@ -74,18 +76,18 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
 		}
 
-		err = w.SetIdleTimeout(0) // disable idle timeout. Hypothesis: not all timeouts are cleared.
+		err = w.SetIdleTimeout(0)
 		if err != nil {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
-		time.Sleep(200 * time.Millisecond) // goro here
+		time.Sleep(200 * time.Millisecond)
 		p("SimpleTimeout: about to write which should succeed")
 		_, err = w.Write([]byte(magic))
 		if err != nil {
 			p("SimpleTimeout: just write failed unexpectedly")
 			panic(fmt.Sprintf("write after cancelling write deadline: %v", err)) // timeout after canceling!
 		}
-		p("SimpleTimeout: justwrite which did succeed")
+		p("SimpleTimeout: just write which did succeed")
 	}()
 
 	var buf [1024]byte

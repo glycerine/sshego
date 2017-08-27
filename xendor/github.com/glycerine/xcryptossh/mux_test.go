@@ -164,7 +164,7 @@ func TestMuxChannelOverflow(t *testing.T) {
 		if _, err := writer.Write(make([]byte, channelWindowSize)); err != nil {
 			t.Errorf("could not fill window: %v", err)
 		}
-		writer.Write(make([]byte, 1)) // hung here, inside window.reserve()
+		writer.Write(make([]byte, 1))
 		wDone <- 1
 	}()
 	writer.remoteWin.waitWriterBlocked()
@@ -182,7 +182,7 @@ func TestMuxChannelOverflow(t *testing.T) {
 	if _, err := reader.SendRequest("hello", true, nil); err == nil {
 		t.Errorf("SendRequest succeeded.")
 	}
-	<-wDone // hung here
+	<-wDone
 }
 
 func TestMuxChannelCloseWriteUnblock(t *testing.T) {

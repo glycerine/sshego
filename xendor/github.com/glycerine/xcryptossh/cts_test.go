@@ -47,7 +47,7 @@ func (ir *infiniteRing) Write(b []byte) (n int, err error) {
 	ir.ring.Reset()
 	n, err = ir.ring.WriteAndMaybeOverwriteOldestData(b[:words*8])
 	ir.nwtot += n
-	//fmt.Printf("\n infiniteRing.Write total of %v\n", ir.nwtot)
+	p("infiniteRing.Write total of %v", ir.nwtot)
 
 	expect := make([]byte, 8)
 	by := ir.ring.Bytes()
@@ -85,7 +85,7 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 		binary.LittleEndian.PutUint64(b[i*8:(i+1)*8], uint64(s.next))
 		s.next++
 	}
-	//fmt.Printf("\n seqWords.Read up to %v done, total bytes %v\n", s.next, s.next*8)
+	//p("seqWords.Read up to %v done, total bytes %v", s.next, s.next*8)
 	return numword * 8, nil
 }
 

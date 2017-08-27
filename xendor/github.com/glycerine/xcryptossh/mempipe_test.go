@@ -53,8 +53,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 				return nil, io.EOF
 			}
 		}
-		//p("memTransport has idle %p, about to wait", t.idle)
-		t.Cond.Wait() // deadlock hung here 15 minutes.
+		t.Cond.Wait()
 	}
 }
 
