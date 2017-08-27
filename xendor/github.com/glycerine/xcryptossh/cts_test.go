@@ -108,9 +108,11 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	halt := NewHalter()
 
 	// set the timeout on the reader
-	err := r.SetIdleTimeout(idleout)
-	if err != nil {
-		t.Fatalf("r.SetIdleTimeout: %v", err)
+	if true {
+		err := r.SetIdleTimeout(idleout)
+		if err != nil {
+			t.Fatalf("r.SetIdleTimeout: %v", err)
+		}
 	}
 	readErr := make(chan error)
 	writeErr := make(chan error)
@@ -202,9 +204,11 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	halt := NewHalter()
 
 	// set the timeout on the writer
-	err := w.SetIdleTimeout(idleout)
-	if err != nil {
-		t.Fatalf("r.SetIdleTimeout: %v", err)
+	if false {
+		err := w.SetIdleTimeout(idleout)
+		if err != nil {
+			t.Fatalf("r.SetIdleTimeout: %v", err)
+		}
 	}
 	readErr := make(chan error)
 	writeErr := make(chan error)

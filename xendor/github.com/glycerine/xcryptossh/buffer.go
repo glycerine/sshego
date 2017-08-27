@@ -99,7 +99,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		}
 	}()
 
-	//fmt.Printf("\n\n buffer.Read() on buf size %v \n\n", len(buf))
+	//p("buffer.Read() on buf size %v", len(buf))
 
 	for len(buf) > 0 {
 		// if there is data in b.head, copy it
