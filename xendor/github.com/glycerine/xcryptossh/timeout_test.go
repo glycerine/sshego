@@ -244,7 +244,7 @@ func (ir *infiniteRing) Write(b []byte) (n int, err error) {
 	ir.ring.Reset()
 	n, err = ir.ring.WriteAndMaybeOverwriteOldestData(b[:words*8])
 	ir.nwtot += n
-	fmt.Printf("\n infiniteRing.Write total of %v\n", ir.nwtot)
+	//fmt.Printf("\n infiniteRing.Write total of %v\n", ir.nwtot)
 
 	expect := make([]byte, 8)
 	by := ir.ring.Bytes()
@@ -282,13 +282,13 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 		binary.LittleEndian.PutUint64(b[i*8:(i+1)*8], uint64(s.next))
 		s.next++
 	}
-	fmt.Printf("\n seqWords.Read up to %v done, total bytes %v\n", s.next, s.next*8)
+	//fmt.Printf("\n seqWords.Read up to %v done, total bytes %v\n", s.next, s.next*8)
 	return numword * 8, nil
 }
 
 // Given a 100 msec idle timeout, if we continuously transfer
 // for 3 seconds, we should not see any timeout since
-// our activity is on going.
+// our activity is ongoing continuously.
 func TestContinuousTransferWithNoIdleOut(t *testing.T) {
 	r, w, mux := channelPair(t)
 	defer w.Close()
@@ -352,8 +352,8 @@ func TestContinuousTransferWithNoIdleOut(t *testing.T) {
 		if err != writeOk {
 			panic(fmt.Sprintf("Continuous read for a "+
 				"period of '%v' did not give us the writeOk,"+
-				" instead err=%v, at now=%v, goal time =%v",
-				overall, err, time.Now(), tstop))
+				" instead err=%v, stopping short by %v",
+				overall, err, time.Now().Sub(tstop)))
 		}
 
 	}()
