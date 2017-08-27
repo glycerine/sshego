@@ -265,7 +265,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.writeMu.Lock()
 	if c.sentClose {
 		c.writeMu.Unlock()
-		return newErrEOF("c.sentClose")
+		return io.EOF // TestClientWriteEOF depends on this being io.EOF
 	}
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
