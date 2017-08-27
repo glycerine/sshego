@@ -115,6 +115,21 @@ func setTo(r, w Channel, timeOutOnReader bool, idleout time.Duration) {
 	}
 }
 
+func setClose(r, w Channel, closeReader bool) {
+	if closeReader {
+		err := r.Close()
+		if err != nil {
+			panic(fmt.Sprintf("r.Close(): %v", err))
+		}
+	} else {
+		// set the timeout on the writer
+		err := w.Close()
+		if err != nil {
+			panic(fmt.Sprintf("w.Close(): %v", err))
+		}
+	}
+}
+
 func testCts(timeOutOnReader bool, t *testing.T) {
 	r, w, mux := channelPair(t)
 
@@ -174,7 +189,8 @@ collectionLoop:
 
 			// release the other. e.g. the writer will typically be blocked after
 			// the reader timeout test, since the writer didn't get a timeout.
-			setTo(r, w, !timeOutOnReader, idleout)
+			// Closing is faster than setting a timeout and waiting for it.
+			setClose(r, w, !timeOutOnReader)
 
 			haltr.ReqStop.Close()
 			haltw.ReqStop.Close()
