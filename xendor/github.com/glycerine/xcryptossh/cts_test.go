@@ -270,7 +270,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 		}
 		if er != nil {
 			p("readerToRing sees Read err %v", er)
-			if er != io.EOF {
+			if !IsEOF(er) {
 				err = er
 			}
 			break

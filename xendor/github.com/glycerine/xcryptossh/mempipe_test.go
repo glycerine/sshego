@@ -6,7 +6,6 @@ package ssh
 
 import (
 	"context"
-	"io"
 	"sync"
 	"testing"
 )
@@ -118,7 +117,7 @@ func TestMemPipe(t *testing.T) {
 		t.Fatalf("got %v, want {42}", p)
 	}
 	p, err = b.readPacket(ctx)
-	if err != io.EOF {
+	if !IsEOF(err) {
 		t.Fatalf("got %v, %v, want EOF", p, err)
 	}
 }

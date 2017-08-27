@@ -376,7 +376,7 @@ func TestServerWindow(t *testing.T) {
 			return
 		}
 		n, err := copyNRandomly("stdout", echoedBuf, serverStdout, windowTestBytes)
-		if err != nil && err != io.EOF {
+		if err != nil && !IsEOF(err) {
 			t.Errorf("Read only %d bytes from server, expected %d: %v", n, windowTestBytes, err)
 		}
 		result <- echoedBuf.Bytes()
