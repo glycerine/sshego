@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"runtime"
@@ -204,7 +205,7 @@ func TestHandshakeBasic(t *testing.T) {
 		}
 	}
 	<-clientDone
-	if err != nil && !IsEOF(err) {
+	if err != nil && err != io.EOF {
 		t.Fatalf("server error: %v", err)
 	}
 	if i != N {

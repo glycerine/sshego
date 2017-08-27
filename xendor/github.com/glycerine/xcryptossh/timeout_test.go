@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"runtime/debug"
 	"testing"
@@ -101,7 +102,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	switch {
 	case err == nil:
 		//ok
-	case IsEOF(err):
+	case err == io.EOF:
 		// ok
 	default:
 		panic(fmt.Sprintf("Close: %v", err))
@@ -143,7 +144,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 	switch {
 	case err == nil:
 		//ok
-	case IsEOF(err):
+	case err == io.EOF:
 		// ok
 	default:
 		panic(fmt.Sprintf("Close: %v", err))

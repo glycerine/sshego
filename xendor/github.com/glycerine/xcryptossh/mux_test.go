@@ -196,7 +196,7 @@ func TestMuxChannelCloseWriteUnblock(t *testing.T) {
 		if _, err := writer.Write(make([]byte, channelWindowSize)); err != nil {
 			t.Errorf("could not fill window: %v", err)
 		}
-		if _, err := writer.Write(make([]byte, 1)); !IsEOF(err) {
+		if _, err := writer.Write(make([]byte, 1)); err != io.EOF {
 			t.Errorf("got %v, want EOF for unblock write", err)
 		}
 		wDone <- 1
@@ -218,7 +218,7 @@ func TestMuxConnectionCloseWriteUnblock(t *testing.T) {
 		if _, err := writer.Write(make([]byte, channelWindowSize)); err != nil {
 			t.Errorf("could not fill window: %v", err)
 		}
-		if _, err := writer.Write(make([]byte, 1)); !IsEOF(err) {
+		if _, err := writer.Write(make([]byte, 1)); err != io.EOF {
 			t.Errorf("got %v, want EOF for unblock write", err)
 		}
 		wDone <- 1
@@ -373,7 +373,7 @@ func TestMuxGlobalRequestUnblock(t *testing.T) {
 	serverMux.conn.Close()
 	err := <-result
 
-	if !IsEOF(err) {
+	if err != io.EOF {
 		t.Errorf("want EOF, got %v", err)
 	}
 }
@@ -394,7 +394,7 @@ func TestMuxChannelRequestUnblock(t *testing.T) {
 	connB.conn.Close()
 	err := <-result
 
-	if !IsEOF(err) {
+	if err != io.EOF {
 		t.Errorf("want EOF, got %v", err)
 	}
 }
@@ -415,11 +415,11 @@ func TestMuxCloseChannel(t *testing.T) {
 		t.Errorf("w.Close: %v", err)
 	}
 
-	if _, err := w.Write([]byte("hello")); !IsEOF(err) {
+	if _, err := w.Write([]byte("hello")); err != io.EOF {
 		t.Errorf("got err %v, want io.EOF after Close", err)
 	}
 
-	if err := <-result; !IsEOF(err) {
+	if err := <-result; err != io.EOF {
 		t.Errorf("got %v (%T), want io.EOF", err, err)
 	}
 }
@@ -438,11 +438,11 @@ func TestMuxCloseWriteChannel(t *testing.T) {
 		t.Errorf("w.CloseWrite: %v", err)
 	}
 
-	if _, err := w.Write([]byte("hello")); !IsEOF(err) {
+	if _, err := w.Write([]byte("hello")); err != io.EOF {
 		t.Errorf("got err %v, want io.EOF after CloseWrite", err)
 	}
 
-	if err := <-result; !IsEOF(err) {
+	if err := <-result; err != io.EOF {
 		t.Errorf("got %v (%T), want io.EOF", err, err)
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// ErrWhere is a value that satisfies net.Error
+// errWhere satisfies net.Error
 type errWhere struct {
 	msg   string
 	who   *idleTimer
@@ -23,21 +23,6 @@ type errWhere struct {
 
 func newErrTimeout(msg string, who *idleTimer) *errWhere {
 	return newErrWhere("timeout:"+msg, who)
-}
-
-func IsEOF(err error) bool {
-	if err == io.EOF {
-		return true
-	}
-	switch x := err.(type) {
-	case *errWhere:
-		return strings.HasPrefix(x.msg, "eof:")
-	}
-	return false
-}
-
-func newErrEOF(note string) *errWhere {
-	return newErrWhere("eof:"+note, nil)
 }
 
 func stacktrace() []byte {
@@ -172,7 +157,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		// if nothing was read, and there is nothing outstanding
 		// check to see if the buffer is closed.
 		if b.closed {
-			err = io.EOF // works for TestExitStatusZero, newErrEOF does not.
+			err = io.EOF
 			break
 		}
 		timedOut := ""

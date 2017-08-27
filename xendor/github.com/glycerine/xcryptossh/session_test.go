@@ -377,7 +377,7 @@ func TestServerWindow(t *testing.T) {
 			return
 		}
 		n, err := copyNRandomly("stdout", echoedBuf, serverStdout, windowTestBytes)
-		if err != nil && !IsEOF(err) {
+		if err != nil && err != io.EOF {
 			t.Errorf("Read only %d bytes from server, expected %d: %v", n, windowTestBytes, err)
 		}
 		result <- echoedBuf.Bytes()
@@ -534,7 +534,7 @@ func fixedOutputHandler(ch Channel, in <-chan *Request, t *testing.T) {
 }
 
 func readLine(shell *terminal.Terminal, t *testing.T) {
-	if _, err := shell.ReadLine(); err != nil && !IsEOF(err) {
+	if _, err := shell.ReadLine(); err != nil && err != io.EOF {
 		t.Errorf("unable to read line: %v", err)
 	}
 }

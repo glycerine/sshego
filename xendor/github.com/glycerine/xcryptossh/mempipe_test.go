@@ -118,7 +118,7 @@ func TestMemPipe(t *testing.T) {
 		t.Fatalf("got %v, want {42}", p)
 	}
 	p, err = b.readPacket(ctx)
-	if !IsEOF(err) {
+	if err != io.EOF {
 		t.Fatalf("got %v, %v, want EOF", p, err)
 	}
 }
@@ -130,7 +130,7 @@ func TestDoubleClose(t *testing.T) {
 		t.Errorf("Close: %v", err)
 	}
 	err = a.Close()
-	if !IsEOF(err) {
+	if err != io.EOF {
 		t.Errorf("expect EOF on double close.")
 	}
 }
