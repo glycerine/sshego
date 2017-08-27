@@ -297,7 +297,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		}
 	}()
 	if c.sentEOF {
-		return 0, newErrEOF("c.sentEOF")
+		return 0, io.EOF
 	}
 	// 1 byte message type, 4 bytes remoteId, 4 bytes data length
 	opCode := byte(msgChannelData)
@@ -515,7 +515,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return newErrEOF("<-reqStop")
+			return io.EOF
 		}
 	case *channelOpenConfirmMsg:
 		if err := c.responseMessageReceived(); err != nil {
@@ -530,7 +530,7 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return newErrEOF("<-reqStop")
+			return io.EOF
 		}
 	case *windowAdjustMsg:
 		if !c.remoteWin.add(msg.AdditionalBytes) {
@@ -546,13 +546,13 @@ func (c *channel) handlePacket(packet []byte) error {
 		select {
 		case c.incomingRequests <- &req:
 		case <-reqStop:
-			return newErrEOF("<-reqStop")
+			return io.EOF
 		}
 	default:
 		select {
 		case c.msg <- msg:
 		case <-reqStop:
-			return newErrEOF("<-reqStop")
+			return io.EOF
 		}
 	}
 	return nil
@@ -716,10 +716,10 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 	if wantReply {
 		select {
 		case <-reqStop:
-			return false, newErrEOF("<-reqStop")
+			return false, io.EOF
 		case m, ok := (<-ch.msg):
 			if !ok {
-				return false, newErrEOF("<-ch.msg not ok")
+				return false, io.EOF
 			}
 			switch m.(type) {
 			case *channelRequestFailureMsg:

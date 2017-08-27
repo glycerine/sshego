@@ -363,7 +363,7 @@ func (w *window) reserveShouldReturn() (bye bool, err error) {
 		// original tests expect io.EOF and not ErrShutDown,
 		// so we continue with an EOF here, even though
 		// we are shutting down.
-		return true, newErrEOF("<-w.idle.halt.ReqStop")
+		return true, io.EOF
 	}
 	return false, nil
 }
@@ -392,7 +392,7 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	}
 	w.win -= win
 	if w.closed {
-		err = newErrEOF("w.closed")
+		err = io.EOF
 	}
 	return win, err
 }

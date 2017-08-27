@@ -172,8 +172,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		// if nothing was read, and there is nothing outstanding
 		// check to see if the buffer is closed.
 		if b.closed {
-			err = io.EOF // works for TestExitStatusZero
-			//err = newErrEOF("closed") // fails TestExitStatusZero
+			err = io.EOF // works for TestExitStatusZero, newErrEOF does not.
 			break
 		}
 		timedOut := ""

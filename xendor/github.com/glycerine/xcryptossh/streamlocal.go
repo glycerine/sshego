@@ -3,6 +3,7 @@ package ssh
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 )
 
@@ -81,10 +82,10 @@ func (l *unixListener) Accept() (net.Conn, error) {
 	var s forward
 	select {
 	case <-l.conn.Done():
-		return nil, newErrEOF("<-l.conn.Done")
+		return nil, io.EOF
 	case s, ok = <-l.in:
 		if !ok {
-			return nil, newErrEOF("!ok <-l.in")
+			return nil, io.EOF
 		}
 	}
 	ch, incoming, err := s.newCh.Accept()
