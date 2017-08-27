@@ -204,8 +204,11 @@ func (m *mux) loop(ctx context.Context) {
 		// We can't have timeout errors here cause us to
 		// leave the loop and close down, because we need to be able to
 		// resume from a timeout where we left off.
-		if err != nil && err.(net.Error).Timeout() {
-			err = nil
+		if err != nil {
+			nerr, ok := err.(net.Error)
+			if ok && nerr.Timeout() {
+				err = nil
+			}
 		}
 	}
 	p("mux loop shutting down on err= '%v'", err) // t.eof

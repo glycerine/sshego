@@ -5,7 +5,6 @@
 package ssh
 
 import (
-	"io"
 	"testing"
 )
 
@@ -68,7 +67,7 @@ func TestBufferClose(t *testing.T) {
 	r, err = b.Read(make([]byte, 5))
 	r2, err2 = b.Read(make([]byte, 10))
 	r3, err3 := b.Read(make([]byte, 10))
-	if r != 5 || r2 != 5 || r3 != 0 || err != nil || err2 != nil || err3 != io.EOF {
+	if r != 5 || r2 != 5 || r3 != 0 || err != nil || err2 != nil || !IsEOF(err3) {
 		t.Fatal("expected reads of 5 and 5 and 0, with EOF")
 	}
 
@@ -80,7 +79,7 @@ func TestBufferClose(t *testing.T) {
 	r2, err2 = b.Read(make([]byte, 3))
 	r3, err3 = b.Read(make([]byte, 3))
 	r4, err4 := b.Read(make([]byte, 10))
-	if err != nil || err2 != nil || err3 != nil || err4 != io.EOF {
+	if err != nil || err2 != nil || err3 != nil || !IsEOF(err4) {
 		t.Fatalf("Expected EOF on forth read only, err=%v, err2=%v, err3=%v, err4=%v", err, err2, err3, err4)
 	}
 	if r != 9 || r2 != 3 || r3 != 3 || r4 != 0 {
