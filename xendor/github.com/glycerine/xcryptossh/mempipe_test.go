@@ -40,7 +40,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 			return r, nil
 		}
 		if t.eof {
-			return nil, newErrEOF("t.eof")
+			return nil, newErrEOF("t.eof") // causing early shutdown in TestSimpleWriteTimeout timeout_test.go
 		}
 
 		if t.idle != nil {
@@ -65,6 +65,7 @@ func (t *memTransport) closeSelf() error {
 		return newErrEOF("t.eof")
 	}
 	t.eof = true
+	p("memTransport.closeSelf() just set t.eof = true, stack='%s'", string(stacktrace()))
 	t.Cond.Broadcast()
 	return nil
 }

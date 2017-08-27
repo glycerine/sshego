@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"sync/atomic"
 )
@@ -199,8 +200,15 @@ func (m *mux) loop(ctx context.Context) {
 	var err error
 	for err == nil {
 		err = m.onePacket(ctx)
+
+		// We can't have timeout errors here cause us to
+		// leave the loop and close down, because we need to be able to
+		// resume from a timeout where we left off.
+		if err != nil && err.(net.Error).Timeout() {
+			err = nil
+		}
 	}
-	p("mux loop shutting down on err= '%v'", err) // timeout
+	p("mux loop shutting down on err= '%v'", err) // t.eof
 	for _, ch := range m.chanList.dropAll() {
 		ch.close()
 	}

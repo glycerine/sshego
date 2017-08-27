@@ -108,7 +108,8 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	t0 := time.Now()
 	tstop := t0.Add(overall)
 
-	halt := NewHalter()
+	haltr := NewHalter()
+	haltw := NewHalter()
 
 	// set the timeout on the reader
 	if true {
@@ -119,9 +120,9 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	}
 	readErr := make(chan error)
 	writeErr := make(chan error)
-	go readerToRing(idleout, r, halt, overall, tstop, readErr)
+	go readerToRing(idleout, r, haltr, overall, tstop, readErr)
 
-	go seqWordsToWriter(w, halt, tstop, writeErr)
+	go seqWordsToWriter(w, haltw, tstop, writeErr)
 
 	after := time.After(overall)
 
@@ -129,27 +130,33 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	var rerr, werr error
 	var rok, wok bool
 	overallPass := false
+	var haltrDone, haltwDone bool
+	complete := func() bool {
+		return rok && wok && haltrDone && haltwDone
+	}
 collectionLoop:
 	for {
 		select {
+		case <-haltr.Done.Chan:
+			haltrDone = true
+			if complete() {
+				break collectionLoop
+			}
+		case <-haltw.Done.Chan:
+			haltwDone = true
+			if complete() {
+				break collectionLoop
+			}
 		case <-after:
 			p("after fired!")
-			halt.ReqStop.Close()
+			haltr.ReqStop.Close()
+			haltw.ReqStop.Close()
+
 			after = nil
 
-			// the main point of the test: did after timeout
-			// fire before r or w returned?
-			if rok || wok {
-				overallPass = false
-			} else {
-				overallPass = true
+			if complete() {
+				break collectionLoop
 			}
-			if !overallPass {
-				panic("sadness, failed test: rok || wok happened before overall elapsed")
-			}
-
-			p("overallPass = %v", overallPass)
-
 			/*
 				//timeout the writes too...
 				err := w.SetIdleTimeout(time.Second)
@@ -157,6 +164,7 @@ collectionLoop:
 					t.Fatalf("w.SetIdleTimeout: %v", err)
 				}
 			*/
+
 		case rerr = <-readErr:
 			p("got rerr")
 			now := time.Now()
@@ -164,9 +172,10 @@ collectionLoop:
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop))) // panicing here
 			}
 			rok = true
-			if wok {
+			if complete() {
 				break collectionLoop
 			}
+
 		case werr = <-writeErr:
 			p("got werr")
 			now := time.Now()
@@ -174,13 +183,26 @@ collectionLoop:
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true
-			if rok {
+			if complete() {
 				break collectionLoop
 			}
 		}
 
 	}
 	p("done with collection loop")
+
+	// the main point of the test: did after timeout
+	// fire before r or w returned?
+	if rok || wok {
+		overallPass = false
+	} else {
+		overallPass = true
+	}
+	if !overallPass {
+		panic("sadness, failed test: rok || wok happened before overall elapsed")
+	}
+
+	p("overallPass = %v", overallPass)
 
 	// actually shutdown is pretty racy, lots of possible errors on Close,
 	// such as EOF
@@ -207,7 +229,8 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	t0 := time.Now()
 	tstop := t0.Add(overall)
 
-	halt := NewHalter()
+	haltr := NewHalter()
+	haltw := NewHalter()
 
 	// set the timeout on the writer
 	if true {
@@ -218,42 +241,49 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	}
 	readErr := make(chan error)
 	writeErr := make(chan error)
-	go readerToRing(idleout, r, halt, overall, tstop, readErr)
+	go readerToRing(idleout, r, haltr, overall, tstop, readErr)
 
-	go seqWordsToWriter(w, halt, tstop, writeErr)
+	go seqWordsToWriter(w, haltw, tstop, writeErr)
 
 	after := time.After(overall)
 
 	// wait for our overall time, and for both to return
+	// wait for our overall time, and for both to return
 	var rerr, werr error
 	var rok, wok bool
 	overallPass := false
+	var haltrDone, haltwDone bool
+	complete := func() bool {
+		return rok && wok && haltrDone && haltwDone
+	}
 collectionLoop:
 	for {
 		select {
+		case <-haltr.Done.Chan:
+			haltrDone = true
+			if complete() {
+				break collectionLoop
+			}
+		case <-haltw.Done.Chan:
+			haltwDone = true
+			if complete() {
+				break collectionLoop
+			}
 		case <-after:
 			p("after fired!")
-			halt.ReqStop.Close()
+			haltr.ReqStop.Close()
+			haltw.ReqStop.Close()
+
 			after = nil
 
-			// the main point of the test: did after timeout
-			// fire before r or w returned?
-			if rok || wok {
-				overallPass = false
-			} else {
-				overallPass = true
+			if complete() {
+				break collectionLoop
 			}
-			if !overallPass {
-				panic("sadness, failed test: rok || wok happened before overall elapsed")
-			}
-
-			p("overallPass = %v", overallPass)
-
 			/*
-				//timeout the reads too...
-				err := r.SetIdleTimeout(time.Second)
+				//timeout the writes too...
+				err := w.SetIdleTimeout(time.Second)
 				if err != nil {
-					t.Fatalf("r.SetIdleTimeout: %v", err)
+					t.Fatalf("w.SetIdleTimeout: %v", err)
 				}
 			*/
 
@@ -261,13 +291,14 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
-				p("historyOfResets for r is: '%s'", r.idleTimer.historyOfResets())
-				panic(fmt.Sprintf("rerr: '%v', stopped too early, goal: '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop)))
+				p("historyOfResets for w is: '%s'", r.idleTimer.historyOfResets())
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop))) // panicing here
 			}
 			rok = true
-			if wok {
+			if complete() {
 				break collectionLoop
 			}
+
 		case werr = <-writeErr:
 			p("got werr")
 			now := time.Now()
@@ -276,7 +307,7 @@ collectionLoop:
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true
-			if rok {
+			if complete() {
 				break collectionLoop
 			}
 		}
@@ -284,12 +315,19 @@ collectionLoop:
 	}
 	p("done with collection loop")
 
-	// actually shutdown is pretty racy, lots of possible errors
-	/*
-		if werr != writeOk {
-			panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", overall, werr))
-		}
-	*/
+	// the main point of the test: did after timeout
+	// fire before r or w returned?
+	if rok || wok {
+		overallPass = false
+	} else {
+		overallPass = true
+	}
+	if !overallPass {
+		panic("sadness, failed test: rok || wok happened before overall elapsed")
+	}
+
+	p("overallPass = %v", overallPass)
+
 	w.Close()
 	r.Close()
 	mux.Close()
@@ -301,6 +339,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 	defer func() {
 		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
+		halt.Done.Close()
 	}()
 
 	ring := newInfiniteRing()
@@ -347,6 +386,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 	defer func() {
 		p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
+		halt.Done.Close()
 	}()
 	src := newSequentialWords()
 	dst := w

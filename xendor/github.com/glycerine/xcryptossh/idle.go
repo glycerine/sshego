@@ -114,7 +114,7 @@ func (t *idleTimer) historyOfResets() string {
 	s := fmt.Sprintf("%v, ", t.history[0])
 	n := len(t.history)
 	for i := 1; i < n; i++ {
-		s += fmt.Sprintf("%v, ", t.history[i].Sub(t.history[i-1]).Truncate(time.Millisecond))
+		s += fmt.Sprintf("%v, ", t.history[i].Sub(t.history[i-1]))
 	}
 	return s
 }
@@ -269,9 +269,9 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 
 					/* change state */
-					t.timeOutRaised = fmt.Sprintf("timing out at %v, in %p! "+
-						"since=%v  dur=%v, exceed=%v",
-						time.Now(), t, since, udur, since-udur)
+					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
+						"since=%v  dur=%v, exceed=%v. historyOfResets='%s'",
+						dur, time.Now(), t, since, udur, since-udur, t.historyOfResets())
 
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take

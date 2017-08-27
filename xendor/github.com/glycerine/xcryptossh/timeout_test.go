@@ -63,21 +63,21 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	magic := "expected saluations"
 	go func() {
 		// use a quick timeout so the test runs quickly.
-		err := w.SetIdleTimeout(time.Millisecond)
+		err := w.SetIdleTimeout(50 * time.Millisecond)
 		if err != nil {
 			t.Fatalf("SetIdleTimeout: %v", err)
 		}
-		time.Sleep(2 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		n, err := w.Write([]byte(abandon))
 		if err == nil || !err.(net.Error).Timeout() {
 			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
 		}
 
-		err = w.SetIdleTimeout(0) // disable idle timeout
+		err = w.SetIdleTimeout(0) // disable idle timeout. Hypothesis: not all timeouts are cleared.
 		if err != nil {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond) // goro here
 		p("SimpleTimeout: about to write which should succeed")
 		_, err = w.Write([]byte(magic))
 		if err != nil {
@@ -90,7 +90,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	var buf [1024]byte
 	n, err := r.Read(buf[:])
 	if err != nil {
-		panic(fmt.Sprintf("Read: %v", err)) // panic due to EOF here, from buffer.go:171
+		panic(fmt.Sprintf("Read: %v", err)) // panic due to EOF here, from buffer.go:171, or buffer.go:176 where b.closed is true
 	}
 	got := string(buf[:n])
 	if got != magic {
