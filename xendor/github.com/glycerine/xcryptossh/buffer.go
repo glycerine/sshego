@@ -7,20 +7,36 @@ package ssh
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
+	"time"
 )
 
 // ErrTimeout is a value that satisfies net.Error
 type errTimeout struct {
-	who *idleTimer
+	who   *idleTimer
+	when  time.Time
+	where []byte
 }
 
 func newErrTimeout(who *idleTimer) *errTimeout {
-	return &errTimeout{who: who}
+	sz := 512
+	var stack []byte
+	for {
+		stack = make([]byte, sz)
+		nw := runtime.Stack(stack, false)
+		if nw >= sz {
+			sz = sz * 2
+		} else {
+			stack = stack[:nw]
+			break
+		}
+	}
+	return &errTimeout{who: who, when: time.Now(), where: stack}
 }
 
 func (e errTimeout) Error() string {
-	return fmt.Sprintf("timeout from idleTimer %p", e.who)
+	return fmt.Sprintf("timeout from idleTimer %p, generated at '%v'. stack='\n%v\n'", e.who, e.when, string(e.where))
 }
 func (e errTimeout) Timeout() bool {
 	// Is the error a timeout?
