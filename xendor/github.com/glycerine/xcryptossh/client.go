@@ -91,7 +91,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		c.Close()
 		return nil, nil, nil, fmt.Errorf("ssh: handshake failed: %v", err)
 	}
-	conn.mux = newMux(ctx, conn.transport, conn.halt)
+	conn.mux = newMux(ctx, conn.transport, conn.halt, nil)
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil
 }
 

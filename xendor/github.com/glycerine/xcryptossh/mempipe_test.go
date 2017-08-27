@@ -48,7 +48,7 @@ func (t *memTransport) readPacket(ctx context.Context) ([]byte, error) {
 		case <-t.idle.halt.ReqStop.Chan:
 			return nil, io.EOF
 		}
-
+		//p("memTransport has idle %p, about to wait", t.idle)
 		t.Cond.Wait()
 	}
 }
@@ -83,7 +83,7 @@ func (t *memTransport) writePacket(p []byte) error {
 	return nil
 }
 
-func memPipe() (a, b packetConn) {
+func memPipe() (a, b *memTransport) {
 	t1 := memTransport{}
 	t2 := memTransport{}
 	t1.idle = newIdleTimer(t1.timeout, 0)

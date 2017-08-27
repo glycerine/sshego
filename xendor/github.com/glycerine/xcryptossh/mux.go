@@ -99,8 +99,8 @@ type mux struct {
 	errCond *sync.Cond
 	err     error
 
-	halt      *Halter
-	idleTimer *idleTimer
+	halt *Halter
+	idle *idleTimer
 }
 
 // When debugging, each new chanList instantiation has a different
@@ -117,7 +117,7 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
+func newMux(ctx context.Context, p packetConn, halt *Halter, idle *idleTimer) *mux {
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
@@ -125,6 +125,7 @@ func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 		incomingRequests: make(chan *Request, chanSize),
 		errCond:          newCond(),
 		halt:             halt,
+		idle:             idle,
 	}
 
 	if debugMux {
@@ -229,8 +230,8 @@ func (m *mux) onePacket(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if m.idleTimer != nil {
-		m.idleTimer.Reset()
+	if m.idle != nil {
+		m.idle.Reset()
 	}
 
 	if debugMux {
@@ -315,7 +316,7 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 		return m.sendMessage(failMsg)
 	}
 
-	c := m.newChannel(msg.ChanType, channelInbound, msg.TypeSpecificData)
+	c := m.newChannel(msg.ChanType, channelInbound, msg.TypeSpecificData, m.idle)
 	c.remoteId = msg.PeersId
 	c.maxRemotePayload = msg.MaxPacketSize
 	c.remoteWin.add(msg.PeersWindow)
@@ -339,7 +340,7 @@ func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte) (C
 }
 
 func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*channel, error) {
-	ch := m.newChannel(chanType, channelOutbound, extra)
+	ch := m.newChannel(chanType, channelOutbound, extra, m.idle)
 
 	ch.maxIncomingPayload = channelMaxPacket
 

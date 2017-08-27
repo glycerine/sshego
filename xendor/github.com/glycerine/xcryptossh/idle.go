@@ -1,11 +1,9 @@
 package ssh
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 )
 
 // with	import "runtime/debug"
@@ -44,12 +42,13 @@ type idleTimer struct {
 
 	setCallback   chan *callbacks
 	timeOutRaised bool
-	resetNum      int64
 }
 
 type callbacks struct {
 	onTimeout func()
 }
+
+var seen int
 
 // newIdleTimer creates a new idleTimer which will call
 // the `callback` function provided after `dur` inactivity.
@@ -59,6 +58,11 @@ type callbacks struct {
 // timeout, in which case the timer will be inactive until
 // SetIdleTimeout is called.
 func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
+	p("newIdleTimer called")
+	seen++
+	if seen == 3 {
+		//panic("where?")
+	}
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
@@ -84,14 +88,8 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 //
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
-	tlast := atomic.LoadUint64(&t.last)
-	if uintptr(unsafe.Pointer(t)) == 0xc42005e960 {
-		fmt.Printf("\n\n 8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", t, time.Now(), mnow, time.Duration(mnow-tlast))
-		if t.resetNum == 2 {
-			//panic("where?")
-		}
-	}
-	t.resetNum++
+	//tlast := atomic.LoadUint64(&t.last)
+	//p("\n\n 8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
 }
 
@@ -101,7 +99,7 @@ func (t *idleTimer) NanosecSince() uint64 {
 	mnow := monoNow()
 	tlast := atomic.LoadUint64(&t.last)
 	res := mnow - tlast
-	//fmt.Printf("\n\n idleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
+	//p("idleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
 	return res
 }
 
@@ -241,7 +239,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				udur := uint64(dur)
 				if since > udur {
 
-					//fmt.Printf("\n\n timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
+					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 
 					/* change state */
 					t.timeOutRaised = true

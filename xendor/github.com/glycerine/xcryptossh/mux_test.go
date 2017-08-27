@@ -18,8 +18,8 @@ func muxPair() (*mux, *mux) {
 	halt := NewHalter()
 	ctx := context.Background()
 
-	s := newMux(ctx, a, halt)
-	c := newMux(ctx, b, halt)
+	s := newMux(ctx, a, halt, a.idle)
+	c := newMux(ctx, b, halt, b.idle)
 
 	return s, c
 }

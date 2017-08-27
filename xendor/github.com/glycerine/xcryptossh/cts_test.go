@@ -94,6 +94,10 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 // our activity is ongoing continuously.
 func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
+
+	p("r.idle = %p", r.mux.idle)
+	p("w.idle = %p", w.mux.idle)
+
 	defer w.Close()
 	defer r.Close()
 	defer mux.Close()
@@ -122,15 +126,34 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	// wait for our overall time, and for both to return
 	var rerr, werr error
 	var rok, wok bool
+	overallPass := false
 collectionLoop:
 	for {
 		select {
 		case <-after:
-			//p("after fired!")
+			p("after fired!")
 			halt.ReqStop.Close()
 			after = nil
+
+			// the main point of the test: did after timeout
+			// fire before r or w returned?
+			if rok || wok {
+				overallPass = false
+			} else {
+				overallPass = true
+			}
+			if !overallPass {
+				panic("sadness, failed test: rok || wok happened before overall elapsed")
+			}
+
+			//timeout the writes too...
+			err := w.SetIdleTimeout(time.Nanosecond)
+			if err != nil {
+				t.Fatalf("w.SetIdleTimeout: %v", err)
+			}
+
 		case rerr = <-readErr:
-			//p("got rerr")
+			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
@@ -140,7 +163,7 @@ collectionLoop:
 				break collectionLoop
 			}
 		case werr = <-writeErr:
-			//p("got werr")
+			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
@@ -152,11 +175,7 @@ collectionLoop:
 		}
 
 	}
-	//p("done with collection loop")
-
-	if werr != writeOk {
-		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
-	}
+	p("done with collection loop")
 
 	if rerr != readOk {
 		now := time.Now()
@@ -164,16 +183,6 @@ collectionLoop:
 			"period of '%v': reader did not give us the readOk,"+
 			" instead err=%v, stopping short by %v. at now=%v",
 			overall, rerr, now.Sub(tstop), now))
-	}
-
-	err = w.Close()
-	if err != nil {
-		t.Fatalf("w Close: %v", err)
-	}
-
-	err = r.Close()
-	if err != nil {
-		t.Fatalf("r Close: %v", err)
 	}
 
 }
@@ -211,15 +220,34 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	// wait for our overall time, and for both to return
 	var rerr, werr error
 	var rok, wok bool
+	overallPass := false
 collectionLoop:
 	for {
 		select {
 		case <-after:
-			//p("after fired!")
+			p("after fired!")
 			halt.ReqStop.Close()
 			after = nil
+
+			// the main point of the test: did after timeout
+			// fire before r or w returned?
+			if rok || wok {
+				overallPass = false
+			} else {
+				overallPass = true
+			}
+			if !overallPass {
+				panic("sadness, failed test: rok || wok happened before overall elapsed")
+			}
+
+			//timeout the reads too...
+			err := r.SetIdleTimeout(time.Nanosecond)
+			if err != nil {
+				t.Fatalf("r.SetIdleTimeout: %v", err)
+			}
+
 		case rerr = <-readErr:
-			//p("got rerr")
+			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
@@ -229,7 +257,7 @@ collectionLoop:
 				break collectionLoop
 			}
 		case werr = <-writeErr:
-			//p("got werr")
+			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
@@ -241,28 +269,10 @@ collectionLoop:
 		}
 
 	}
-	//p("done with collection loop")
+	p("done with collection loop")
 
 	if werr != writeOk {
-		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
-	}
-
-	if rerr != readOk {
-		now := time.Now()
-		panic(fmt.Sprintf("Continuous read for a "+
-			"period of '%v': reader did not give us the readOk,"+
-			" instead err=%v, stopping short by %v. at now=%v",
-			overall, rerr, now.Sub(tstop), now))
-	}
-
-	err = w.Close()
-	if err != nil {
-		t.Fatalf("w Close: %v", err)
-	}
-
-	err = r.Close()
-	if err != nil {
-		t.Fatalf("r Close: %v", err)
+		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", werr))
 	}
 
 }
