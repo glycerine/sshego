@@ -121,7 +121,7 @@ func (b *buffer) write(buf []byte) {
 // the data has been consumed will receive os.EOF.
 func (b *buffer) eof() error {
 	b.Cond.L.Lock()
-	//p("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, string(stacktrace()))
+	//pp("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, string(stacktrace()))
 	b.closed = true
 	b.Cond.Signal()
 	b.Cond.L.Unlock()
@@ -172,7 +172,8 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		// if nothing was read, and there is nothing outstanding
 		// check to see if the buffer is closed.
 		if b.closed {
-			err = newErrEOF("closed")
+			err = io.EOF // works for TestExitStatusZero
+			//err = newErrEOF("closed") // fails TestExitStatusZero
 			break
 		}
 		timedOut := ""

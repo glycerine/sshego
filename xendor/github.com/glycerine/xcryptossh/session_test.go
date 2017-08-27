@@ -11,6 +11,7 @@ import (
 	"context"
 	crypto_rand "crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -239,7 +240,7 @@ func TestExitStatusZero(t *testing.T) {
 	}
 	err = session.Wait()
 	if err != nil {
-		t.Fatalf("expected nil but got %v", err)
+		panic(fmt.Sprintf("expected nil but got %v", err))
 	}
 }
 
