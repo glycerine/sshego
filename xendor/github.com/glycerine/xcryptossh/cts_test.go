@@ -99,6 +99,22 @@ func TestCtsWriteWithNoIdleTimeout(t *testing.T) {
 	testCts(false, t)
 }
 
+func setTo(r, w Channel, timeOutOnReader bool, idleout time.Duration) {
+	// set the timeout on the reader/writer
+	if timeOutOnReader {
+		err := r.SetIdleTimeout(idleout)
+		if err != nil {
+			panic(fmt.Sprintf("r.SetIdleTimeout: %v", err))
+		}
+	} else {
+		// set the timeout on the writer
+		err := w.SetIdleTimeout(idleout)
+		if err != nil {
+			panic(fmt.Sprintf("w.SetIdleTimeout: %v", err))
+		}
+	}
+}
+
 func testCts(timeOutOnReader bool, t *testing.T) {
 	r, w, mux := channelPair(t)
 
@@ -114,19 +130,7 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 	haltr := NewHalter()
 	haltw := NewHalter()
 
-	// set the timeout on the reader/writer
-	if timeOutOnReader {
-		err := r.SetIdleTimeout(idleout)
-		if err != nil {
-			t.Fatalf("r.SetIdleTimeout: %v", err)
-		}
-	} else {
-		// set the timeout on the writer
-		err := w.SetIdleTimeout(idleout)
-		if err != nil {
-			t.Fatalf("w.SetIdleTimeout: %v", err)
-		}
-	}
+	setTo(r, w, timeOutOnReader, idleout)
 	readErr := make(chan error)
 	writeErr := make(chan error)
 	go readerToRing(idleout, r, haltr, overall, tstop, readErr)
@@ -164,7 +168,12 @@ collectionLoop:
 			// fire before r or w returned?
 			if rok || wok {
 				panic("sadness, failed test: rok || wok happened before overall elapsed")
+			} else {
+				p("success!!!!!")
 			}
+
+			// release the other. e.g. the Writer may be blocked on the reader test.
+			setTo(r, w, !timeOutOnReader, idleout)
 
 			haltr.ReqStop.Close()
 			haltw.ReqStop.Close()

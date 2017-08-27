@@ -346,17 +346,14 @@ func (w *window) close() {
 	w.L.Unlock()
 }
 
-//var windowTimeoutDone = make(chan bool)
-
 func (w *window) timeout() {
-	p("timeout() called for window %p", w)
 	w.L.Lock()
-	//close(windowTimeoutDone)
+	p("timeout() called for window %p", w)
 	w.Broadcast()
 	w.L.Unlock()
 }
 
-func (w *window) reserveShouldReturn() (bool, error) {
+func (w *window) reserveShouldReturn() (bye bool, err error) {
 	timedOut := ""
 	select {
 	case timedOut = <-w.idle.TimedOut:
@@ -376,17 +373,18 @@ func (w *window) reserve(win uint32) (num uint32, err error) {
 	w.L.Lock()
 	defer w.L.Unlock()
 
-	if bye, err := w.reserveShouldReturn(); bye {
-		return 0, err
-	}
+	//	if bye, err := w.reserveShouldReturn(); bye {
+	//		return 0, err
+	//	}
 	w.writeWaiters++
 	w.Broadcast()
 	for w.win == 0 && !w.closed {
 
+		// check for timeout or shutdown
 		if bye, err := w.reserveShouldReturn(); bye {
 			return 0, err
 		}
-		w.Wait() // deadlocked hung here on Write.
+		w.Wait()
 	}
 
 	if bye, err := w.reserveShouldReturn(); bye {
