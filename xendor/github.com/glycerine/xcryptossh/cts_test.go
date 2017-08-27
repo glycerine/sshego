@@ -126,11 +126,11 @@ collectionLoop:
 	for {
 		select {
 		case <-after:
-			p("after fired!")
+			//p("after fired!")
 			halt.ReqStop.Close()
 			after = nil
 		case rerr = <-readErr:
-			p("got rerr")
+			//p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
@@ -140,7 +140,7 @@ collectionLoop:
 				break collectionLoop
 			}
 		case werr = <-writeErr:
-			p("got werr")
+			//p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
@@ -152,7 +152,7 @@ collectionLoop:
 		}
 
 	}
-	p("done with collection loop")
+	//p("done with collection loop")
 
 	if werr != writeOk {
 		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
@@ -215,11 +215,11 @@ collectionLoop:
 	for {
 		select {
 		case <-after:
-			p("after fired!")
+			//p("after fired!")
 			halt.ReqStop.Close()
 			after = nil
 		case rerr = <-readErr:
-			p("got rerr")
+			//p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
@@ -229,7 +229,7 @@ collectionLoop:
 				break collectionLoop
 			}
 		case werr = <-writeErr:
-			p("got werr")
+			//p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
 				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
@@ -241,7 +241,7 @@ collectionLoop:
 		}
 
 	}
-	p("done with collection loop")
+	//p("done with collection loop")
 
 	if werr != writeOk {
 		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
@@ -271,7 +271,7 @@ collectionLoop:
 // readOk upon success.
 func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error) (err error) {
 	defer func() {
-		pp("readerToRing returning on readErr, err = '%v'", err)
+		//p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
 	}()
 
@@ -315,7 +315,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 // returns writeOk upon success
 func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error) (err error) {
 	defer func() {
-		pp("seqWordsToWriter returning err = '%v'", err)
+		//p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
 	}()
 	src := newSequentialWords()

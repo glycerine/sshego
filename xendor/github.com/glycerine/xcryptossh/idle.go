@@ -51,8 +51,6 @@ type callbacks struct {
 	onTimeout func()
 }
 
-var seen int
-
 // newIdleTimer creates a new idleTimer which will call
 // the `callback` function provided after `dur` inactivity.
 // If callback is nil, you must use setTimeoutCallback()
@@ -61,11 +59,6 @@ var seen int
 // timeout, in which case the timer will be inactive until
 // SetIdleTimeout is called.
 func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
-	p("newIdleTimer called")
-	seen++
-	if seen == 3 {
-		panic("where?")
-	}
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
