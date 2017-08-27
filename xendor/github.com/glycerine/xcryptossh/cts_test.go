@@ -102,7 +102,7 @@ func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	defer r.Close()
 	defer mux.Close()
 
-	idleout := 100 * time.Millisecond
+	idleout := 500 * time.Millisecond
 	overall := 30 * idleout
 
 	t0 := time.Now()
@@ -198,7 +198,7 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	defer r.Close()
 	defer mux.Close()
 
-	idleout := 100 * time.Millisecond
+	idleout := 500 * time.Millisecond
 	overall := 30 * idleout
 
 	t0 := time.Now()
@@ -207,7 +207,7 @@ func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	halt := NewHalter()
 
 	// set the timeout on the writer
-	if false {
+	if true {
 		err := w.SetIdleTimeout(idleout)
 		if err != nil {
 			t.Fatalf("r.SetIdleTimeout: %v", err)

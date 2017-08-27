@@ -319,6 +319,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if space, err = c.remoteWin.reserve(space); err != nil {
 			return n, err
 		}
+		c.idleTimer.Reset()
 		if want := headerLength + space; uint32(cap(packet)) < want {
 			packet = make([]byte, want)
 		} else {
@@ -337,6 +338,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if err = c.writePacket(packet); err != nil {
 			return n, err
 		}
+		c.idleTimer.Reset()
 
 		n += len(todo)
 		data = data[len(todo):]
