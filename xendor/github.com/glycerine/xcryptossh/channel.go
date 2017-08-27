@@ -269,7 +269,7 @@ func (c *channel) writePacket(packet []byte) error {
 	}
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
-	if err != nil {
+	if err == nil {
 		c.idleTimer.Reset()
 	}
 	c.writeMu.Unlock()
@@ -418,7 +418,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 	default:
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
-	if err != nil {
+	if err == nil {
 		c.idleTimer.Reset()
 	}
 
