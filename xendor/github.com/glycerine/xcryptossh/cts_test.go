@@ -10,6 +10,10 @@ import (
 	"github.com/glycerine/rbuf"
 )
 
+var timeGood = fmt.Errorf("overall time completed")
+var writeOk = fmt.Errorf("write was ok")
+var readOk = fmt.Errorf("read was ok")
+
 // a simple circular buffer than
 // we can fill for any amount of
 // time and track the total number
@@ -88,7 +92,7 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 // Given a 100 msec idle read timeout, if we continuously transfer
 // for 3 seconds, we should not see any timeout since
 // our activity is ongoing continuously.
-func TestContinuousReadWithNoIdleOut(t *testing.T) {
+func TestContinuousReadWithNoIdleTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
 	defer w.Close()
 	defer r.Close()
@@ -100,23 +104,66 @@ func TestContinuousReadWithNoIdleOut(t *testing.T) {
 	t0 := time.Now()
 	tstop := t0.Add(overall)
 
-	writeDone := make(chan bool)
+	halt := NewHalter()
 
 	// set the timeout on the reader
 	err := r.SetIdleTimeout(idleout)
 	if err != nil {
-		t.Fatalf("SetIdleTimeout: %v", err)
+		t.Fatalf("r.SetIdleTimeout: %v", err)
 	}
-	go readerToRing(t, idleout, r, writeDone, overall, tstop)
+	readErr := make(chan error)
+	writeErr := make(chan error)
+	go readerToRing(idleout, r, halt, overall, tstop, readErr)
 
-	err = seqWordsToWriter(w, tstop)
+	go seqWordsToWriter(w, halt, tstop, writeErr)
 
-	if err != timeGood {
-		panic(fmt.Sprintf("Continuous write for a period of '%v' did not give us the timeGood error, instead err=%v", err))
+	after := time.After(overall)
+
+	// wait for our overall time, and for both to return
+	var rerr, werr error
+	var rok, wok bool
+collectionLoop:
+	for {
+		select {
+		case <-after:
+			p("after fired!")
+			halt.ReqStop.Close()
+			after = nil
+		case rerr = <-readErr:
+			p("got rerr")
+			now := time.Now()
+			if now.Before(tstop) {
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
+			}
+			rok = true
+			if wok {
+				break collectionLoop
+			}
+		case werr = <-writeErr:
+			p("got werr")
+			now := time.Now()
+			if now.Before(tstop) {
+				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
+			}
+			wok = true
+			if rok {
+				break collectionLoop
+			}
+		}
+
 	}
-	now := time.Now()
-	if now.Before(tstop) {
-		panic(fmt.Sprintf("stopped too early, before '%v'. now=%v", tstop, now))
+	p("done with collection loop")
+
+	if werr != writeOk {
+		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
+	}
+
+	if rerr != readOk {
+		now := time.Now()
+		panic(fmt.Sprintf("Continuous read for a "+
+			"period of '%v': reader did not give us the readOk,"+
+			" instead err=%v, stopping short by %v. at now=%v",
+			overall, rerr, now.Sub(tstop), now))
 	}
 
 	err = w.Close()
@@ -132,9 +179,9 @@ func TestContinuousReadWithNoIdleOut(t *testing.T) {
 }
 
 // Given a 100 msec idle *write* timeout, if we continuously transfer
-// for 3 seconds, we should not see any timeout since
+// for 3 seconds (or 30x our idle timeout), we should not see any timeout since
 // our activity is ongoing continuously.
-func TestContinuousWriteWithNoIdleOut(t *testing.T) {
+func TestContinuousWriteWithNoIdleTimeout(t *testing.T) {
 	r, w, mux := channelPair(t)
 	defer w.Close()
 	defer r.Close()
@@ -146,23 +193,66 @@ func TestContinuousWriteWithNoIdleOut(t *testing.T) {
 	t0 := time.Now()
 	tstop := t0.Add(overall)
 
-	writeDone := make(chan bool)
+	halt := NewHalter()
 
 	// set the timeout on the writer
 	err := w.SetIdleTimeout(idleout)
 	if err != nil {
-		t.Fatalf("SetIdleTimeout: %v", err)
+		t.Fatalf("r.SetIdleTimeout: %v", err)
 	}
-	go readerToRing(t, idleout, r, writeDone, overall, tstop)
+	readErr := make(chan error)
+	writeErr := make(chan error)
+	go readerToRing(idleout, r, halt, overall, tstop, readErr)
 
-	err = seqWordsToWriter(w, tstop)
+	go seqWordsToWriter(w, halt, tstop, writeErr)
 
-	if err != timeGood {
-		panic(fmt.Sprintf("Continuous write for a period of '%v' did not give us the timeGood error, instead err=%v", overall, err))
+	after := time.After(overall)
+
+	// wait for our overall time, and for both to return
+	var rerr, werr error
+	var rok, wok bool
+collectionLoop:
+	for {
+		select {
+		case <-after:
+			p("after fired!")
+			halt.ReqStop.Close()
+			after = nil
+		case rerr = <-readErr:
+			p("got rerr")
+			now := time.Now()
+			if now.Before(tstop) {
+				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v", rerr, tstop, now))
+			}
+			rok = true
+			if wok {
+				break collectionLoop
+			}
+		case werr = <-writeErr:
+			p("got werr")
+			now := time.Now()
+			if now.Before(tstop) {
+				panic(fmt.Sprintf("werr: '%v', stopped too early, before '%v'. now=%v", werr, tstop, now))
+			}
+			wok = true
+			if rok {
+				break collectionLoop
+			}
+		}
+
 	}
-	now := time.Now()
-	if now.Before(tstop) {
-		panic(fmt.Sprintf("stopped too early, before '%v'. now=%v", tstop, now))
+	p("done with collection loop")
+
+	if werr != writeOk {
+		panic(fmt.Sprintf("Continuous read for a period of '%v': writer did not give us the writeOk error, instead err=%v", err))
+	}
+
+	if rerr != readOk {
+		now := time.Now()
+		panic(fmt.Sprintf("Continuous read for a "+
+			"period of '%v': reader did not give us the readOk,"+
+			" instead err=%v, stopping short by %v. at now=%v",
+			overall, rerr, now.Sub(tstop), now))
 	}
 
 	err = w.Close()
@@ -177,11 +267,13 @@ func TestContinuousWriteWithNoIdleOut(t *testing.T) {
 
 }
 
-// setup reader r -> infiniteRing ring
-func readerToRing(t *testing.T, idleout time.Duration, r Channel, writeDone chan bool, overall time.Duration, tstop time.Time) {
-
-	writeOk := fmt.Errorf("got writerDone, so this err is fine")
-	var err error
+// setup reader r -> infiniteRing ring. returns
+// readOk upon success.
+func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error) (err error) {
+	defer func() {
+		pp("readerToRing returning on readErr, err = '%v'", err)
+		readErr <- err
+	}()
 
 	ring := newInfiniteRing()
 
@@ -203,9 +295,8 @@ func readerToRing(t *testing.T, idleout time.Duration, r Channel, writeDone chan
 			}
 			numwrites++
 			select {
-			case <-writeDone:
-				err = writeOk
-				break
+			case <-halt.ReqStop.Chan:
+				return readOk
 			default:
 			}
 		}
@@ -217,20 +308,16 @@ func readerToRing(t *testing.T, idleout time.Duration, r Channel, writeDone chan
 		}
 	} //end for
 
-	if err != writeOk {
-		now := time.Now()
-		panic(fmt.Sprintf("Continuous read for a "+
-			"period of '%v' did not give us the writeOk,"+
-			" instead err=%v, stopping short by %v. at now=%v",
-			overall, err, now.Sub(tstop), now))
-	}
-
+	return err
 }
 
 // read from the integers 0,1,2,... and write to w until tstop.
-func seqWordsToWriter(w Channel, tstop time.Time) error {
-
-	var err error
+// returns writeOk upon success
+func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error) (err error) {
+	defer func() {
+		pp("seqWordsToWriter returning err = '%v'", err)
+		writeErr <- err
+	}()
 	src := newSequentialWords()
 	dst := w
 	buf := make([]byte, 32*1024)
@@ -246,9 +333,10 @@ func seqWordsToWriter(w Channel, tstop time.Time) error {
 				err = io.ErrShortWrite
 				break
 			}
-			if time.Now().After(tstop) {
-				err = timeGood
-				break
+			select {
+			case <-halt.ReqStop.Chan:
+				return writeOk
+			default:
 			}
 		}
 		if er != nil {

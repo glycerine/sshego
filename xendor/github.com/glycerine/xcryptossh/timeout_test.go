@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-var timeGood = fmt.Errorf("overall time completed")
-
 func init() {
 	// see all goroutines on panic for proper debugging.
 	debug.SetTraceback("all")

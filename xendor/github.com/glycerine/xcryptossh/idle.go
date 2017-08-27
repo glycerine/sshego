@@ -1,7 +1,7 @@
 package ssh
 
 import (
-	//"fmt"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -51,6 +51,8 @@ type callbacks struct {
 	onTimeout func()
 }
 
+var seen int
+
 // newIdleTimer creates a new idleTimer which will call
 // the `callback` function provided after `dur` inactivity.
 // If callback is nil, you must use setTimeoutCallback()
@@ -59,6 +61,11 @@ type callbacks struct {
 // timeout, in which case the timer will be inactive until
 // SetIdleTimeout is called.
 func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
+	p("newIdleTimer called")
+	seen++
+	if seen == 3 {
+		panic("where?")
+	}
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
@@ -84,9 +91,9 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 //
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
-	//tlast := atomic.LoadUint64(&t.last)
+	tlast := atomic.LoadUint64(&t.last)
 	if uintptr(unsafe.Pointer(t)) == 0xc42005e960 {
-		//fmt.Printf("\n\n 8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", t, time.Now(), mnow, time.Duration(mnow-tlast))
+		fmt.Printf("\n\n 8888888888    idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update\n\n", t, time.Now(), mnow, time.Duration(mnow-tlast))
 		if t.resetNum == 2 {
 			//panic("where?")
 		}
