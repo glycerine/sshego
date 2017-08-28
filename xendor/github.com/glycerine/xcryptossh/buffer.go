@@ -58,7 +58,7 @@ func (b *buffer) eof() error {
 	b.Cond.L.Lock()
 	//pp("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, string(stacktrace()))
 	b.closed = true
-	b.Cond.Signal()
+	b.Cond.Broadcast()
 	b.Cond.L.Unlock()
 	return nil
 }
@@ -68,7 +68,8 @@ func (b *buffer) eof() error {
 // b.idle.TimeOut() must return true when queried for
 // this to be succesful.
 func (b *buffer) timeout() error {
-	b.Cond.Signal()
+	p("buffer.timeout() called. b = %p", b)
+	b.Cond.Broadcast()
 	return nil
 }
 
