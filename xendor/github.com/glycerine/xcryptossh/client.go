@@ -83,7 +83,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		c.Close()
 		return nil, nil, nil, errors.New("ssh: config must provide Halt")
 	}
-	conn := newConnection(c, fullConf.Halt)
+	conn := newConnection(c, &fullConf.Config)
 
 	// can block on conn here, we need to get a close
 	// on conn in.
