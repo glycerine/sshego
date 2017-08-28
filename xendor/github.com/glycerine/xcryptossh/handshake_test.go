@@ -446,6 +446,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 	key := testSigners["ecdsa"]
 	serverConf := Config{RekeyThreshold: minRekeyThreshold}
 	serverConf.SetDefaults()
+	defer serverConf.Halt.ReqStop.Close()
 	ctx := context.Background()
 	serverConn := newHandshakeTransport(ctx, &errorKeyingTransport{a, readLimit, writeLimit}, &serverConf, []byte{'a'}, []byte{'b'})
 	serverConn.hostKeys = []Signer{key}
@@ -454,6 +455,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 
 	clientConf := Config{RekeyThreshold: 10 * minRekeyThreshold}
 	clientConf.SetDefaults()
+	defer clientConf.Halt.ReqStop.Close()
 	clientConn := newHandshakeTransport(ctx, &errorKeyingTransport{b, -1, -1}, &clientConf, []byte{'a'}, []byte{'b'})
 	clientConn.hostKeyAlgorithms = []string{key.PublicKey().Type()}
 	clientConn.hostKeyCallback = InsecureIgnoreHostKey()
