@@ -22,6 +22,10 @@ func pp(format string, a ...interface{}) {
 	tsPrintf(format, a...)
 }
 
+func ppp(format string, a ...interface{}) {
+	fmt.Printf("\n"+format+"\n", a...)
+}
+
 // time-stamped printf
 func tsPrintf(format string, a ...interface{}) {
 	fmt.Printf("\n%s ", ts())

@@ -383,8 +383,12 @@ write:
 
 	// drain startKex channel. We don't service t.requestKex
 	// because nobody does blocking sends there.
-	go func() { // leaks lots
+
+	go func() { // leaks lots of goroutines
+
+		//ppp("%s kexloop BEGIN 111111 starting leaky goro", curtest)
 		defer func() {
+			//ppp("%s kexloop DONE 222222 leaving leaky goro", curtest)
 			t.config.Halt.Done.Close()
 		}()
 		for {
@@ -400,6 +404,7 @@ write:
 					}
 				}
 			case <-t.config.Halt.ReqStop.Chan:
+				//ppp("%s kexloop goro 333333 exiting on config.Halt", curtest)
 				return
 			case <-ctx.Done():
 				return
