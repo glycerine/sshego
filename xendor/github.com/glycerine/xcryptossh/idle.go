@@ -43,6 +43,8 @@ type idleTimer struct {
 	histmut      sync.Mutex // protects history
 	history      []time.Time
 	getHistoryCh chan *getHistoryTicket
+
+	atomicdur uint64
 }
 
 type callbacks struct {
@@ -90,7 +92,16 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 //
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
-	//tlast := atomic.LoadUint64(&t.last)
+
+	// diagnose
+	tlast := atomic.LoadUint64(&t.last)
+	adur := atomic.LoadUint64(&t.atomicdur)
+	if adur > 0 {
+		diff := mnow - tlast
+		if diff > adur {
+			pp("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
+		}
+	}
 	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
 
@@ -214,6 +225,7 @@ func newGetHistoryTicket() *getHistoryTicket {
 }
 
 func (t *idleTimer) backgroundStart(dur time.Duration) {
+	atomic.StoreUint64(&t.atomicdur, uint64(dur))
 	go func() {
 		var heartbeat *time.Ticker
 		var heartch <-chan time.Time
@@ -257,6 +269,8 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 							heartbeat.Stop() // allow GC
 						}
 						dur = tk.newdur
+						atomic.StoreUint64(&t.atomicdur, uint64(dur))
+
 						heartbeat = nil
 						heartch = nil
 						close(tk.done)
@@ -267,6 +281,8 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						heartbeat.Stop() // allow GC
 					}
 					dur = tk.newdur
+					atomic.StoreUint64(&t.atomicdur, uint64(dur))
+
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()
@@ -276,12 +292,16 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					// heartbeats not currently active
 					if tk.newdur <= 0 {
 						dur = 0
+						atomic.StoreUint64(&t.atomicdur, uint64(dur))
+
 						// staying inactive
 						close(tk.done)
 						continue
 					}
 					// heartbeats activating
 					dur = tk.newdur
+					atomic.StoreUint64(&t.atomicdur, uint64(dur))
+
 					heartbeat = time.NewTicker(dur)
 					heartch = heartbeat.C
 					t.Reset()

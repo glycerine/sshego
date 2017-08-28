@@ -205,6 +205,11 @@ collectionLoop:
 			p("got rerr")
 			now := time.Now()
 			if now.Before(tstop) {
+				if timeOutOnReader {
+					pp("read reset history: %v", r.GetResetHistory())
+				} else {
+					pp("write reset history: %v", w.GetResetHistory())
+				}
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", rerr, tstop, now, now.Sub(tstop))) // panicing here
 			}
 			rok = true
@@ -216,6 +221,11 @@ collectionLoop:
 			p("got werr")
 			now := time.Now()
 			if now.Before(tstop) {
+				if timeOutOnReader {
+					pp("read reset history: %v", r.GetResetHistory())
+				} else {
+					pp("write reset history: %v", w.GetResetHistory())
+				}
 				panic(fmt.Sprintf("rerr: '%v', stopped too early, before '%v'. now=%v. now-before=%v", werr, tstop, now, now.Sub(tstop)))
 			}
 			wok = true

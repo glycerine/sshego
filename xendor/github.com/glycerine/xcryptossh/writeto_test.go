@@ -90,9 +90,11 @@ collectionLoop:
 
 	// sanity check that whenLastWriteTimedout in when we expect
 	if whenLastWriteTimedout.Before(tstop) {
+		pp("reset history: %v", w.GetResetHistory())
 		panic("premature timeout, very bad")
 	}
 	if whenLastWriteTimedout.After(tstop.Add(3 * idleout)) {
+		pp("reset history: %v", w.GetResetHistory())
 		panic("too slow a time out, very bad")
 	}
 
