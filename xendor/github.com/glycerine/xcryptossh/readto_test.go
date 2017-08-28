@@ -121,7 +121,7 @@ func to008ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, 
 	for {
 		p("readto_test: readerToRing calling read.")
 		nr, er := src.Read(buf)
-		p("readto_test: readerToRing back from read.")
+		p("readto_test: readerToRing back from read. err='%v'. nr=%v", er, nr)
 		*whenerr = time.Now()
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])

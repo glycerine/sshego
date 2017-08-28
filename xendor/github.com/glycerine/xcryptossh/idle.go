@@ -115,7 +115,7 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 // internally, effectively reseting to zero the value
 // returned from an immediate next call to NanosecSince().
 //
-func (t *idleTimer) Reset() {
+func (t *idleTimer) Reset() (err error) {
 	mnow := monoNow()
 	now := time.Now()
 	// diagnose
@@ -125,8 +125,9 @@ func (t *idleTimer) Reset() {
 	if adur > 0 {
 		diff := mnow - tlast
 		if diff > adur {
-			//p("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
+			p("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
 			atomic.AddInt64(&t.overcount, 1)
+			err = newErrTimeout(fmt.Sprintf("Reset() diff %v > %v adur", diff, adur), t)
 		} else {
 			atomic.AddInt64(&t.undercount, 1)
 		}
@@ -135,6 +136,7 @@ func (t *idleTimer) Reset() {
 
 	// this is the only essential part of this routine. The above is for diagnosis.
 	atomic.StoreInt64(&t.last, mnow)
+	return
 }
 
 func (t *idleTimer) historyOfResets(dur time.Duration) string {
