@@ -80,7 +80,9 @@ func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 		getHistoryCh:     make(chan *getHistoryTicket),
 		TimedOut:         make(chan string),
 		halt:             NewHalter(),
-		timeoutCallback:  []func(){callback},
+	}
+	if callback != nil {
+		t.timeoutCallback = append(t.timeoutCallback, callback)
 	}
 	go t.backgroundStart(dur)
 	return t
@@ -100,6 +102,9 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 
 // add without removing exiting callbacks
 func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
+	if timeoutFunc == nil {
+		panic("cannot call addTimeoutCallback with nil function!")
+	}
 	select {
 	case t.addCallback <- &callbacks{onTimeout: timeoutFunc}:
 	case <-t.halt.ReqStop.Chan:
