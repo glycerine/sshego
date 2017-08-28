@@ -135,8 +135,8 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 	p("r.idleTimer = %p", r.idleTimer)
 	p("w.idleTimer = %p", w.idleTimer)
 
-	idleout := 500 * time.Millisecond
-	overall := 30 * idleout
+	idleout := 2000 * time.Millisecond
+	overall := 10 * idleout
 
 	t0 := time.Now()
 	tstop := t0.Add(overall)

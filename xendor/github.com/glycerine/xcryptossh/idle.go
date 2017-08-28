@@ -220,6 +220,8 @@ func newGetHistoryTicket() *getHistoryTicket {
 	}
 }
 
+const factor = 10
+
 func (t *idleTimer) backgroundStart(dur time.Duration) {
 	atomic.StoreInt64(&t.atomicdur, int64(dur))
 	go func() {
@@ -230,10 +232,10 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 			// in order to have a chance of responding
 			// quickly to timeouts of dur length. Theoretically
 			// dur/2 suffices, but sooner is better so
-			// we go with dur/4. This also allows for
+			// we go with dur/factor. This also allows for
 			// some play/some slop in the sampling, which
 			// we empirically observe.
-			heartbeat = time.NewTicker(dur / 8)
+			heartbeat = time.NewTicker(dur / factor)
 			heartch = heartbeat.C
 		}
 		defer func() {
@@ -286,7 +288,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreInt64(&t.atomicdur, int64(dur))
 
-					heartbeat = time.NewTicker(dur / 8)
+					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
@@ -305,7 +307,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreInt64(&t.atomicdur, int64(dur))
 
-					heartbeat = time.NewTicker(dur / 8)
+					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
