@@ -91,7 +91,9 @@ collectionLoop:
 		pp("reset history: %v", r.GetResetHistory())
 		panic("premature timeout, very bad")
 	}
-	if whenLastReadTimedout.After(tstop.Add(3 * idleout)) {
+	// allow a generous amount of slop because under test suite
+	// our timing varies a whole lot.
+	if whenLastReadTimedout.After(tstop.Add(6 * idleout)) {
 		pp("reset history: %v", r.GetResetHistory())
 		panic("too slow a time out, very bad")
 	}

@@ -40,11 +40,16 @@ type idleTimer struct {
 	timeOutRaised string
 
 	// history of Reset() calls.
-	histmut      sync.Mutex // protects history
-	history      []time.Time
 	getHistoryCh chan *getHistoryTicket
 
-	atomicdur uint64
+	// each of these, for instance,
+	// atomicdur is updated atomically, and should
+	// be read atomically. For use by Reset() and
+	// internal reporting only.
+	atomicdur  uint64
+	overcount  uint64
+	undercount uint64
+	beginmono  uint64
 }
 
 type callbacks struct {
@@ -94,47 +99,37 @@ func (t *idleTimer) Reset() {
 	mnow := monoNow()
 
 	// diagnose
+	atomic.CompareAndSwapUint64(&t.beginmono, 0, mnow)
 	tlast := atomic.LoadUint64(&t.last)
 	adur := atomic.LoadUint64(&t.atomicdur)
 	if adur > 0 {
 		diff := mnow - tlast
 		if diff > adur {
 			pp("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
+			atomic.AddUint64(&t.overcount, 1)
+		} else {
+			atomic.AddUint64(&t.undercount, 1)
 		}
 	}
 	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
-	atomic.StoreUint64(&t.last, mnow)
 
-	// DEBUG:
-	t.histmut.Lock()
-	t.history = append(t.history, time.Now())
-	t.histmut.Unlock()
+	// thi is the only essential part of this routine. The above is for diagnosis.
+	atomic.StoreUint64(&t.last, mnow)
 }
 
 func (t *idleTimer) historyOfResets(dur time.Duration) string {
 	now := time.Now()
-	t.histmut.Lock()
-	defer t.histmut.Unlock()
-
-	if len(t.history) == 0 {
+	begin := atomic.LoadUint64(&t.beginmono)
+	if begin == 0 {
 		return ""
 	}
-	s := fmt.Sprintf("%v, ", t.history[0])
-	n := len(t.history)
-	var over, under int64
-	for i := 1; i < n; i++ {
-		diff := t.history[i].Sub(t.history[i-1])
-		// filter for big gaps > dur only!
-		if diff > dur {
-			s += fmt.Sprintf("%v ***, ", diff)
-			over++
-		} else {
-			under++
-		}
-	}
-	lastgap := now.Sub(t.history[n-1])
-	return s + fmt.Sprintf(" summary: over dur:%v, under dur:%v. lastgap: %v.  now: %v. dur=%v",
-		over, under, lastgap, now, dur)
+
+	mnow := monoNow()
+	last := atomic.LoadUint64(&t.last)
+	lastgap := time.Duration(mnow - last)
+	over := atomic.LoadUint64(&t.overcount)
+	under := atomic.LoadUint64(&t.undercount)
+	return fmt.Sprintf("history of idle Reset: # over dur:%v, # under dur:%v. lastgap: %v.  dur=%v  now: %v. begin: %v", over, under, lastgap, dur, now, monoToTime(begin))
 }
 
 // NanosecSince returns how many nanoseconds it has
@@ -237,7 +232,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 			// we go with dur/4. This also allows for
 			// some play/some slop in the sampling, which
 			// we empirically observe.
-			heartbeat = time.NewTicker(dur / 4)
+			heartbeat = time.NewTicker(dur / 8)
 			heartch = heartbeat.C
 		}
 		defer func() {
@@ -290,7 +285,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreUint64(&t.atomicdur, uint64(dur))
 
-					heartbeat = time.NewTicker(dur / 4)
+					heartbeat = time.NewTicker(dur / 8)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
@@ -309,7 +304,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreUint64(&t.atomicdur, uint64(dur))
 
-					heartbeat = time.NewTicker(dur / 4)
+					heartbeat = time.NewTicker(dur / 8)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
