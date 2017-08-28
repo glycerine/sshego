@@ -36,16 +36,23 @@ func getMono(tm time.Time) uint64 {
 	if tm.IsZero() {
 		panic("cannot call getMono on a zero time")
 	}
-	now := time.Now().UnixNano()
+	now := time.Now()
 	mnow := nanotime()
-	return uint64(mnow - (now - tm.UnixNano()))
+	unow := now.UnixNano()
+	return uint64(mnow - (unow - tm.UnixNano()))
 }
 
-func monoToTime(mono uint64) time.Time {
-	now := time.Now().UnixNano()
+// monoToTime is only an approximation. It is
+// only approximate down to ~ 1 usec because Go doesn't
+// expose the monotonic timestamp directly, so we
+// have to get it approximately by assuming two
+// sequential calls to nanotime() and time.Now()
+// return the same.
+//
+func monoToTime(x uint64) time.Time {
+	now := time.Now()
 	mnow := nanotime()
-	return time.Unix(0, (now - (mnow - int64(mono))))
-
+	return now.Add(time.Duration(mnow - int64(x)))
 }
 
 func stripMono(tm time.Time) time.Time {
