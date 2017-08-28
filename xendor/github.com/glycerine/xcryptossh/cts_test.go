@@ -20,8 +20,8 @@ var readOk = fmt.Errorf("read was ok")
 // of bytes written to it.
 type infiniteRing struct {
 	ring  *rbuf.FixedSizeRingBuf
-	nrtot int
-	nwtot int
+	nrtot int64
+	nwtot int64
 	next  int64
 	sz    int
 }
@@ -36,6 +36,9 @@ func newInfiniteRing() *infiniteRing {
 	}
 }
 
+// Write checks and panics if data is not in order.
+// It expects each 64-bit word to contain the next
+// integer, little endian.
 func (ir *infiniteRing) Write(b []byte) (n int, err error) {
 	words := len(b) / 8
 	if words > maxwords {
@@ -46,8 +49,8 @@ func (ir *infiniteRing) Write(b []byte) (n int, err error) {
 	}
 	ir.ring.Reset()
 	n, err = ir.ring.WriteAndMaybeOverwriteOldestData(b[:words*8])
-	ir.nwtot += n
-	p("infiniteRing.Write total of %v", ir.nwtot)
+	ir.nwtot += int64(n)
+	q("infiniteRing.Write total of %v", ir.nwtot)
 
 	expect := make([]byte, 8)
 	by := ir.ring.Bytes()
@@ -65,7 +68,7 @@ func (ir *infiniteRing) Write(b []byte) (n int, err error) {
 
 func (ir *infiniteRing) Read(b []byte) (n int, err error) {
 	n, err = ir.ring.Read(b)
-	ir.nrtot += n
+	ir.nrtot += int64(n)
 	return
 }
 
@@ -116,17 +119,13 @@ func setTo(r, w Channel, timeOutOnReader bool, idleout time.Duration) {
 }
 
 func setClose(r, w Channel, closeReader bool) {
+	// set the timeout on the writer, ignore
+	// errors, probably race to shutdown; this is
+	// aimed at shutdown.
 	if closeReader {
-		err := r.Close()
-		if err != nil {
-			panic(fmt.Sprintf("r.Close(): %v", err))
-		}
+		r.Close()
 	} else {
-		// set the timeout on the writer
-		err := w.Close()
-		if err != nil {
-			panic(fmt.Sprintf("w.Close(): %v", err))
-		}
+		w.Close()
 	}
 }
 
@@ -148,9 +147,12 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 	setTo(r, w, timeOutOnReader, idleout)
 	readErr := make(chan error)
 	writeErr := make(chan error)
-	go readerToRing(idleout, r, haltr, overall, tstop, readErr)
+	var seq *seqWords
+	var ring *infiniteRing
 
-	go seqWordsToWriter(w, haltw, tstop, writeErr)
+	go readerToRing(idleout, r, haltr, overall, tstop, readErr, &ring)
+
+	go seqWordsToWriter(w, haltw, tstop, writeErr, &seq)
 
 	after := time.After(overall)
 
@@ -225,6 +227,15 @@ collectionLoop:
 	}
 	p("done with collection loop")
 
+	// sanity check that we read all we wrote.
+	seqby := (seq.next - 1) * 8
+	if ring.nwtot != seqby {
+		// 	panic: wrote 18636636160 but read 18636799992. diff=-163832
+		// the differ by some, since shutdown isn't coordinated
+		// by having the sender stop sending and close first.
+		p("wrote %v but read %v. diff=%v", ring.nwtot, seqby, ring.nwtot-seqby)
+	}
+
 	// actually shutdown is pretty racy, lots of possible errors on Close,
 	// such as EOF
 	w.Close()
@@ -235,7 +246,7 @@ collectionLoop:
 
 // setup reader r -> infiniteRing ring. returns
 // readOk upon success.
-func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error) (err error) {
+func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error, pRing **infiniteRing) (err error) {
 	defer func() {
 		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
@@ -243,6 +254,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 	}()
 
 	ring := newInfiniteRing()
+	*pRing = ring
 
 	src := r
 	dst := ring
@@ -282,13 +294,14 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 
 // read from the integers 0,1,2,... and write to w until tstop.
 // returns writeOk upon success
-func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error) (err error) {
+func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error, pSeqWords **seqWords) (err error) {
 	defer func() {
 		//p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
 		halt.Done.Close()
 	}()
 	src := newSequentialWords()
+	*pSeqWords = src
 	dst := w
 	buf := make([]byte, 32*1024)
 	for {
