@@ -458,6 +458,7 @@ func (c *channel) close() {
 }
 
 func (c *channel) timeout() {
+	p("channel timeout() invoked, for channel %p", c)
 	c.pending.timeout()
 	c.extPending.timeout()
 	// Unblock writers.
