@@ -578,7 +578,7 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		packetPool:       make(map[uint32][]byte),
 		idleTimer:        idle,
 	}
-	idle.setTimeoutCallback(ch.timeout)
+	idle.addTimeoutCallback(ch.timeout)
 	ch.localId = m.chanList.add(ch)
 	return ch
 }
