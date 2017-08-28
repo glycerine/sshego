@@ -230,7 +230,14 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 		var heartbeat *time.Ticker
 		var heartch <-chan time.Time
 		if dur > 0 {
-			heartbeat = time.NewTicker(dur)
+			// we've got to sample at above niquist
+			// in order to have a chance of responding
+			// quickly to timeouts of dur length. Theoretically
+			// dur/2 suffices, but sooner is better so
+			// we go with dur/4. This also allows for
+			// some play/some slop in the sampling, which
+			// we empirically observe.
+			heartbeat = time.NewTicker(dur / 4)
 			heartch = heartbeat.C
 		}
 		defer func() {
@@ -283,7 +290,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreUint64(&t.atomicdur, uint64(dur))
 
-					heartbeat = time.NewTicker(dur)
+					heartbeat = time.NewTicker(dur / 4)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
@@ -302,7 +309,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					dur = tk.newdur
 					atomic.StoreUint64(&t.atomicdur, uint64(dur))
 
-					heartbeat = time.NewTicker(dur)
+					heartbeat = time.NewTicker(dur / 4)
 					heartch = heartbeat.C
 					t.Reset()
 					close(tk.done)
