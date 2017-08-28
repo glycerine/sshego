@@ -122,8 +122,8 @@ func (t *idleTimer) historyOfResets(dur time.Duration) string {
 		}
 	}
 	lastgap := now.Sub(t.history[n-1])
-	return s + fmt.Sprintf(" summary: over dur:%v, under dur:%v. lastgap: %v, until now: %v",
-		over, under, lastgap, now)
+	return s + fmt.Sprintf(" summary: over dur:%v, under dur:%v. lastgap: %v.  now: %v. dur=%v",
+		over, under, lastgap, now, dur)
 }
 
 // NanosecSince returns how many nanoseconds it has
