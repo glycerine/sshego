@@ -57,13 +57,11 @@ func channelPair(t *testing.T) (*channel, *channel, *mux) {
 	tc := c.conn.(*memTransport)
 	tc.Lock()
 	tc.idle = chc.idleTimer
-	tc.idle.addTimeoutCallback(tc.timeout)
 	tc.Unlock()
 
 	ts := s.conn.(*memTransport)
 	ts.Lock()
 	ts.idle = chs.idleTimer
-	ts.idle.addTimeoutCallback(ts.timeout)
 	ts.Unlock()
 
 	return chs, chc, c
