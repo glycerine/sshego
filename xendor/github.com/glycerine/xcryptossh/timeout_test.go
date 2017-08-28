@@ -164,7 +164,7 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 
 	go func() {
 		select {
-		case <-time.After(100 * time.Csecond):
+		case <-time.After(100 * time.Second):
 			panic("2 msec Read timeout did not fire after 100 sec")
 		case <-cancel:
 		}
