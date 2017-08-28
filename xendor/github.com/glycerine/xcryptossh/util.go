@@ -26,9 +26,8 @@ var curtest string
 
 var regexTestname = regexp.MustCompile(`Test[^\s\(]+`)
 
-func setcur() {
+func setcurtest() {
 	curtest = testname()
-
 }
 
 func testname() string {
@@ -58,7 +57,11 @@ func stacktrace() []byte {
 }
 
 func newErrWhere(msg string, who *idleTimer) *errWhere {
-	return &errWhere{msg: msg, who: who, when: time.Now()} //, where: stacktrace()}
+	return &errWhere{msg: msg, who: who, when: time.Now()}
+}
+
+func newErrWhereWithStack(msg string, who *idleTimer) *errWhere {
+	return &errWhere{msg: msg, who: who, when: time.Now(), where: stacktrace()}
 }
 
 func (e errWhere) Error() string {

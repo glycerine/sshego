@@ -129,7 +129,6 @@ func handshakePair(clientConf *ClientConfig, addr string, noise bool) (client *h
 }
 
 func TestHandshakeBasic(t *testing.T) {
-	setcur()
 	if runtime.GOOS == "plan9" {
 		t.Skip("see golang.org/issue/7237")
 	}
@@ -223,7 +222,6 @@ func TestHandshakeBasic(t *testing.T) {
 }
 
 func TestForceFirstKex(t *testing.T) {
-	setcur()
 	// like handshakePair, but must access the keyingTransport.
 	checker := &testChecker{}
 	clientConf := &ClientConfig{HostKeyCallback: checker.Check}
@@ -270,7 +268,6 @@ func TestForceFirstKex(t *testing.T) {
 }
 
 func TestHandshakeAutoRekeyWrite(t *testing.T) {
-	setcur()
 	checker := &syncChecker{
 		called:   make(chan int, 10),
 		waitCall: nil,
@@ -337,7 +334,6 @@ func (c *syncChecker) Check(dialAddr string, addr net.Addr, key PublicKey) error
 }
 
 func TestHandshakeAutoRekeyRead(t *testing.T) {
-	setcur()
 	sync := &syncChecker{
 		called:   make(chan int, 2),
 		waitCall: nil,
@@ -414,28 +410,24 @@ func (n *errorKeyingTransport) readPacket(ctx context.Context) ([]byte, error) {
 }
 
 func TestHandshakeErrorHandlingRead(t *testing.T) {
-	setcur()
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, i, -1, false)
 	}
 }
 
 func TestHandshakeErrorHandlingWrite(t *testing.T) {
-	setcur()
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, -1, i, false)
 	}
 }
 
 func TestHandshakeErrorHandlingReadCoupled(t *testing.T) {
-	setcur()
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, i, -1, true)
 	}
 }
 
 func TestHandshakeErrorHandlingWriteCoupled(t *testing.T) {
-	setcur()
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, -1, i, true)
 	}
@@ -516,7 +508,6 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 }
 
 func TestDisconnect(t *testing.T) {
-	setcur()
 	if runtime.GOOS == "plan9" {
 		t.Skip("see golang.org/issue/7237")
 	}
@@ -559,7 +550,6 @@ func TestDisconnect(t *testing.T) {
 }
 
 func TestHandshakeRekeyDefault(t *testing.T) {
-	setcur()
 	clientConf := &ClientConfig{
 		Config: Config{
 			Ciphers: []string{"aes128-ctr"},

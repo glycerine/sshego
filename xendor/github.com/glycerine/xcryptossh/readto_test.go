@@ -12,16 +12,9 @@ import (
 // should return Timeout() true errors. This is the compliment to
 // the writeto_test.go.
 //
-func TestPhaseRead(t *testing.T) {
-	testPhase(true, t)
-}
+func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 
-// if !timeOutOnReader, then we timeout on the writer.
-func testPhase(timeOutOnReader bool, t *testing.T) {
 	r, w, mux := channelPair(t)
-
-	p("r.idleTimer = %p", r.idleTimer)
-	p("w.idleTimer = %p", w.idleTimer)
 
 	idleout := 1000 * time.Millisecond
 	overall := 3 * idleout
@@ -29,21 +22,22 @@ func testPhase(timeOutOnReader bool, t *testing.T) {
 	t0 := time.Now()
 	tstop := t0.Add(overall)
 
-	haltr := NewHalter()
-	haltw := NewHalter()
+	// set the timeout on the reader
+	err := r.SetIdleTimeout(idleout)
+	if err != nil {
+		panic(fmt.Sprintf("r.SetIdleTimeout: %v", err))
+	}
 
-	setTo(r, w, timeOutOnReader, idleout)
 	readErr := make(chan error)
 	writeErr := make(chan error)
 	var seq *seqWords
 	var ring *infiniteRing
 	var whenLastReadTimedout time.Time
 
-	go phaseReaderToRing(idleout, r, haltr, overall, tstop, readErr, &ring, &whenLastReadTimedout)
+	go to008ReaderToRing(idleout, r, overall, tstop, readErr, &ring, &whenLastReadTimedout)
 
-	go phaseSeqWordsToWriter(w, haltw, tstop, writeErr, &seq)
+	go to008SeqWordsToWriter(w, tstop, writeErr, &seq)
 
-	// wait for our overall time, and for both to return
 	var rerr, werr error
 	var rok, wok bool
 	complete := func() bool {
@@ -52,6 +46,9 @@ func testPhase(timeOutOnReader bool, t *testing.T) {
 collectionLoop:
 	for {
 		select {
+		case <-time.After(3 * overall):
+			panic(fmt.Sprintf("TestTimeout008ReadIdlesOutWhenWriteStops deadlocked: went past 3x overall"))
+
 		case rerr = <-readErr:
 			p("got rerr: '%#v'", rerr)
 			now := time.Now()
@@ -60,12 +57,11 @@ collectionLoop:
 			}
 			rok = true
 
-			// verify that we got a timeout: this is the point of the phase test!!
+			// verify that read got a timeout: this is the main point of this test.
 			nerr, ok := rerr.(net.Error)
-			if ok {
-				if !nerr.Timeout() {
-					panic(fmt.Sprintf("big problem: expected a timeout error back from Read(). instead got '%v'", rerr))
-				}
+			if !ok || !nerr.Timeout() {
+				panic(fmt.Sprintf("big problem: expected a timeout error back from Read()."+
+					" instead got '%v'", rerr))
 			}
 
 			if complete() {
@@ -103,9 +99,8 @@ collectionLoop:
 
 }
 
-// setup reader r -> infiniteRing ring. returns
-// readOk upon success.
-func phaseReaderToRing(idleout time.Duration, r Channel, halt *Halter, overall time.Duration, tstop time.Time, readErr chan error, pRing **infiniteRing, whenerr *time.Time) (err error) {
+// setup reader r -> infiniteRing ring.
+func to008ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, tstop time.Time, readErr chan error, pRing **infiniteRing, whenerr *time.Time) (err error) {
 	defer func() {
 		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
@@ -147,7 +142,7 @@ func phaseReaderToRing(idleout time.Duration, r Channel, halt *Halter, overall t
 
 // read from the integers 0,1,2,... and write to w until tstop.
 // returns writeOk upon success
-func phaseSeqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan error, pSeqWords **seqWords) (err error) {
+func to008SeqWordsToWriter(w Channel, tstop time.Time, writeErr chan error, pSeqWords **seqWords) (err error) {
 	defer func() {
 		p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
@@ -170,7 +165,7 @@ func phaseSeqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr ch
 				break
 			}
 			if time.Now().After(tstop) {
-				p("phaseSeqWordsToWriter: reached tstop, bailing out of copy loop.")
+				p("to008SeqWordsToWriter: reached tstop, bailing out of copy loop.")
 				return writeOk
 			}
 		}
