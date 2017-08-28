@@ -348,7 +348,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				since := t.NanosecSince()
 				udur := int64(dur)
 				if since > udur {
-					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
+					p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. waking %v callbacks", time.Now(), t, since, udur, since-udur, len(t.timeoutCallback))
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
@@ -365,7 +365,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					heartbeat = nil
 					heartch = nil
 					if len(t.timeoutCallback) == 0 {
-						panic("idleTimer.timeoutCallback was never set! call t.setTimeoutCallback() or t.addTimeroutCallback()!!!")
+						panic("idleTimer.timeoutCallback was never set! call t.addTimeoutCallback() first")
 					}
 					// our caller may be holding locks...
 					// and timeoutCallback will want locks...
