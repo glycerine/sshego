@@ -22,7 +22,7 @@ import (
 type idleTimer struct {
 	mut     sync.Mutex
 	idleDur time.Duration
-	last    uint64
+	last    int64
 
 	halt            *Halter
 	timeoutCallback func()
@@ -46,10 +46,10 @@ type idleTimer struct {
 	// atomicdur is updated atomically, and should
 	// be read atomically. For use by Reset() and
 	// internal reporting only.
-	atomicdur  uint64
-	overcount  uint64
-	undercount uint64
-	beginmono  uint64
+	atomicdur  int64
+	overcount  int64
+	undercount int64
+	beginmono  int64
 }
 
 type callbacks struct {
@@ -99,44 +99,44 @@ func (t *idleTimer) Reset() {
 	mnow := monoNow()
 
 	// diagnose
-	atomic.CompareAndSwapUint64(&t.beginmono, 0, mnow)
-	tlast := atomic.LoadUint64(&t.last)
-	adur := atomic.LoadUint64(&t.atomicdur)
+	atomic.CompareAndSwapInt64(&t.beginmono, 0, mnow)
+	tlast := atomic.LoadInt64(&t.last)
+	adur := atomic.LoadInt64(&t.atomicdur)
 	if adur > 0 {
 		diff := mnow - tlast
 		if diff > adur {
 			pp("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
-			atomic.AddUint64(&t.overcount, 1)
+			atomic.AddInt64(&t.overcount, 1)
 		} else {
-			atomic.AddUint64(&t.undercount, 1)
+			atomic.AddInt64(&t.undercount, 1)
 		}
 	}
 	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 
 	// thi is the only essential part of this routine. The above is for diagnosis.
-	atomic.StoreUint64(&t.last, mnow)
+	atomic.StoreInt64(&t.last, mnow)
 }
 
 func (t *idleTimer) historyOfResets(dur time.Duration) string {
 	now := time.Now()
-	begin := atomic.LoadUint64(&t.beginmono)
+	begin := atomic.LoadInt64(&t.beginmono)
 	if begin == 0 {
 		return ""
 	}
 
 	mnow := monoNow()
-	last := atomic.LoadUint64(&t.last)
+	last := atomic.LoadInt64(&t.last)
 	lastgap := time.Duration(mnow - last)
-	over := atomic.LoadUint64(&t.overcount)
-	under := atomic.LoadUint64(&t.undercount)
+	over := atomic.LoadInt64(&t.overcount)
+	under := atomic.LoadInt64(&t.undercount)
 	return fmt.Sprintf("history of idle Reset: # over dur:%v, # under dur:%v. lastgap: %v.  dur=%v  now: %v. begin: %v", over, under, lastgap, dur, now, monoToTime(begin))
 }
 
 // NanosecSince returns how many nanoseconds it has
 // been since the last call to Reset().
-func (t *idleTimer) NanosecSince() uint64 {
+func (t *idleTimer) NanosecSince() int64 {
 	mnow := monoNow()
-	tlast := atomic.LoadUint64(&t.last)
+	tlast := atomic.LoadInt64(&t.last)
 	res := mnow - tlast
 	//p("idleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
 	return res
@@ -220,7 +220,7 @@ func newGetHistoryTicket() *getHistoryTicket {
 }
 
 func (t *idleTimer) backgroundStart(dur time.Duration) {
-	atomic.StoreUint64(&t.atomicdur, uint64(dur))
+	atomic.StoreInt64(&t.atomicdur, int64(dur))
 	go func() {
 		var heartbeat *time.Ticker
 		var heartch <-chan time.Time
@@ -271,7 +271,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 							heartbeat.Stop() // allow GC
 						}
 						dur = tk.newdur
-						atomic.StoreUint64(&t.atomicdur, uint64(dur))
+						atomic.StoreInt64(&t.atomicdur, int64(dur))
 
 						heartbeat = nil
 						heartch = nil
@@ -283,7 +283,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 						heartbeat.Stop() // allow GC
 					}
 					dur = tk.newdur
-					atomic.StoreUint64(&t.atomicdur, uint64(dur))
+					atomic.StoreInt64(&t.atomicdur, int64(dur))
 
 					heartbeat = time.NewTicker(dur / 8)
 					heartch = heartbeat.C
@@ -294,7 +294,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					// heartbeats not currently active
 					if tk.newdur <= 0 {
 						dur = 0
-						atomic.StoreUint64(&t.atomicdur, uint64(dur))
+						atomic.StoreInt64(&t.atomicdur, int64(dur))
 
 						// staying inactive
 						close(tk.done)
@@ -302,7 +302,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					}
 					// heartbeats activating
 					dur = tk.newdur
-					atomic.StoreUint64(&t.atomicdur, uint64(dur))
+					atomic.StoreInt64(&t.atomicdur, int64(dur))
 
 					heartbeat = time.NewTicker(dur / 8)
 					heartch = heartbeat.C
@@ -320,7 +320,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					panic("should be impossible to get heartbeat.C on dur == 0")
 				}
 				since := t.NanosecSince()
-				udur := uint64(dur)
+				udur := int64(dur)
 				if since > udur {
 					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 

@@ -11,7 +11,7 @@ func TestMono(t *testing.T) {
 	mnow := getMono(now)
 
 	mono := nanotime()
-	tmono := monoToTime(uint64(mono))
+	tmono := monoToTime(mono)
 
 	// they won't be the same by 10 nsec or so, but hopefully
 	// their offsets are similar (assuming no intermediate clock adjustments

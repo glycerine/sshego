@@ -11,8 +11,8 @@ func nanotime() int64
 
 // monoNow provides a read from a monotonic clock that has
 // an arbitrary but consistent start point.
-func monoNow() uint64 {
-	return uint64(nanotime())
+func monoNow() int64 {
+	return nanotime()
 }
 
 // subject to error due to clock adjustment
@@ -49,7 +49,7 @@ func getMono(tm time.Time) uint64 {
 // sequential calls to nanotime() and time.Now()
 // return the same.
 //
-func monoToTime(x uint64) time.Time {
+func monoToTime(x int64) time.Time {
 	now := time.Now()
 	mnow := nanotime()
 	return now.Add(time.Duration(mnow - int64(x)))
