@@ -49,7 +49,7 @@ type idleTimer struct {
 	atomicdur  int64
 	overcount  int64
 	undercount int64
-	beginmono  int64
+	beginnano  int64 // not monotonic time source.
 }
 
 type callbacks struct {
@@ -97,15 +97,15 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 //
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
-
+	now := time.Now()
 	// diagnose
-	atomic.CompareAndSwapInt64(&t.beginmono, 0, mnow)
+	atomic.CompareAndSwapInt64(&t.beginnano, 0, now.UnixNano())
 	tlast := atomic.LoadInt64(&t.last)
 	adur := atomic.LoadInt64(&t.atomicdur)
 	if adur > 0 {
 		diff := mnow - tlast
 		if diff > adur {
-			pp("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
+			//p("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
 			atomic.AddInt64(&t.overcount, 1)
 		} else {
 			atomic.AddInt64(&t.undercount, 1)
@@ -113,23 +113,24 @@ func (t *idleTimer) Reset() {
 	}
 	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 
-	// thi is the only essential part of this routine. The above is for diagnosis.
+	// this is the only essential part of this routine. The above is for diagnosis.
 	atomic.StoreInt64(&t.last, mnow)
 }
 
 func (t *idleTimer) historyOfResets(dur time.Duration) string {
 	now := time.Now()
-	begin := atomic.LoadInt64(&t.beginmono)
+	begin := atomic.LoadInt64(&t.beginnano)
 	if begin == 0 {
 		return ""
 	}
+	beginTm := time.Unix(0, begin)
 
 	mnow := monoNow()
 	last := atomic.LoadInt64(&t.last)
 	lastgap := time.Duration(mnow - last)
 	over := atomic.LoadInt64(&t.overcount)
 	under := atomic.LoadInt64(&t.undercount)
-	return fmt.Sprintf("history of idle Reset: # over dur:%v, # under dur:%v. lastgap: %v.  dur=%v  now: %v. begin: %v", over, under, lastgap, dur, now, monoToTime(begin))
+	return fmt.Sprintf("history of idle Reset: # over dur:%v, # under dur:%v. lastgap: %v.  dur=%v  now: %v. begin: %v", over, under, lastgap, dur, now, beginTm)
 }
 
 // NanosecSince returns how many nanoseconds it has
