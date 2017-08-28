@@ -38,6 +38,11 @@ type idleTimer struct {
 
 	setCallback   chan *callbacks
 	timeOutRaised string
+
+	// history of Reset() calls.
+	histmut      sync.Mutex // protects history
+	history      []time.Time
+	getHistoryCh chan *getHistoryTicket
 }
 
 type callbacks struct {
@@ -63,6 +68,7 @@ func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
 		setCallback:      make(chan *callbacks),
+		getHistoryCh:     make(chan *getHistoryTicket),
 		TimedOut:         make(chan string),
 		halt:             NewHalter(),
 		timeoutCallback:  callback,
@@ -84,9 +90,40 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 //
 func (t *idleTimer) Reset() {
 	mnow := monoNow()
-	tlast := atomic.LoadUint64(&t.last)
-	q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
+	//tlast := atomic.LoadUint64(&t.last)
+	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
+
+	// DEBUG:
+	t.histmut.Lock()
+	t.history = append(t.history, time.Now())
+	t.histmut.Unlock()
+}
+
+func (t *idleTimer) historyOfResets(dur time.Duration) string {
+	now := time.Now()
+	t.histmut.Lock()
+	defer t.histmut.Unlock()
+
+	if len(t.history) == 0 {
+		return ""
+	}
+	s := fmt.Sprintf("%v, ", t.history[0])
+	n := len(t.history)
+	var over, under int64
+	for i := 1; i < n; i++ {
+		diff := t.history[i].Sub(t.history[i-1])
+		// filter for big gaps > dur only!
+		if diff > dur {
+			s += fmt.Sprintf("%v ***, ", diff)
+			over++
+		} else {
+			under++
+		}
+	}
+	lastgap := now.Sub(t.history[n-1])
+	return s + fmt.Sprintf(" summary: over dur:%v, under dur:%v. lastgap: %v, until now: %v",
+		over, under, lastgap, now)
 }
 
 // NanosecSince returns how many nanoseconds it has
@@ -120,6 +157,19 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 
 }
 
+func (t *idleTimer) GetResetHistory() string {
+	tk := newGetHistoryTicket()
+	select {
+	case t.getHistoryCh <- tk:
+	case <-t.halt.ReqStop.Chan:
+	}
+	select {
+	case <-tk.done:
+	case <-t.halt.ReqStop.Chan:
+	}
+	return tk.hist
+}
+
 // GetIdleTimeout returns the current idle timeout duration in use.
 // It will return 0 if timeouts are disabled.
 func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
@@ -149,6 +199,17 @@ func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
 	return &setTimeoutTicket{
 		newdur: dur,
 		done:   make(chan struct{}),
+	}
+}
+
+type getHistoryTicket struct {
+	hist string
+	done chan struct{}
+}
+
+func newGetHistoryTicket() *getHistoryTicket {
+	return &getHistoryTicket{
+		done: make(chan struct{}),
 	}
 }
 
@@ -228,6 +289,10 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					continue
 				}
 
+			case tk := <-t.getHistoryCh:
+				tk.hist = t.historyOfResets(dur)
+				close(tk.done)
+
 			case <-heartch:
 				if dur == 0 {
 					panic("should be impossible to get heartbeat.C on dur == 0")
@@ -239,8 +304,8 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
-						"since=%v  dur=%v, exceed=%v.",
-						dur, time.Now(), t, since, udur, since-udur)
+						"since=%v  dur=%v, exceed=%v. historyOfResets='%s'",
+						dur, time.Now(), t, since, udur, since-udur, t.historyOfResets(dur))
 
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take

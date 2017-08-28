@@ -47,6 +47,7 @@ collectionLoop:
 	for {
 		select {
 		case <-time.After(3 * overall):
+			pp("reset history: %v", r.GetResetHistory())
 			panic(fmt.Sprintf("TestTimeout008ReadIdlesOutWhenWriteStops deadlocked: went past 3x overall"))
 
 		case rerr = <-readErr:

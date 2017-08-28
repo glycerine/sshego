@@ -809,3 +809,7 @@ func (c *channel) SetIdleTimeout(dur time.Duration) error {
 	c.idleTimer.SetIdleTimeout(dur)
 	return nil
 }
+
+func (c *channel) GetResetHistory() string {
+	return c.idleTimer.GetResetHistory()
+}
