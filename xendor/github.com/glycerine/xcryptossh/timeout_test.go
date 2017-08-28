@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	// see all goroutines on panic for proper debugging.
+	// see all goroutines on panic for proper debugging of tests.
 	debug.SetTraceback("all")
 }
 

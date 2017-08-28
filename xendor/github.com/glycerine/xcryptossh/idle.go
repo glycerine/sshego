@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-// with	import "runtime/debug"
-//func init() {
-//  // see all goroutines on panic for proper debugging.
-//	debug.SetTraceback("all")
-//}
-
 // idleTimer allows a client of the ssh
 // library to notice if there has been a
 // stall in i/o activity. This enables
@@ -44,10 +38,6 @@ type idleTimer struct {
 
 	setCallback   chan *callbacks
 	timeOutRaised string
-
-	// optional, debug history of Reset() calls.
-	histmut sync.Mutex // protects history
-	history []time.Time
 }
 
 type callbacks struct {
@@ -97,26 +87,6 @@ func (t *idleTimer) Reset() {
 	tlast := atomic.LoadUint64(&t.last)
 	q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 	atomic.StoreUint64(&t.last, mnow)
-
-	// DEBUG:
-	t.histmut.Lock()
-	t.history = append(t.history, time.Now())
-	t.histmut.Unlock()
-}
-
-func (t *idleTimer) historyOfResets() string {
-	t.histmut.Lock()
-	defer t.histmut.Unlock()
-
-	if len(t.history) == 0 {
-		return ""
-	}
-	s := fmt.Sprintf("%v, ", t.history[0])
-	n := len(t.history)
-	for i := 1; i < n; i++ {
-		s += fmt.Sprintf("%v, ", t.history[i].Sub(t.history[i-1]))
-	}
-	return s
 }
 
 // NanosecSince returns how many nanoseconds it has
@@ -265,13 +235,12 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				since := t.NanosecSince()
 				udur := uint64(dur)
 				if since > udur {
-
 					//p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v  \n\n", time.Now(), t, since, udur, since-udur)
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
-						"since=%v  dur=%v, exceed=%v. historyOfResets='%s'",
-						dur, time.Now(), t, since, udur, since-udur, t.historyOfResets())
+						"since=%v  dur=%v, exceed=%v.",
+						dur, time.Now(), t, since, udur, since-udur)
 
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take
