@@ -8,7 +8,16 @@ import (
 	"time"
 )
 
-// utilities and error types
+// utilities, error types, and debugging machinery.
+
+// xtestLeakCheckOn controls leak checking.
+//
+// change this to true to check for goroutine leaks
+// in the tests. Turn to off (false) when not in
+// use because it slows down each test by
+// 1 second to let the final goroutine
+// count stabilize after the test.
+const xtestLeakCheckOn = false
 
 // errWhere satisfies net.Error
 type errWhere struct {
@@ -29,15 +38,6 @@ type xtraTestState struct {
 	numStartingGoroutines int
 }
 
-// change this to true to check for goroutine leaks
-// in the tests. Turn to off (false) when not in
-// use because it slows down each test by
-// 1 second to let the final goroutine
-// count stabilize after the test.
-const xtestLeakCheckOn = true
-
-var curtest string
-
 // Testbegin example:
 //
 // At the top of each test put this line:
@@ -47,7 +47,6 @@ var curtest string
 func xtestbegin() *xtraTestState {
 	if xtestLeakCheckOn {
 		ct := testname()
-		curtest = ct
 		return &xtraTestState{
 			name: ct,
 			numStartingGoroutines: runtime.NumGoroutine(),

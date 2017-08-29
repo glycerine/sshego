@@ -56,7 +56,6 @@ func (b *buffer) write(buf []byte) {
 // the data has been consumed will receive os.EOF.
 func (b *buffer) eof() error {
 	b.Cond.L.Lock()
-	//pp("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, stacktrace())
 	b.closed = true
 	b.Cond.Broadcast()
 	b.Cond.L.Unlock()
@@ -68,7 +67,6 @@ func (b *buffer) eof() error {
 // b.idle.TimeOut() must return true when queried for
 // this to be succesful.
 func (b *buffer) timeout() error {
-	p("buffer.timeout() called. b = %p", b)
 	b.Cond.Broadcast()
 	return nil
 }
@@ -83,8 +81,6 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 			b.idle.Reset()
 		}
 	}()
-
-	//p("buffer.Read() on buf size %v", len(buf))
 
 	for len(buf) > 0 {
 		// if there is data in b.head, copy it

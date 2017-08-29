@@ -57,8 +57,6 @@ type callbacks struct {
 	onTimeout func()
 }
 
-var seen int
-
 // newIdleTimer creates a new idleTimer which will call
 // the `callback` function provided after `dur` inactivity.
 // If callback is nil, you must use setTimeoutCallback()
@@ -67,11 +65,6 @@ var seen int
 // timeout, in which case the timer will be inactive until
 // SetIdleTimeout is called.
 func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
-	p("newIdleTimer called")
-	seen++
-	if seen == 3 {
-		//panic("where?")
-	}
 	t := &idleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
@@ -118,6 +111,7 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 func (t *idleTimer) Reset() (err error) {
 	mnow := monoNow()
 	now := time.Now()
+
 	// diagnose
 	atomic.CompareAndSwapInt64(&t.beginnano, 0, now.UnixNano())
 	tlast := atomic.LoadInt64(&t.last)
@@ -125,16 +119,13 @@ func (t *idleTimer) Reset() (err error) {
 	if adur > 0 {
 		diff := mnow - tlast
 		if diff > adur {
-			p("idleTimer.Reset() warning! diff = %v is over adur %v", time.Duration(diff), time.Duration(adur))
 			atomic.AddInt64(&t.overcount, 1)
 			err = newErrTimeout(fmt.Sprintf("Reset() diff %v > %v adur", diff, adur), t)
 		} else {
 			atomic.AddInt64(&t.undercount, 1)
 		}
 	}
-	//q("idleTimer.Reset() called on idleTimer=%p, at %v. storing mnow=%v  into t.last. elap=%v since last update", t, time.Now(), mnow, time.Duration(mnow-tlast))
 
-	// this is the only essential part of this routine. The above is for diagnosis.
 	atomic.StoreInt64(&t.last, mnow)
 	return
 }
@@ -210,7 +201,6 @@ func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
 }
 
 func (t *idleTimer) Stop() {
-	p("idleTimer.Stop() called.")
 	t.halt.ReqStop.Close()
 	select {
 	case <-t.halt.Done.Chan:
@@ -350,7 +340,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				since := t.NanosecSince()
 				udur := int64(dur)
 				if since > udur {
-					p("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. waking %v callbacks", time.Now(), t, since, udur, since-udur, len(t.timeoutCallback))
+					q("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. waking %v callbacks", time.Now(), t, since, udur, since-udur, len(t.timeoutCallback))
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
