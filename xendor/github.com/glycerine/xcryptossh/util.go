@@ -29,6 +29,13 @@ type xtraTestState struct {
 	numStartingGoroutines int
 }
 
+// change this to true to check for goroutine leaks
+// in the tests. Turn to off (false) when not in
+// use because it slows down each test by
+// 1 second to let the final goroutine
+// count stabilize after the test.
+const xtestLeakCheckOn = true
+
 var curtest string
 
 // Testbegin example:
@@ -38,20 +45,25 @@ var curtest string
 //    defer xtestend(xtestbegin())
 //
 func xtestbegin() *xtraTestState {
-	ct := testname()
-	curtest = ct
-	return &xtraTestState{
-		name: ct,
-		numStartingGoroutines: runtime.NumGoroutine(),
+	if xtestLeakCheckOn {
+		ct := testname()
+		curtest = ct
+		return &xtraTestState{
+			name: ct,
+			numStartingGoroutines: runtime.NumGoroutine(),
+		}
 	}
+	return nil
 }
 
 func xtestend(x *xtraTestState) {
-	time.Sleep(time.Second)
-	endCount := runtime.NumGoroutine()
-	if endCount != x.numStartingGoroutines {
-		panic(fmt.Sprintf("test leaks goroutines: '%s': ended with %v >= started with %v",
-			x.name, endCount, x.numStartingGoroutines))
+	if xtestLeakCheckOn {
+		time.Sleep(time.Second)
+		endCount := runtime.NumGoroutine()
+		if endCount != x.numStartingGoroutines {
+			panic(fmt.Sprintf("test leaks goroutines: '%s': ended with %v >= started with %v",
+				x.name, endCount, x.numStartingGoroutines))
+		}
 	}
 }
 

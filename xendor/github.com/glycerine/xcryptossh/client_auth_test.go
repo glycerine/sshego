@@ -31,6 +31,10 @@ var clientPassword = "tiger"
 // tryAuth runs a handshake with a given config against an SSH server
 // with config serverConfig
 func tryAuth(t *testing.T, config *ClientConfig) error {
+
+	// refresh Halt for each new attempt
+	config.Config.Halt = NewHalter()
+
 	c1, c2, err := netPipe()
 	if err != nil {
 		t.Fatalf("netPipe: %v", err)
@@ -348,11 +352,7 @@ func TestClientLoginCert(t *testing.T) {
 	clientConfig := &ClientConfig{
 		User:            "user",
 		HostKeyCallback: InsecureIgnoreHostKey(),
-		Config: Config{
-			Halt: NewHalter(),
-		},
 	}
-	defer clientConfig.Halt.ReqStop.Close()
 
 	clientConfig.Auth = append(clientConfig.Auth, PublicKeys(certSigner))
 
