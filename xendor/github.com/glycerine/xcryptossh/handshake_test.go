@@ -290,11 +290,16 @@ func TestForceFirstKex(t *testing.T) {
 func TestHandshakeAutoRekeyWrite(t *testing.T) {
 	defer xtestend(xtestbegin())
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
 	checker := &syncChecker{
 		called:   make(chan int, 10),
 		waitCall: nil,
 	}
-	clientConf := &ClientConfig{HostKeyCallback: checker.Check}
+	clientConf := &ClientConfig{
+		HostKeyCallback: checker.Check,
+		Config:          Config{Halt: halt},
+	}
 	clientConf.RekeyThreshold = 500
 	trC, trS, err := handshakePair(clientConf, "addr", false)
 	if err != nil {
@@ -358,12 +363,16 @@ func (c *syncChecker) Check(dialAddr string, addr net.Addr, key PublicKey) error
 func TestHandshakeAutoRekeyRead(t *testing.T) {
 	defer xtestend(xtestbegin())
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
 	sync := &syncChecker{
 		called:   make(chan int, 2),
 		waitCall: nil,
 	}
 	clientConf := &ClientConfig{
 		HostKeyCallback: sync.Check,
+		Config:          Config{Halt: halt},
 	}
 	clientConf.RekeyThreshold = 500
 

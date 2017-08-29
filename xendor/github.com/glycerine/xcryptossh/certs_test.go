@@ -224,7 +224,7 @@ func TestHostKeyCert(t *testing.T) {
 			User:            "user",
 			HostKeyCallback: checker.CheckHostKey,
 			Config: Config{
-				Halt: NewHalter(),
+				Halt: halt,
 			},
 		}
 		_, _, _, err = NewClientConn(ctx, c2, test.addr, config)

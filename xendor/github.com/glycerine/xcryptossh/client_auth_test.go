@@ -125,11 +125,7 @@ func TestAuthMethodPassword(t *testing.T) {
 			Password(clientPassword),
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
-		Config: Config{
-			Halt: NewHalter(),
-		},
 	}
-	defer config.Halt.ReqStop.Close()
 
 	if err := tryAuth(t, config); err != nil {
 		t.Fatalf("unable to dial remote side: %s", err)
