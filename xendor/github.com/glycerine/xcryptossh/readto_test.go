@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -33,8 +34,9 @@ func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 	var seq *seqWords
 	var ring *infiniteRing
 	var whenLastReadTimedout time.Time
+	var lastread int64
 
-	go to008ReaderToRing(idleout, r, overall, tstop, readErr, &ring, &whenLastReadTimedout)
+	go to008ReaderToRing(idleout, r, overall, tstop, readErr, &ring, &whenLastReadTimedout, &lastread)
 
 	go to008SeqWordsToWriter(w, tstop, writeErr, &seq)
 
@@ -46,7 +48,17 @@ func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 collectionLoop:
 	for {
 		select {
-		case <-time.After(3 * overall):
+		case <-time.After(overall + 3*idleout):
+			// on slow, bogged down systems, we may still be reading
+			// just fine, and still timeout, due to the reads arriving
+			// fine, but just taking a while. So check that and continue
+			// if our most recent read was quite recent.
+			mnow := monoNow()
+			myLastread := atomic.LoadInt64(&lastread)
+			if mnow-myLastread < int64(idleout) {
+				continue
+			}
+
 			pp("reset history: %v", r.GetResetHistory())
 			panic(fmt.Sprintf("TestTimeout008ReadIdlesOutWhenWriteStops deadlocked: went past 3x overall"))
 
@@ -91,12 +103,6 @@ collectionLoop:
 		pp("reset history: %v", r.GetResetHistory())
 		panic("premature timeout, very bad")
 	}
-	// allow a generous amount of slop because under test suite
-	// our timing varies a whole lot.
-	if whenLastReadTimedout.After(tstop.Add(6 * idleout)) {
-		pp("reset history: %v", r.GetResetHistory())
-		panic("too slow a time out, very bad")
-	}
 
 	w.Close()
 	r.Close()
@@ -105,7 +111,7 @@ collectionLoop:
 }
 
 // setup reader r -> infiniteRing ring.
-func to008ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, tstop time.Time, readErr chan error, pRing **infiniteRing, whenerr *time.Time) (err error) {
+func to008ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, tstop time.Time, readErr chan error, pRing **infiniteRing, whenerr *time.Time, lastread *int64) (err error) {
 	defer func() {
 		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
@@ -124,6 +130,7 @@ func to008ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, 
 		p("readto_test: readerToRing back from read. err='%v'. nr=%v", er, nr)
 		*whenerr = time.Now()
 		if nr > 0 {
+			atomic.StoreInt64(lastread, monoNow())
 			nw, ew := dst.Write(buf[0:nr])
 			if ew != nil {
 				err = ew
