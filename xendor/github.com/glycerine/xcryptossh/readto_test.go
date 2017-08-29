@@ -16,7 +16,10 @@ import (
 func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 	defer xtestend(xtestbegin())
 
-	r, w, mux := channelPair(t)
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	r, w, mux := channelPair(t, halt)
 
 	idleout := 2 * time.Second // tried 1 sec, but bogged down machine still gave false pos.
 	overall := 4 * idleout

@@ -627,6 +627,8 @@ func (ch *channel) Reject(reason RejectionReason, message string) error {
 		Language: "en",
 	}
 	ch.decided = true
+	ch.idleTimer.halt.ReqStop.Close()
+
 	return ch.sendMessage(reject)
 }
 

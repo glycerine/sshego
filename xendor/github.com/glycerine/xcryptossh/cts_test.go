@@ -132,7 +132,10 @@ func setClose(r, w Channel, closeReader bool) {
 }
 
 func testCts(timeOutOnReader bool, t *testing.T) {
-	r, w, mux := channelPair(t)
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	r, w, mux := channelPair(t, halt)
 
 	p("r.idleTimer = %p", r.idleTimer)
 	p("w.idleTimer = %p", w.idleTimer)
@@ -145,6 +148,8 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 
 	haltr := NewHalter()
 	haltw := NewHalter()
+	defer haltr.ReqStop.Close()
+	defer haltw.ReqStop.Close()
 
 	setTo(r, w, timeOutOnReader, idleout)
 	readErr := make(chan error)
