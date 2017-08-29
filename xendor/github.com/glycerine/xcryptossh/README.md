@@ -73,8 +73,6 @@ See the tests in `timeout_test.go` for example use.
 
 ## install
 
-Probably requires go1.9 or later. Not difficult to backport, but not on my priority list.
-
 ~~~
 $ go get -t -u -v github.com/glycerine/xcryptossh/...
 ~~~
@@ -94,25 +92,10 @@ All functionality is working, but I still consider it experimental until
 I've gotten more feedback and experience with it. Please try it out and
 give feedback.
 
-As of 2017 Aug 26:
+As of 2017 Aug 29:
 
-All tests pass under -race. Some tests leak goroutines. There are
-two types of leaked goroutine, the kexLoop and the idleTimer.
-The large number of existing tests means that I haven't had
-time to comb through all of them and make them behave properly.
-Since these leaks are when running tests only, its not
-a big issue.
+Excellent. Tested on OSX and Linux.
 
-~~~
-goroutine 786 [runnable]:
-github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh.(*handshakeTransport).kexLoop.func1(0xc4203aa160, 0x918ba0, 0xc420016120)
-	/home/jaten/inside/go/src/github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/handshake.go:391 +0x19a
-created by github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh.(*handshakeTransport).kexLoop
-	/home/jaten/inside/go/src/github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/handshake.go:386 +0x982
+All tests pass under -race. The tests no longer leak goroutines.
 
-goroutine 787 [select, 8 minutes]:
-github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh.(*idleTimer).backgroundStart.func1(0xc42098a000, 0xc4206c44b0)
-	/home/jaten/inside/go/src/github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/idle.go:156 +0x250
-created by github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh.(*idleTimer).backgroundStart
-	/home/jaten/inside/go/src/github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/idle.go:142 +0x61
-~~~
+
