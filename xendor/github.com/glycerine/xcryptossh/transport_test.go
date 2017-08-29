@@ -14,6 +14,7 @@ import (
 )
 
 func TestReadVersion(t *testing.T) {
+	defer Xtestend(Xtestbegin())
 	longversion := strings.Repeat("SSH-2.0-bla", 50)[:253]
 	cases := map[string]string{
 		"SSH-2.0-bla\r\n":    "SSH-2.0-bla",
@@ -34,6 +35,8 @@ func TestReadVersion(t *testing.T) {
 }
 
 func TestReadVersionError(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	longversion := strings.Repeat("SSH-2.0-bla", 50)[:253]
 	cases := []string{
 		longversion + "too-long\r\n",
@@ -46,6 +49,8 @@ func TestReadVersionError(t *testing.T) {
 }
 
 func TestExchangeVersionsBasic(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	v := "SSH-2.0-bla"
 	buf := bytes.NewBufferString(v + "\r\n")
 	them, err := exchangeVersions(buf, []byte("xyz"))
@@ -59,6 +64,8 @@ func TestExchangeVersionsBasic(t *testing.T) {
 }
 
 func TestExchangeVersions(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	cases := []string{
 		"not\x000allowed",
 		"not allowed\n",
@@ -80,6 +87,8 @@ func (b *closerBuffer) Close() error {
 }
 
 func TestTransportMaxPacketWrite(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	buf := &closerBuffer{}
 	tr := newTransport(buf, rand.Reader, true, nil)
 	huge := make([]byte, maxPacket+1)
@@ -90,6 +99,8 @@ func TestTransportMaxPacketWrite(t *testing.T) {
 }
 
 func TestTransportMaxPacketReader(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	var header [5]byte
 	huge := make([]byte, maxPacket+128)
 	binary.BigEndian.PutUint32(header[0:], uint32(len(huge)))
