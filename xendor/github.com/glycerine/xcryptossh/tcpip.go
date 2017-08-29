@@ -23,15 +23,20 @@ import (
 // SSH connection may hang.
 // N must be "tcp", "tcp4", "tcp6", or "unix".
 func (c *Client) Listen(n, addr string) (net.Listener, error) {
+	ctx := c.TmpCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	switch n {
 	case "tcp", "tcp4", "tcp6":
 		laddr, err := net.ResolveTCPAddr(n, addr)
 		if err != nil {
 			return nil, err
 		}
-		return c.ListenTCP(c.TmpCtx, laddr)
+		return c.ListenTCP(ctx, laddr)
 	case "unix":
-		return c.ListenUnix(c.TmpCtx, addr)
+		return c.ListenUnix(ctx, addr)
 	default:
 		return nil, fmt.Errorf("ssh: unsupported protocol: %s", n)
 	}
@@ -359,6 +364,10 @@ func (l *tcpListener) Addr() net.Addr {
 // Dial initiates a connection to the addr from the remote host.
 // The resulting connection has a zero LocalAddr() and RemoteAddr().
 func (c *Client) Dial(n, addr string) (net.Conn, error) {
+	ctx := c.TmpCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var ch Channel
 	switch n {
 	case "tcp", "tcp4", "tcp6":
@@ -371,7 +380,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		ch, err = c.dial(c.TmpCtx, net.IPv4zero.String(), 0, host, int(port))
+		ch, err = c.dial(ctx, net.IPv4zero.String(), 0, host, int(port))
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +396,7 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 		}, nil
 	case "unix":
 		var err error
-		ch, err = c.dialStreamLocal(c.TmpCtx, addr)
+		ch, err = c.dialStreamLocal(ctx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -411,13 +420,18 @@ func (c *Client) Dial(n, addr string) (net.Conn, error) {
 // which must be "tcp", "tcp4", or "tcp6".  If laddr is not nil, it is used
 // as the local address for the connection.
 func (c *Client) DialTCP(n string, laddr, raddr *net.TCPAddr) (net.Conn, error) {
+	ctx := c.TmpCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	if laddr == nil {
 		laddr = &net.TCPAddr{
 			IP:   net.IPv4zero,
 			Port: 0,
 		}
 	}
-	ch, err := c.dial(c.TmpCtx, laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
+	ch, err := c.dial(ctx, laddr.IP.String(), laddr.Port, raddr.IP.String(), raddr.Port)
 	if err != nil {
 		return nil, err
 	}

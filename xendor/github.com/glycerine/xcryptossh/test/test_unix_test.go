@@ -34,19 +34,19 @@ HostKey {{.Dir}}/id_ecdsa
 HostCertificate {{.Dir}}/id_rsa-cert.pub
 Pidfile {{.Dir}}/sshd.pid
 #UsePrivilegeSeparation no
-KeyRegenerationInterval 3600
-ServerKeyBits 768
+#deprecated: KeyRegenerationInterval 3600
+#deprecated: ServerKeyBits 768
 SyslogFacility AUTH
 LogLevel DEBUG2
 LoginGraceTime 120
 PermitRootLogin no
 StrictModes no
-RSAAuthentication yes
+#deprecated: RSAAuthentication yes
 PubkeyAuthentication yes
 AuthorizedKeysFile	{{.Dir}}/authorized_keys
 TrustedUserCAKeys {{.Dir}}/id_ecdsa.pub
 IgnoreRhosts yes
-RhostsRSAAuthentication no
+#deprecated: RhostsRSAAuthentication no
 HostbasedAuthentication no
 PubkeyAcceptedKeyTypes=*
 `
