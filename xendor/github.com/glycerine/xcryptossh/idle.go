@@ -214,6 +214,12 @@ func (t *idleTimer) SetWriteOneshotIdleTimeout(dur time.Duration) {
 	t.SetIdleTimeout(dur)
 }
 
+func (t *idleTimer) SetBothOneshotIdleTimeout(dur time.Duration) {
+	atomic.StoreInt32(&t.isOneshotRead, 1)
+	atomic.StoreInt32(&t.isOneshotWrite, 1)
+	t.SetIdleTimeout(dur)
+}
+
 func (t *idleTimer) GetResetHistory() string {
 	tk := newGetHistoryTicket()
 	select {
