@@ -110,7 +110,7 @@ func handshakePair(clientConf *ClientConfig, addr string, noise bool) (client *h
 
 	client = newClientTransport(ctx, trC, v, v, clientConf, addr, a.RemoteAddr())
 
-	serverConf := &ServerConfig{}
+	serverConf := &ServerConfig{Config: Config{Halt: clientConf.Halt}}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
@@ -140,8 +140,16 @@ func TestHandshakeBasic(t *testing.T) {
 		called:   make(chan int, 10),
 	}
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
 	checker.waitCall <- 1
-	trC, trS, err := handshakePair(&ClientConfig{HostKeyCallback: checker.Check}, "addr", false)
+	trC, trS, err := handshakePair(
+		&ClientConfig{
+			HostKeyCallback: checker.Check,
+			Config: Config{
+				Halt: halt},
+		}, "addr", false)
+
 	if err != nil {
 		t.Fatalf("handshakePair: %v", err)
 	}
