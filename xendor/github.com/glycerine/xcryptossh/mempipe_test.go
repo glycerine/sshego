@@ -23,7 +23,6 @@ type memTransport struct {
 }
 
 func (t *memTransport) timeout() {
-	p("memTransport timeout() called, for t=%p", t)
 	t.Signal()
 }
 

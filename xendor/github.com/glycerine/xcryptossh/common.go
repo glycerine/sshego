@@ -347,7 +347,6 @@ func (w *window) close() {
 }
 
 func (w *window) timeout() {
-	p("timeout() called for window %p", w)
 	w.Broadcast()
 }
 

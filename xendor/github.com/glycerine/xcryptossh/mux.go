@@ -212,7 +212,6 @@ func (m *mux) loop(ctx context.Context) {
 			}
 		}
 	}
-	p("mux loop shutting down on err= '%v'", err) // t.eof
 	for _, ch := range m.chanList.dropAll() {
 		ch.close()
 	}

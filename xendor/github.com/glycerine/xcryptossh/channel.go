@@ -293,9 +293,7 @@ func (c *channel) sendMessage(msg interface{}) error {
 // WriteExtended writes data to a specific extended stream. These streams are
 // used, for example, for stderr.
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
-	//p("%p channel.WriteExtended called. c.idleTimer=%p", c, c.idleTimer)
 	defer func() {
-		//p("%p channel.WriteExtended is returning was err='%v'. c.idleTimer=%p", c, err, c.idleTimer)
 		if err == nil {
 			c.idleTimer.Reset()
 		}
@@ -458,7 +456,6 @@ func (c *channel) close() {
 }
 
 func (c *channel) timeout() {
-	p("channel timeout() invoked, for channel %p", c)
 	c.pending.timeout()
 	c.extPending.timeout()
 	// Unblock writers.
@@ -666,7 +663,6 @@ func (ch *channel) Close() error {
 		return errUndecided
 	}
 
-	p("channel %p Closing, halting idleTimer", ch)
 	ch.idleTimer.halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{

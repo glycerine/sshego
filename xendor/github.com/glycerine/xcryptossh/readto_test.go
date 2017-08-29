@@ -17,8 +17,8 @@ func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 
 	r, w, mux := channelPair(t)
 
-	idleout := 1000 * time.Millisecond
-	overall := 3 * idleout
+	idleout := 2 * time.Second // tried 1 sec, but bogged down machine still gave false pos.
+	overall := 4 * idleout
 
 	t0 := time.Now()
 	tstop := t0.Add(overall)
