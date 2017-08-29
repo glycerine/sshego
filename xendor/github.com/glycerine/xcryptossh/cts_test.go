@@ -92,8 +92,8 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 	return numword * 8, nil
 }
 
-// Given a 100 msec idle *read* or *write* timeout, if we continuously transfer
-// for 3 seconds (or 30x our idle timeout), we should not see any timeout since
+// Given a 2 sec idle *read* or *write* timeout, if we continuously transfer
+// for 20 seconds (or 10x our idle timeout), we should not see any timeout since
 // our activity is ongoing continuously.
 func TestCtsReadWithNoIdleTimeout(t *testing.T) {
 	testCts(true, t)
@@ -130,6 +130,7 @@ func setClose(r, w Channel, closeReader bool) {
 }
 
 func testCts(timeOutOnReader bool, t *testing.T) {
+	defer Xtestend(Xtestbegin())
 	r, w, mux := channelPair(t)
 
 	p("r.idleTimer = %p", r.idleTimer)
