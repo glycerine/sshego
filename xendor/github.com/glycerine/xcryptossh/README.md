@@ -26,7 +26,7 @@ d) We found that the net.Conn approach of providing deadlines does not
    idle timeout is required.
 
 To answer these needs, a new API method on the ssh.Channel interface has been implemented,
-the `SetIdleTimeout` method. See the `channel.go` file. https://github.com/glycerine/xcryptossh/blob/master/channel.go#L87
+the `SetIdleTimeout` method. See the `channel.go` file. https://github.com/glycerine/xcryptossh/blob/master/channel.go#L91
 
 ~~~
 package ssh
