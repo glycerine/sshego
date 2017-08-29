@@ -8,14 +8,21 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"testing"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // Test both logging in with a cert, and also that the certificate presented by an OpenSSH host can be validated correctly
 func TestCertLogin(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	s := newServer(t)
 	defer s.Shutdown()
 
@@ -44,6 +51,7 @@ func TestCertLogin(t *testing.T) {
 				return bytes.Equal(pk.Marshal(), testPublicKeys["ca"].Marshal())
 			},
 		}).CheckHostKey,
+		Config: ssh.Config{Halt: halt},
 	}
 	conf.Auth = append(conf.Auth, ssh.PublicKeys(certSigner))
 
@@ -56,7 +64,7 @@ func TestCertLogin(t *testing.T) {
 		{addr: "host.example.com", succeed: false},      // port must be specified
 		{addr: "host.ex4mple.com:22", succeed: false},   // wrong host
 	} {
-		client, err := s.TryDialWithAddr(conf, test.addr)
+		client, err := s.TryDialWithAddr(ctx, conf, test.addr)
 
 		// Always close client if opened successfully
 		if err == nil {

@@ -10,6 +10,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -21,8 +22,8 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/testdata"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/testdata"
 )
 
 const sshd_config = `
@@ -113,7 +114,7 @@ func hostKeyDB() *storedHostKey {
 	return keyChecker
 }
 
-func clientConfig() *ssh.ClientConfig {
+func clientConfig(halt *ssh.Halter) *ssh.ClientConfig {
 	config := &ssh.ClientConfig{
 		User: username(),
 		Auth: []ssh.AuthMethod{
@@ -125,6 +126,7 @@ func clientConfig() *ssh.ClientConfig {
 			ssh.KeyAlgoRSA, ssh.KeyAlgoDSA,
 			ssh.KeyAlgoED25519,
 		},
+		Config: ssh.Config{Halt: halt},
 	}
 	return config
 }
@@ -159,13 +161,13 @@ func unixConnection() (*net.UnixConn, *net.UnixConn, error) {
 	return c1.(*net.UnixConn), c2.(*net.UnixConn), nil
 }
 
-func (s *server) TryDial(config *ssh.ClientConfig) (*ssh.Client, error) {
-	return s.TryDialWithAddr(config, "")
+func (s *server) TryDial(ctx context.Context, config *ssh.ClientConfig) (*ssh.Client, error) {
+	return s.TryDialWithAddr(ctx, config, "")
 }
 
 // addr is the user specified host:port. While we don't actually dial it,
 // we need to know this for host key matching
-func (s *server) TryDialWithAddr(config *ssh.ClientConfig, addr string) (*ssh.Client, error) {
+func (s *server) TryDialWithAddr(ctx context.Context, config *ssh.ClientConfig, addr string) (*ssh.Client, error) {
 	sshd, err := exec.LookPath("sshd")
 	if err != nil {
 		s.t.Skipf("skipping test: %v", err)
@@ -191,15 +193,15 @@ func (s *server) TryDialWithAddr(config *ssh.ClientConfig, addr string) (*ssh.Cl
 		s.t.Fatalf("s.cmd.Start: %v", err)
 	}
 	s.clientConn = c1
-	conn, chans, reqs, err := ssh.NewClientConn(c1, addr, config)
+	conn, chans, reqs, err := ssh.NewClientConn(ctx, c1, addr, config)
 	if err != nil {
 		return nil, err
 	}
-	return ssh.NewClient(conn, chans, reqs), nil
+	return ssh.NewClient(ctx, conn, chans, reqs, config.Halt), nil
 }
 
-func (s *server) Dial(config *ssh.ClientConfig) *ssh.Client {
-	conn, err := s.TryDial(config)
+func (s *server) Dial(ctx context.Context, config *ssh.ClientConfig) *ssh.Client {
+	conn, err := s.TryDial(ctx, config)
 	if err != nil {
 		s.t.Fail()
 		s.Shutdown()

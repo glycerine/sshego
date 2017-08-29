@@ -8,16 +8,23 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/agent"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/agent"
 )
 
 func TestAgentForward(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
 	keyring := agent.NewKeyring()
@@ -33,7 +40,7 @@ func TestAgentForward(t *testing.T) {
 	}
 	pub := testPublicKeys["dsa"]
 
-	sess, err := conn.NewSession()
+	sess, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -41,7 +48,7 @@ func TestAgentForward(t *testing.T) {
 		t.Fatalf("RequestAgentForwarding: %v", err)
 	}
 
-	if err := agent.ForwardToAgent(conn, keyring); err != nil {
+	if err := agent.ForwardToAgent(ctx, conn, keyring); err != nil {
 		t.Fatalf("SetupForwardKeyring: %v", err)
 	}
 	out, err := sess.CombinedOutput("ssh-add -L")

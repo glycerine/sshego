@@ -8,12 +8,15 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
 	"testing"
 	"time"
+
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 type closeWriter interface {
@@ -21,9 +24,14 @@ type closeWriter interface {
 }
 
 func testPortForward(t *testing.T, n, listenAddr string) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
 	sshListener, err := conn.Listen(n, listenAddr)
@@ -108,9 +116,14 @@ func TestPortForwardUnix(t *testing.T) {
 }
 
 func testAcceptClose(t *testing.T, n, listenAddr string) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 
 	sshListener, err := conn.Listen(n, listenAddr)
 	if err != nil {
@@ -150,9 +163,14 @@ func TestAcceptCloseUnix(t *testing.T) {
 
 // Check that listeners exit if the underlying client transport dies.
 func testPortForwardConnectionClose(t *testing.T, n, listenAddr string) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 
 	sshListener, err := conn.Listen(n, listenAddr)
 	if err != nil {

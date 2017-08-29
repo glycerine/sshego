@@ -10,21 +10,28 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"strings"
 	"testing"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 func TestRunCommandSuccess(t *testing.T) {
+
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -36,10 +43,15 @@ func TestRunCommandSuccess(t *testing.T) {
 }
 
 func TestHostKeyCheck(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
 
-	conf := clientConfig()
+	conf := clientConfig(halt)
 	hostDB := hostKeyDB()
 	conf.HostKeyCallback = hostDB.Check
 
@@ -48,7 +60,7 @@ func TestHostKeyCheck(t *testing.T) {
 	hostDB.keys[ssh.KeyAlgoDSA][25]++
 	hostDB.keys[ssh.KeyAlgoECDSA256][25]++
 
-	conn, err := server.TryDial(conf)
+	conn, err := server.TryDial(ctx, conf)
 	if err == nil {
 		conn.Close()
 		t.Fatalf("dial should have failed.")
@@ -58,12 +70,17 @@ func TestHostKeyCheck(t *testing.T) {
 }
 
 func TestRunCommandStdin(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -81,12 +98,17 @@ func TestRunCommandStdin(t *testing.T) {
 }
 
 func TestRunCommandStdinError(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -105,12 +127,17 @@ func TestRunCommandStdinError(t *testing.T) {
 }
 
 func TestRunCommandFailed(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -122,12 +149,17 @@ func TestRunCommandFailed(t *testing.T) {
 }
 
 func TestRunCommandWeClosed(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -142,12 +174,17 @@ func TestRunCommandWeClosed(t *testing.T) {
 }
 
 func TestFuncLargeRead(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("unable to create new session: %s", err)
 	}
@@ -174,17 +211,22 @@ func TestFuncLargeRead(t *testing.T) {
 }
 
 func TestKeyChange(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conf := clientConfig()
+	conf := clientConfig(halt)
 	hostDB := hostKeyDB()
 	conf.HostKeyCallback = hostDB.Check
 	conf.RekeyThreshold = 1024
-	conn := server.Dial(conf)
+	conn := server.Dial(ctx, conf)
 	defer conn.Close()
 
 	for i := 0; i < 4; i++ {
-		session, err := conn.NewSession()
+		session, err := conn.NewSession(ctx)
 		if err != nil {
 			t.Fatalf("unable to create new session: %s", err)
 		}
@@ -216,12 +258,17 @@ func TestKeyChange(t *testing.T) {
 }
 
 func TestInvalidTerminalMode(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -233,12 +280,17 @@ func TestInvalidTerminalMode(t *testing.T) {
 }
 
 func TestValidTerminalMode(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -277,12 +329,17 @@ func TestValidTerminalMode(t *testing.T) {
 }
 
 func TestWindowChange(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	conn := server.Dial(clientConfig())
+	conn := server.Dial(ctx, clientConfig(halt))
 	defer conn.Close()
 
-	session, err := conn.NewSession()
+	session, err := conn.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("session failed: %v", err)
 	}
@@ -325,6 +382,11 @@ func TestWindowChange(t *testing.T) {
 }
 
 func TestCiphers(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	var config ssh.Config
 	config.SetDefaults()
 	cipherOrder := config.Ciphers
@@ -335,11 +397,11 @@ func TestCiphers(t *testing.T) {
 	for _, ciph := range cipherOrder {
 		server := newServer(t)
 		defer server.Shutdown()
-		conf := clientConfig()
+		conf := clientConfig(halt)
 		conf.Ciphers = []string{ciph}
 		// Don't fail if sshd doesn't have the cipher.
 		conf.Ciphers = append(conf.Ciphers, cipherOrder...)
-		conn, err := server.TryDial(conf)
+		conn, err := server.TryDial(ctx, conf)
 		if err == nil {
 			conn.Close()
 		} else {
@@ -349,6 +411,11 @@ func TestCiphers(t *testing.T) {
 }
 
 func TestMACs(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	var config ssh.Config
 	config.SetDefaults()
 	macOrder := config.MACs
@@ -356,11 +423,11 @@ func TestMACs(t *testing.T) {
 	for _, mac := range macOrder {
 		server := newServer(t)
 		defer server.Shutdown()
-		conf := clientConfig()
+		conf := clientConfig(halt)
 		conf.MACs = []string{mac}
 		// Don't fail if sshd doesn't have the MAC.
 		conf.MACs = append(conf.MACs, macOrder...)
-		if conn, err := server.TryDial(conf); err == nil {
+		if conn, err := server.TryDial(ctx, conf); err == nil {
 			conn.Close()
 		} else {
 			t.Fatalf("failed for MAC %q", mac)
@@ -369,16 +436,21 @@ func TestMACs(t *testing.T) {
 }
 
 func TestKeyExchanges(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	var config ssh.Config
 	config.SetDefaults()
 	kexOrder := config.KeyExchanges
 	for _, kex := range kexOrder {
 		server := newServer(t)
 		defer server.Shutdown()
-		conf := clientConfig()
+		conf := clientConfig(halt)
 		// Don't fail if sshd doesn't have the kex.
 		conf.KeyExchanges = append([]string{kex}, kexOrder...)
-		conn, err := server.TryDial(conf)
+		conn, err := server.TryDial(ctx, conf)
 		if err == nil {
 			conn.Close()
 		} else {
@@ -388,6 +460,11 @@ func TestKeyExchanges(t *testing.T) {
 }
 
 func TestClientAuthAlgorithms(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	for _, key := range []string{
 		"rsa",
 		"dsa",
@@ -395,13 +472,13 @@ func TestClientAuthAlgorithms(t *testing.T) {
 		"ed25519",
 	} {
 		server := newServer(t)
-		conf := clientConfig()
+		conf := clientConfig(halt)
 		conf.SetDefaults()
 		conf.Auth = []ssh.AuthMethod{
 			ssh.PublicKeys(testSigners[key]),
 		}
 
-		conn, err := server.TryDial(conf)
+		conn, err := server.TryDial(ctx, conf)
 		if err == nil {
 			conn.Close()
 		} else {

@@ -9,12 +9,15 @@ package test
 // direct-tcpip and direct-streamlocal functional tests
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"strings"
 	"testing"
+
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 type dialTester interface {
@@ -23,9 +26,14 @@ type dialTester interface {
 }
 
 func testDial(t *testing.T, n, listenAddr string, x dialTester) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	server := newServer(t)
 	defer server.Shutdown()
-	sshConn := server.Dial(clientConfig())
+	sshConn := server.Dial(ctx, clientConfig(halt))
 	defer sshConn.Close()
 
 	l, err := net.Listen(n, listenAddr)
