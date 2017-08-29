@@ -93,7 +93,7 @@ func tryAuth(t *testing.T, config *ClientConfig) error {
 }
 
 func TestClientAuthPublicKey(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
@@ -113,7 +113,7 @@ func TestClientAuthPublicKey(t *testing.T) {
 }
 
 func TestAuthMethodPassword(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	config := &ClientConfig{
 		User: "testuser",
@@ -133,7 +133,7 @@ func TestAuthMethodPassword(t *testing.T) {
 }
 
 func TestAuthMethodFallback(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	var passwordCalled bool
 	config := &ClientConfig{
@@ -163,7 +163,7 @@ func TestAuthMethodFallback(t *testing.T) {
 }
 
 func TestAuthMethodWrongPassword(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	config := &ClientConfig{
 		User: "testuser",
@@ -184,7 +184,7 @@ func TestAuthMethodWrongPassword(t *testing.T) {
 }
 
 func TestAuthMethodKeyboardInteractive(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	answers := keyboardInteractive(map[string]string{
 		"question1": "answer1",
@@ -208,7 +208,7 @@ func TestAuthMethodKeyboardInteractive(t *testing.T) {
 }
 
 func TestAuthMethodWrongKeyboardInteractive(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	answers := keyboardInteractive(map[string]string{
 		"question1": "answer1",
 		"question2": "WRONG",
@@ -231,7 +231,7 @@ func TestAuthMethodWrongKeyboardInteractive(t *testing.T) {
 
 // the mock server will only authenticate ssh-rsa keys
 func TestAuthMethodInvalidPublicKey(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	config := &ClientConfig{
 		User: "testuser",
 		Auth: []AuthMethod{
@@ -250,7 +250,7 @@ func TestAuthMethodInvalidPublicKey(t *testing.T) {
 
 // the client should authenticate with the second key
 func TestAuthMethodRSAandDSA(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	config := &ClientConfig{
 		User: "testuser",
 		Auth: []AuthMethod{
@@ -268,7 +268,7 @@ func TestAuthMethodRSAandDSA(t *testing.T) {
 }
 
 func TestClientHMAC(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	for _, mac := range supportedMACs {
 		config := &ClientConfig{
 			User: "testuser",
@@ -291,7 +291,7 @@ func TestClientHMAC(t *testing.T) {
 
 // issue 4285.
 func TestClientUnsupportedCipher(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	config := &ClientConfig{
 		User: "testuser",
 		Auth: []AuthMethod{
@@ -310,7 +310,7 @@ func TestClientUnsupportedCipher(t *testing.T) {
 }
 
 func TestClientUnsupportedKex(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	if os.Getenv("GO_BUILDER_NAME") != "" {
 		t.Skip("skipping known-flaky test on the Go build dashboard; see golang.org/issue/15198")
 	}
@@ -333,7 +333,7 @@ func TestClientUnsupportedKex(t *testing.T) {
 }
 
 func TestClientLoginCert(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	cert := &Certificate{
 		Key:         testPublicKeys["rsa"],
 		ValidBefore: CertTimeInfinity,
@@ -475,17 +475,17 @@ func testPermissionsPassing(withPermissions bool, t *testing.T) {
 }
 
 func TestPermissionsPassing(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	testPermissionsPassing(true, t)
 }
 
 func TestNoPermissionsPassing(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	testPermissionsPassing(false, t)
 }
 
 func TestRetryableAuth(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	n := 0
 	passwords := []string{"WRONG1", "WRONG2"}
 
@@ -539,7 +539,7 @@ func ExampleRetryableAuthMethod(t *testing.T) {
 
 // Test if username is received on server side when NoClientAuth is used
 func TestClientAuthNone(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	user := "testuser"
 	serverConfig := &ServerConfig{
 		NoClientAuth: true,
@@ -579,7 +579,7 @@ func TestClientAuthNone(t *testing.T) {
 
 // Test if authentication attempts are limited on server when MaxAuthTries is set
 func TestClientAuthMaxAuthTries(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	user := "testuser"
 
 	serverConfig := &ServerConfig{
@@ -650,7 +650,7 @@ func TestClientAuthMaxAuthTries(t *testing.T) {
 // Test if authentication attempts are correctly limited on server
 // when more public keys are provided then MaxAuthTries
 func TestClientAuthMaxAuthTriesPublicKey(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	signers := []Signer{}
 	for i := 0; i < 6; i++ {
 		signers = append(signers, testSigners["dsa"])
@@ -698,7 +698,7 @@ func TestClientAuthMaxAuthTriesPublicKey(t *testing.T) {
 // Test whether authentication errors are being properly logged if all
 // authentication methods have been exhausted
 func TestClientAuthErrorList(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	publicKeyErr := errors.New("This is an error from PublicKeyCallback")
 
 	clientConfig := &ClientConfig{

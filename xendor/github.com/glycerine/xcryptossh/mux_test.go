@@ -70,6 +70,8 @@ func channelPair(t *testing.T) (*channel, *channel, *mux) {
 // Test that stderr and stdout can be addressed from different
 // goroutines. This is intended for use with the race detector.
 func TestMuxChannelExtendedThreadSafety(t *testing.T) {
+	defer xtestend(xtestbegin())
+
 	writer, reader, mux := channelPair(t)
 	defer writer.Close()
 	defer reader.Close()
@@ -110,6 +112,7 @@ func TestMuxChannelExtendedThreadSafety(t *testing.T) {
 }
 
 func TestMuxReadWrite(t *testing.T) {
+	defer xtestend(xtestbegin())
 	s, c, mux := channelPair(t)
 	defer s.Close()
 	defer c.Close()
@@ -154,6 +157,7 @@ func TestMuxReadWrite(t *testing.T) {
 }
 
 func TestMuxChannelOverflow(t *testing.T) {
+	defer xtestend(xtestbegin())
 	reader, writer, mux := channelPair(t)
 	defer reader.Close()
 	defer writer.Close()
@@ -186,6 +190,7 @@ func TestMuxChannelOverflow(t *testing.T) {
 }
 
 func TestMuxChannelCloseWriteUnblock(t *testing.T) {
+	defer xtestend(xtestbegin())
 	reader, writer, mux := channelPair(t)
 	defer reader.Close()
 	defer writer.Close()
@@ -208,6 +213,7 @@ func TestMuxChannelCloseWriteUnblock(t *testing.T) {
 }
 
 func TestMuxConnectionCloseWriteUnblock(t *testing.T) {
+	defer xtestend(xtestbegin())
 	reader, writer, mux := channelPair(t)
 	defer reader.Close()
 	defer writer.Close()
@@ -230,6 +236,7 @@ func TestMuxConnectionCloseWriteUnblock(t *testing.T) {
 }
 
 func TestMuxReject(t *testing.T) {
+	defer xtestend(xtestbegin())
 	client, server := muxPair()
 	defer server.Close()
 	defer client.Close()
@@ -265,6 +272,7 @@ func TestMuxReject(t *testing.T) {
 }
 
 func TestMuxChannelRequest(t *testing.T) {
+	defer xtestend(xtestbegin())
 	client, server, mux := channelPair(t)
 	defer server.Close()
 	defer client.Close()
@@ -312,6 +320,7 @@ func TestMuxChannelRequest(t *testing.T) {
 }
 
 func TestMuxGlobalRequest(t *testing.T) {
+	defer xtestend(xtestbegin())
 	clientMux, serverMux := muxPair()
 	defer serverMux.Close()
 	defer clientMux.Close()
@@ -357,6 +366,7 @@ func TestMuxGlobalRequest(t *testing.T) {
 }
 
 func TestMuxGlobalRequestUnblock(t *testing.T) {
+	defer xtestend(xtestbegin())
 	clientMux, serverMux := muxPair()
 	defer serverMux.Close()
 	defer clientMux.Close()
@@ -379,6 +389,7 @@ func TestMuxGlobalRequestUnblock(t *testing.T) {
 }
 
 func TestMuxChannelRequestUnblock(t *testing.T) {
+	defer xtestend(xtestbegin())
 	a, b, connB := channelPair(t)
 	defer a.Close()
 	defer b.Close()
@@ -400,6 +411,7 @@ func TestMuxChannelRequestUnblock(t *testing.T) {
 }
 
 func TestMuxCloseChannel(t *testing.T) {
+	defer xtestend(xtestbegin())
 	r, w, mux := channelPair(t)
 	defer mux.Close()
 	defer r.Close()
@@ -425,6 +437,7 @@ func TestMuxCloseChannel(t *testing.T) {
 }
 
 func TestMuxCloseWriteChannel(t *testing.T) {
+	defer xtestend(xtestbegin())
 	r, w, mux := channelPair(t)
 	defer mux.Close()
 
@@ -448,6 +461,7 @@ func TestMuxCloseWriteChannel(t *testing.T) {
 }
 
 func TestMuxInvalidRecord(t *testing.T) {
+	defer xtestend(xtestbegin())
 	a, b := muxPair()
 	defer a.Close()
 	defer b.Close()
@@ -470,6 +484,7 @@ func TestMuxInvalidRecord(t *testing.T) {
 }
 
 func TestZeroWindowAdjust(t *testing.T) {
+	defer xtestend(xtestbegin())
 	a, b, mux := channelPair(t)
 	defer a.Close()
 	defer b.Close()
@@ -491,6 +506,7 @@ func TestZeroWindowAdjust(t *testing.T) {
 }
 
 func TestMuxMaxPacketSize(t *testing.T) {
+	defer xtestend(xtestbegin())
 	a, b, mux := channelPair(t)
 	defer a.Close()
 	defer b.Close()
@@ -517,6 +533,7 @@ func TestMuxMaxPacketSize(t *testing.T) {
 
 // Don't ship code with debug=true.
 func TestDebug(t *testing.T) {
+	defer xtestend(xtestbegin())
 	if debugMux {
 		t.Error("mux debug switched on")
 	}

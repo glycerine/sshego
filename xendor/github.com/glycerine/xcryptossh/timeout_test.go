@@ -57,7 +57,7 @@ func init() {
 // See cts_test.go in addition to this file.
 
 func TestSimpleWriteTimeout(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	r, w, mux := channelPair(t)
 	defer w.Close()
 	defer r.Close()
@@ -113,7 +113,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 }
 
 func TestSimpleReadTimeout(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	r, w, mux := channelPair(t)
 	defer w.Close()
 	defer r.Close()
@@ -156,7 +156,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 }
 
 func TestSimpleReadAfterTimeout(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 	r, w, mux := channelPair(t)
 	defer w.Close()
 	defer r.Close()

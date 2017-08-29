@@ -9,6 +9,7 @@ import (
 )
 
 func TestAutoPortListenBroken(t *testing.T) {
+	defer xtestend(xtestbegin())
 	broken := "SSH-2.0-OpenSSH_5.9hh11"
 	works := "SSH-2.0-OpenSSH_6.1"
 	if !isBrokenOpenSSHVersion(broken) {

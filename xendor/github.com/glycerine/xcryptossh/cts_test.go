@@ -96,9 +96,11 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 // for 20 seconds (or 10x our idle timeout), we should not see any timeout since
 // our activity is ongoing continuously.
 func TestCtsReadWithNoIdleTimeout(t *testing.T) {
+	defer xtestend(xtestbegin())
 	testCts(true, t)
 }
 func TestCtsWriteWithNoIdleTimeout(t *testing.T) {
+	defer xtestend(xtestbegin())
 	testCts(false, t)
 }
 
@@ -130,7 +132,6 @@ func setClose(r, w Channel, closeReader bool) {
 }
 
 func testCts(timeOutOnReader bool, t *testing.T) {
-	defer Xtestend(Xtestbegin())
 	r, w, mux := channelPair(t)
 
 	p("r.idleTimer = %p", r.idleTimer)

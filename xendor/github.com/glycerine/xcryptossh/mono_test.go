@@ -7,6 +7,7 @@ import (
 )
 
 func TestMono(t *testing.T) {
+	defer xtestend(xtestbegin())
 	now := time.Now()
 	mnow := getMono(now)
 

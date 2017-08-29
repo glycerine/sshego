@@ -38,20 +38,20 @@ func testClientVersion(t *testing.T, config *ClientConfig, expected string) {
 }
 
 func TestCustomClientVersion(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	version := "Test-Client-Version-0.0"
 	testClientVersion(t, &ClientConfig{ClientVersion: version}, version)
 }
 
 func TestDefaultClientVersion(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	testClientVersion(t, &ClientConfig{}, packageVersion)
 }
 
 func TestHostKeyCheck(t *testing.T) {
-	defer Xtestend(Xtestbegin())
+	defer xtestend(xtestbegin())
 
 	for _, tt := range []struct {
 		name      string

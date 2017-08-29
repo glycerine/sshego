@@ -35,9 +35,9 @@ var curtest string
 //
 // At the top of each test put this line:
 //
-//    defer Xtestend(Xtestbegin())
+//    defer xtestend(xtestbegin())
 //
-func Xtestbegin() *xtraTestState {
+func xtestbegin() *xtraTestState {
 	ct := testname()
 	curtest = ct
 	return &xtraTestState{
@@ -46,7 +46,7 @@ func Xtestbegin() *xtraTestState {
 	}
 }
 
-func Xtestend(x *xtraTestState) {
+func xtestend(x *xtraTestState) {
 	time.Sleep(time.Second)
 	endCount := runtime.NumGoroutine()
 	if endCount != x.numStartingGoroutines {
