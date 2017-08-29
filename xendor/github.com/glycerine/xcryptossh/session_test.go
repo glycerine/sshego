@@ -24,7 +24,7 @@ import (
 type serverType func(Channel, <-chan *Request, *testing.T)
 
 // dial constructs a new test server and returns a *ClientConn.
-func dial(handler serverType, t *testing.T) *Client {
+func dial(handler serverType, t *testing.T, halt *Halter) *Client {
 	c1, c2, err := netPipe()
 	if err != nil {
 		t.Fatalf("netPipe: %v", err)
@@ -35,7 +35,7 @@ func dial(handler serverType, t *testing.T) *Client {
 		conf := ServerConfig{
 			NoClientAuth: true,
 			Config: Config{
-				Halt: NewHalter(),
+				Halt: halt,
 			},
 		}
 		conf.AddHostKey(testSigners["rsa"])
@@ -68,7 +68,7 @@ func dial(handler serverType, t *testing.T) *Client {
 		User:            "testuser",
 		HostKeyCallback: InsecureIgnoreHostKey(),
 		Config: Config{
-			Halt: NewHalter(),
+			Halt: halt,
 		},
 	}
 	ctx := context.Background()
@@ -77,13 +77,17 @@ func dial(handler serverType, t *testing.T) *Client {
 	if err != nil {
 		t.Fatalf("unable to dial remote side: %v", err)
 	}
-	return NewClient(ctx, conn, chans, reqs, config.Halt)
+	return NewClient(ctx, conn, chans, reqs, halt)
 }
 
 // Test a simple string is returned to session.Stdout.
 func TestSessionShell(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(shellHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(shellHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -111,7 +115,11 @@ func TestSessionShell(t *testing.T) {
 // Test a simple string is returned via StdoutPipe.
 func TestSessionStdoutPipe(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(shellHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(shellHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -149,7 +157,11 @@ func TestSessionStdoutPipe(t *testing.T) {
 // and that stderr is discarded.
 func TestSessionOutput(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(fixedOutputHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(fixedOutputHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -176,7 +188,11 @@ func TestSessionOutput(t *testing.T) {
 // via the CombinedOutput helper.
 func TestSessionCombinedOutput(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(fixedOutputHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(fixedOutputHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -203,7 +219,11 @@ func TestSessionCombinedOutput(t *testing.T) {
 // Test non-0 exit status is returned correctly.
 func TestExitStatusNonZero(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitStatusNonZeroHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitStatusNonZeroHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -231,7 +251,11 @@ func TestExitStatusNonZero(t *testing.T) {
 // Test 0 exit status is returned correctly.
 func TestExitStatusZero(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitStatusZeroHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitStatusZeroHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -253,7 +277,11 @@ func TestExitStatusZero(t *testing.T) {
 // Test exit signal and status are both returned correctly.
 func TestExitSignalAndStatus(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitSignalAndStatusHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitSignalAndStatusHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -281,7 +309,11 @@ func TestExitSignalAndStatus(t *testing.T) {
 // Test exit signal and status are both returned correctly.
 func TestKnownExitSignalOnly(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitSignalHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitSignalHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -309,7 +341,11 @@ func TestKnownExitSignalOnly(t *testing.T) {
 // Test exit signal and status are both returned correctly.
 func TestUnknownExitSignal(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitSignalUnknownHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitSignalUnknownHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -336,7 +372,11 @@ func TestUnknownExitSignal(t *testing.T) {
 
 func TestExitWithoutStatusOrSignal(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(exitWithoutSignalOrStatus, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(exitWithoutSignalOrStatus, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -368,7 +408,10 @@ func TestServerWindow(t *testing.T) {
 	io.CopyN(origBuf, crypto_rand.Reader, windowTestBytes)
 	origBytes := origBuf.Bytes()
 
-	conn := dial(echoHandler, t)
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(echoHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -416,7 +459,11 @@ func TestServerWindow(t *testing.T) {
 // Verify the client can handle a keepalive packet from the server.
 func TestClientHandlesKeepalives(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(channelKeepaliveSender, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(channelKeepaliveSender, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -626,7 +673,11 @@ func channelKeepaliveSender(ch Channel, in <-chan *Request, t *testing.T) {
 
 func TestClientWriteEOF(t *testing.T) {
 	defer xtestend(xtestbegin())
-	conn := dial(simpleEchoHandler, t)
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	conn := dial(simpleEchoHandler, t, halt)
 	defer conn.Close()
 	ctx := context.Background()
 
@@ -675,6 +726,10 @@ func simpleEchoHandler(ch Channel, in <-chan *Request, t *testing.T) {
 
 func TestSessionID(t *testing.T) {
 	defer xtestend(xtestbegin())
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
 	c1, c2, err := netPipe()
 	if err != nil {
 		t.Fatalf("netPipe: %v", err)
@@ -688,7 +743,7 @@ func TestSessionID(t *testing.T) {
 	serverConf := &ServerConfig{
 		NoClientAuth: true,
 		Config: Config{
-			Halt: NewHalter(),
+			Halt: halt,
 		},
 	}
 	serverConf.AddHostKey(testSigners["ecdsa"])
@@ -696,11 +751,9 @@ func TestSessionID(t *testing.T) {
 		HostKeyCallback: InsecureIgnoreHostKey(),
 		User:            "user",
 		Config: Config{
-			Halt: NewHalter(),
+			Halt: halt,
 		},
 	}
-	defer clientConf.Halt.ReqStop.Close()
-	defer serverConf.Halt.ReqStop.Close()
 
 	go func() {
 		ctx := context.Background()

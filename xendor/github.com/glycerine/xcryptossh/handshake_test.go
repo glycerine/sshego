@@ -551,11 +551,18 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 func TestDisconnect(t *testing.T) {
 	defer xtestend(xtestbegin())
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
 	if runtime.GOOS == "plan9" {
 		t.Skip("see golang.org/issue/7237")
 	}
 	checker := &testChecker{}
-	trC, trS, err := handshakePair(&ClientConfig{HostKeyCallback: checker.Check}, "addr", false)
+	trC, trS, err := handshakePair(
+		&ClientConfig{
+			HostKeyCallback: checker.Check,
+			Config:          Config{Halt: halt},
+		}, "addr", false)
 	if err != nil {
 		t.Fatalf("handshakePair: %v", err)
 	}
