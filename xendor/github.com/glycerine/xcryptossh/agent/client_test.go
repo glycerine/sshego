@@ -6,6 +6,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"net"
@@ -16,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/glycerine/xcryptossh"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // startOpenSSHAgent executes ssh-agent, and returns a Agent interface to it.
@@ -219,6 +220,8 @@ func netPipe() (net.Conn, net.Conn, error) {
 }
 
 func TestAuth(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
 	agent, _, cleanup := startOpenSSHAgent(t)
 	defer cleanup()
 
@@ -245,7 +248,7 @@ func TestAuth(t *testing.T) {
 	}
 
 	go func() {
-		conn, _, _, err := ssh.NewServerConn(a, &serverConf)
+		conn, _, _, err := ssh.NewServerConn(ctx, a, &serverConf)
 		if err != nil {
 			t.Fatalf("Server: %v", err)
 		}
@@ -256,7 +259,7 @@ func TestAuth(t *testing.T) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	conf.Auth = append(conf.Auth, ssh.PublicKeysCallback(agent.Signers))
-	conn, _, _, err := ssh.NewClientConn(b, "", &conf)
+	conn, _, _, err := ssh.NewClientConn(ctx, b, "", &conf)
 	if err != nil {
 		t.Fatalf("NewClientConn: %v", err)
 	}

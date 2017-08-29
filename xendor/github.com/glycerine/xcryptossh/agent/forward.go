@@ -5,12 +5,13 @@
 package agent
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
 	"sync"
 
-	"github.com/glycerine/xcryptossh"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // RequestAgentForwarding sets up agent forwarding for the session.
@@ -28,7 +29,7 @@ func RequestAgentForwarding(session *ssh.Session) error {
 }
 
 // ForwardToAgent routes authentication requests to the given keyring.
-func ForwardToAgent(client *ssh.Client, keyring Agent) error {
+func ForwardToAgent(ctx context.Context, client *ssh.Client, keyring Agent) error {
 	channels := client.HandleChannelOpen(channelType)
 	if channels == nil {
 		return errors.New("agent: already have handler for " + channelType)
@@ -40,7 +41,7 @@ func ForwardToAgent(client *ssh.Client, keyring Agent) error {
 			if err != nil {
 				continue
 			}
-			go ssh.DiscardRequests(reqs, client.Ctx)
+			go ssh.DiscardRequests(ctx, reqs, client.Halt)
 			go func() {
 				ServeAgent(keyring, channel)
 				channel.Close()
@@ -54,7 +55,7 @@ const channelType = "auth-agent@openssh.com"
 
 // ForwardToRemote routes authentication requests to the ssh-agent
 // process serving on the given unix socket.
-func ForwardToRemote(client *ssh.Client, addr string) error {
+func ForwardToRemote(ctx context.Context, client *ssh.Client, addr string) error {
 	channels := client.HandleChannelOpen(channelType)
 	if channels == nil {
 		return errors.New("agent: already have handler for " + channelType)
@@ -71,7 +72,7 @@ func ForwardToRemote(client *ssh.Client, addr string) error {
 			if err != nil {
 				continue
 			}
-			go ssh.DiscardRequests(reqs, client.Ctx)
+			go ssh.DiscardRequests(ctx, reqs, client.Halt)
 			go forwardUnixSocket(channel, addr)
 		}
 	}()

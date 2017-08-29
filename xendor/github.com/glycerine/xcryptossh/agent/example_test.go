@@ -5,15 +5,22 @@
 package agent_test
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 
-	"github.com/glycerine/xcryptossh"
-	"github.com/glycerine/xcryptossh/agent"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh/agent"
 )
 
 func ExampleClientAgent() {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	// ssh-agent has a UNIX socket under $SSH_AUTH_SOCK
 	socket := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", socket)
@@ -30,9 +37,10 @@ func ExampleClientAgent() {
 			ssh.PublicKeysCallback(agentClient.Signers),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Config:          ssh.Config{Halt: halt},
 	}
 
-	sshc, err := ssh.Dial("tcp", "localhost:22", config)
+	sshc, err := ssh.Dial(ctx, "tcp", "localhost:22", config)
 	if err != nil {
 		log.Fatalf("Dial: %v", err)
 	}

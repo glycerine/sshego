@@ -25,7 +25,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"golang.org/x/crypto/ed25519"
 )
 

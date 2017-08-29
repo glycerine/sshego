@@ -5,6 +5,7 @@
 package agent
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 func TestServer(t *testing.T) {
@@ -35,6 +36,12 @@ func TestLockServer(t *testing.T) {
 }
 
 func TestSetupForwardAgent(t *testing.T) {
+	ctx, cancelctx := context.WithCancel(context.Background())
+	defer cancelctx()
+
+	halt := ssh.NewHalter()
+	defer halt.ReqStop.Close()
+
 	a, b, err := netPipe()
 	if err != nil {
 		t.Fatalf("netPipe: %v", err)
@@ -48,11 +55,12 @@ func TestSetupForwardAgent(t *testing.T) {
 
 	serverConf := ssh.ServerConfig{
 		NoClientAuth: true,
+		Config:       ssh.Config{Halt: halt},
 	}
 	serverConf.AddHostKey(testSigners["rsa"])
 	incoming := make(chan *ssh.ServerConn, 1)
 	go func() {
-		conn, _, _, err := ssh.NewServerConn(a, &serverConf)
+		conn, _, _, err := ssh.NewServerConn(ctx, a, &serverConf)
 		if err != nil {
 			t.Fatalf("Server: %v", err)
 		}
@@ -61,23 +69,24 @@ func TestSetupForwardAgent(t *testing.T) {
 
 	conf := ssh.ClientConfig{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Config:          ssh.Config{Halt: halt},
 	}
-	conn, chans, reqs, err := ssh.NewClientConn(b, "", &conf)
+	conn, chans, reqs, err := ssh.NewClientConn(ctx, b, "", &conf)
 	if err != nil {
 		t.Fatalf("NewClientConn: %v", err)
 	}
-	client := ssh.NewClient(conn, chans, reqs)
+	client := ssh.NewClient(ctx, conn, chans, reqs, halt)
 
-	if err := ForwardToRemote(client, socket); err != nil {
+	if err := ForwardToRemote(ctx, client, socket); err != nil {
 		t.Fatalf("SetupForwardAgent: %v", err)
 	}
 
 	server := <-incoming
-	ch, reqs, err := server.OpenChannel(channelType, nil)
+	ch, reqs, err := server.OpenChannel(ctx, channelType, nil)
 	if err != nil {
 		t.Fatalf("OpenChannel(%q): %v", channelType, err)
 	}
-	go ssh.DiscardRequests(reqs)
+	go ssh.DiscardRequests(ctx, reqs, halt)
 
 	agentClient := NewClient(ch)
 	testAgentInterface(t, agentClient, testPrivateKeys["rsa"], nil, 0)

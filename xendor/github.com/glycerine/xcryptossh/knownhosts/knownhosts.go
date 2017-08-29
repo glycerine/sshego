@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/glycerine/xcryptossh"
+	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // See the sshd manpage
