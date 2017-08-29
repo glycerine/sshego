@@ -602,9 +602,13 @@ func TestDisconnect(t *testing.T) {
 func TestHandshakeRekeyDefault(t *testing.T) {
 	defer xtestend(xtestbegin())
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
 	clientConf := &ClientConfig{
 		Config: Config{
 			Ciphers: []string{"aes128-ctr"},
+			Halt:    halt,
 		},
 		HostKeyCallback: InsecureIgnoreHostKey(),
 	}
