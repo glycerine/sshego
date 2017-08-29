@@ -14,6 +14,8 @@ var alphabet = []byte("abcdefghijklmnopqrstuvwxyz")
 var testIdle = &idleTimer{}
 
 func TestBufferReadwrite(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	b := newBuffer(testIdle)
 	b.write(alphabet[:10])
 	r, _ := b.Read(make([]byte, 10))
@@ -46,6 +48,8 @@ func TestBufferReadwrite(t *testing.T) {
 }
 
 func TestBufferClose(t *testing.T) {
+	defer Xtestend(Xtestbegin())
+
 	b := newBuffer(testIdle)
 	b.write(alphabet[:10])
 	b.eof()

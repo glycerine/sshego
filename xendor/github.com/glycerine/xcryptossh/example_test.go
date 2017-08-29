@@ -22,6 +22,7 @@ import (
 )
 
 func ExampleNewServerConn() {
+
 	// Public key authentication is done by comparing
 	// the public key of a received connection
 	// with the entries in the authorized_keys file.
