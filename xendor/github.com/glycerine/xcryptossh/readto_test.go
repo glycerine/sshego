@@ -14,6 +14,7 @@ import (
 // the writeto_test.go.
 //
 func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
+	defer Xtestend(Xtestbegin())
 
 	r, w, mux := channelPair(t)
 

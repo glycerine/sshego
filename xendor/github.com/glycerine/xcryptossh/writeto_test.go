@@ -13,6 +13,7 @@ import (
 // to the phase_test.go.
 //
 func TestTimeout007WriteIdlesOutWhenReadsStop(t *testing.T) {
+	defer Xtestend(Xtestbegin())
 	r, w, mux := channelPair(t)
 
 	idleout := 1000 * time.Millisecond
