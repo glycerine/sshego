@@ -15,23 +15,48 @@ type errWhere struct {
 	msg   string
 	who   *idleTimer
 	when  time.Time
-	where []byte
+	where string
 }
 
 func newErrTimeout(msg string, who *idleTimer) *errWhere {
 	return newErrWhere("timeout:"+msg, who)
 }
 
-var curtest string
-
 var regexTestname = regexp.MustCompile(`Test[^\s\(]+`)
 
-func setcurtest() {
-	curtest = testname()
+type xtraTestState struct {
+	name                  string
+	numStartingGoroutines int
+}
+
+var curtest string
+
+// Testbegin example:
+//
+// At the top of each test put this line:
+//
+//    defer Xtestend(Xtestbegin())
+//
+func Xtestbegin() *xtraTestState {
+	ct := testname()
+	curtest = ct
+	return &xtraTestState{
+		name: ct,
+		numStartingGoroutines: runtime.NumGoroutine(),
+	}
+}
+
+func Xtestend(x *xtraTestState) {
+	time.Sleep(time.Second)
+	endCount := runtime.NumGoroutine()
+	if endCount != x.numStartingGoroutines {
+		panic(fmt.Sprintf("test leaks goroutines: '%s': ended with %v >= started with %v",
+			x.name, endCount, x.numStartingGoroutines))
+	}
 }
 
 func testname() string {
-	s := string(stacktrace())
+	s := stacktrace()
 	slc := regexTestname.FindAllString(s, -1)
 	n := len(slc)
 	if n == 0 {
@@ -40,7 +65,7 @@ func testname() string {
 	return slc[n-1]
 }
 
-func stacktrace() []byte {
+func stacktrace() string {
 	sz := 512
 	var stack []byte
 	for {
@@ -53,7 +78,7 @@ func stacktrace() []byte {
 			break
 		}
 	}
-	return stack
+	return string(stack)
 }
 
 func newErrWhere(msg string, who *idleTimer) *errWhere {

@@ -56,7 +56,7 @@ func (b *buffer) write(buf []byte) {
 // the data has been consumed will receive os.EOF.
 func (b *buffer) eof() error {
 	b.Cond.L.Lock()
-	//pp("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, string(stacktrace()))
+	//pp("buffer.eof is setting b.closed=true for b=%p. stack='%s'.", b, stacktrace())
 	b.closed = true
 	b.Cond.Broadcast()
 	b.Cond.L.Unlock()

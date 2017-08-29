@@ -92,6 +92,7 @@ func DiscardRequests(ctx context.Context, in <-chan *Request, halt *Halter) {
 		select {
 		case req := <-in:
 			if req != nil && req.WantReply {
+				ppp("connection.go replying to request/discarding it.")
 				req.Reply(false, nil)
 			}
 		case <-reqStop:

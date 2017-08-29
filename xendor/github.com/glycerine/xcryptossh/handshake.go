@@ -384,9 +384,9 @@ write:
 	// drain startKex channel. We don't service t.requestKex
 	// because nobody does blocking sends there.
 
+	//ppp("%s kexloop BEGIN 111111 starting leaky goro. here: '%s'", curtest, stacktrace())
 	go func() { // leaks lots of goroutines
 
-		//ppp("%s kexloop BEGIN 111111 starting leaky goro", curtest)
 		defer func() {
 			//ppp("%s kexloop DONE 222222 leaving leaky goro", curtest)
 			t.config.Halt.Done.Close()
@@ -394,6 +394,7 @@ write:
 		for {
 			select {
 			case init := <-t.startKex:
+				//ppp("handshake.go kexloop sees init='%#v'", init)
 				if init != nil {
 					select {
 					case init.done <- t.writeError:
