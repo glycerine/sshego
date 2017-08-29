@@ -57,7 +57,7 @@ func init() {
 // See cts_test.go in addition to this file.
 
 func TestSimpleWriteTimeout(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
 
@@ -116,7 +116,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 }
 
 func TestSimpleReadTimeout(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
 
@@ -162,7 +162,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 }
 
 func TestSimpleReadAfterTimeout(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
 

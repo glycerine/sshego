@@ -24,7 +24,7 @@ var intLengthTests = []struct {
 }
 
 func TestIntLength(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	for _, test := range intLengthTests {
 		v := new(big.Int).SetInt64(int64(test.val))
 		length := intLength(v)
@@ -63,7 +63,7 @@ func (t *msgAllTypes) Generate(rand *rand.Rand, size int) reflect.Value {
 }
 
 func TestMarshalUnmarshal(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	rand := rand.New(rand.NewSource(0))
 	iface := &msgAllTypes{}
 	ty := reflect.ValueOf(iface).Type()
@@ -96,7 +96,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 }
 
 func TestUnmarshalEmptyPacket(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	var b []byte
 	var m channelRequestSuccessMsg
 	if err := Unmarshal(b, &m); err == nil {
@@ -105,7 +105,7 @@ func TestUnmarshalEmptyPacket(t *testing.T) {
 }
 
 func TestUnmarshalUnexpectedPacket(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	type S struct {
 		I uint32 `sshtype:"43"`
 		S string
@@ -123,7 +123,7 @@ func TestUnmarshalUnexpectedPacket(t *testing.T) {
 }
 
 func TestMarshalPtr(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	s := struct {
 		S string
 	}{"hello"}
@@ -136,7 +136,7 @@ func TestMarshalPtr(t *testing.T) {
 }
 
 func TestBareMarshalUnmarshal(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	type S struct {
 		I uint32
 		S string
@@ -154,7 +154,7 @@ func TestBareMarshalUnmarshal(t *testing.T) {
 }
 
 func TestBareMarshal(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	type S2 struct {
 		I uint32
 	}
@@ -170,7 +170,7 @@ func TestBareMarshal(t *testing.T) {
 }
 
 func TestUnmarshalShortKexInitPacket(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	// This used to panic.
 	// Issue 11348
 	packet := []byte{0x14, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0xff, 0xff, 0xff, 0xff}
@@ -181,7 +181,7 @@ func TestUnmarshalShortKexInitPacket(t *testing.T) {
 }
 
 func TestMarshalMultiTag(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	var res struct {
 		A uint32 `sshtype:"1|2"`
 	}

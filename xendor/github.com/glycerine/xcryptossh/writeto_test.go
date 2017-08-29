@@ -13,7 +13,7 @@ import (
 // to the phase_test.go.
 //
 func TestTimeout007WriteIdlesOutWhenReadsStop(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
 

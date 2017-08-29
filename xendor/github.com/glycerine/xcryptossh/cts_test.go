@@ -96,11 +96,11 @@ func (s *seqWords) Read(b []byte) (n int, err error) {
 // for 20 seconds (or 10x our idle timeout), we should not see any timeout since
 // our activity is ongoing continuously.
 func TestCtsReadWithNoIdleTimeout(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	testCts(true, t)
 }
 func TestCtsWriteWithNoIdleTimeout(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	testCts(false, t)
 }
 

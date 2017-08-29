@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -42,9 +43,9 @@ type xtraTestState struct {
 //
 // At the top of each test put this line:
 //
-//    defer xtestend(xtestbegin())
+//    defer xtestend(xtestbegin(t))
 //
-func xtestbegin() *xtraTestState {
+func xtestbegin(t *testing.T) *xtraTestState {
 	if xtestLeakCheckOn {
 		ct := testname()
 		return &xtraTestState{

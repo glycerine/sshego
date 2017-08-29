@@ -39,7 +39,7 @@ func rawKey(pub PublicKey) interface{} {
 }
 
 func TestKeyMarshalParse(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for _, priv := range testSigners {
 		pub := priv.PublicKey()
@@ -58,7 +58,7 @@ func TestKeyMarshalParse(t *testing.T) {
 }
 
 func TestUnsupportedCurves(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	raw, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	if err != nil {
@@ -75,7 +75,7 @@ func TestUnsupportedCurves(t *testing.T) {
 }
 
 func TestNewPublicKey(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	for _, k := range testSigners {
 		raw := rawKey(k.PublicKey())
 		// Skip certificates, as NewPublicKey does not support them.
@@ -93,7 +93,7 @@ func TestNewPublicKey(t *testing.T) {
 }
 
 func TestKeySignVerify(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	for _, priv := range testSigners {
 		pub := priv.PublicKey()
 
@@ -114,7 +114,7 @@ func TestKeySignVerify(t *testing.T) {
 }
 
 func TestParseRSAPrivateKey(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	key := testPrivateKeys["rsa"]
 
 	rsa, ok := key.(*rsa.PrivateKey)
@@ -128,7 +128,7 @@ func TestParseRSAPrivateKey(t *testing.T) {
 }
 
 func TestParseECPrivateKey(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	key := testPrivateKeys["ecdsa"]
 
 	ecKey, ok := key.(*ecdsa.PrivateKey)
@@ -143,7 +143,7 @@ func TestParseECPrivateKey(t *testing.T) {
 
 // See Issue https://github.com/golang/go/issues/6650.
 func TestParseEncryptedPrivateKeysFails(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	const wantSubstring = "encrypted"
 	for i, tt := range testdata.PEMEncryptedKeys {
 		_, err := ParsePrivateKey(tt.PEMBytes)
@@ -160,7 +160,7 @@ func TestParseEncryptedPrivateKeysFails(t *testing.T) {
 
 // Parse encrypted private keys with passphrase
 func TestParseEncryptedPrivateKeysWithPassphrase(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	data := []byte("sign me")
 	for _, tt := range testdata.PEMEncryptedKeys {
 		s, err := ParsePrivateKeyWithPassphrase(tt.PEMBytes, []byte(tt.EncryptionKey))
@@ -185,7 +185,7 @@ func TestParseEncryptedPrivateKeysWithPassphrase(t *testing.T) {
 }
 
 func TestParseDSA(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	// We actually exercise the ParsePrivateKey codepath here, as opposed to
 	// using the ParseRawPrivateKey+NewSignerFromKey path that testdata_test.go
 	// uses.
@@ -220,7 +220,7 @@ func getTestKey() (PublicKey, string) {
 }
 
 func TestMarshalParsePublicKey(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	line := fmt.Sprintf("%s %s user@host", pub.Type(), pubSerialized)
 
@@ -273,7 +273,7 @@ func testAuthorizedKeys(t *testing.T, authKeys []byte, expected []authResult) {
 }
 
 func TestAuthorizedKeyBasic(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	line := "ssh-rsa " + pubSerialized + " user@host"
 	testAuthorizedKeys(t, []byte(line),
@@ -283,7 +283,7 @@ func TestAuthorizedKeyBasic(t *testing.T) {
 }
 
 func TestAuth(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	authWithOptions := []string{
 		`# comments to ignore before any keys...`,
@@ -309,7 +309,7 @@ func TestAuth(t *testing.T) {
 }
 
 func TestAuthWithQuotedSpaceInEnv(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	authWithQuotedSpaceInEnv := []byte(`env="HOME=/home/root dir",no-port-forwarding ssh-rsa ` + pubSerialized + ` user@host`)
 	testAuthorizedKeys(t, []byte(authWithQuotedSpaceInEnv), []authResult{
@@ -318,7 +318,7 @@ func TestAuthWithQuotedSpaceInEnv(t *testing.T) {
 }
 
 func TestAuthWithQuotedCommaInEnv(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	authWithQuotedCommaInEnv := []byte(`env="HOME=/home/root,dir",no-port-forwarding ssh-rsa ` + pubSerialized + `   user@host`)
 	testAuthorizedKeys(t, []byte(authWithQuotedCommaInEnv), []authResult{
@@ -327,7 +327,7 @@ func TestAuthWithQuotedCommaInEnv(t *testing.T) {
 }
 
 func TestAuthWithQuotedQuoteInEnv(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	authWithQuotedQuoteInEnv := []byte(`env="HOME=/home/\"root dir",no-port-forwarding` + "\t" + `ssh-rsa` + "\t" + pubSerialized + `   user@host`)
 	authWithDoubleQuotedQuote := []byte(`no-port-forwarding,env="HOME=/home/ \"root dir\"" ssh-rsa ` + pubSerialized + "\t" + `user@host`)
@@ -341,7 +341,7 @@ func TestAuthWithQuotedQuoteInEnv(t *testing.T) {
 }
 
 func TestAuthWithInvalidSpace(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	_, pubSerialized := getTestKey()
 	authWithInvalidSpace := []byte(`env="HOME=/home/root dir", no-port-forwarding ssh-rsa ` + pubSerialized + ` user@host
 #more to follow but still no valid keys`)
@@ -351,7 +351,7 @@ func TestAuthWithInvalidSpace(t *testing.T) {
 }
 
 func TestAuthWithMissingQuote(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, pubSerialized := getTestKey()
 	authWithMissingQuote := []byte(`env="HOME=/home/root,no-port-forwarding ssh-rsa ` + pubSerialized + ` user@host
 env="HOME=/home/root",shared-control ssh-rsa ` + pubSerialized + ` user@host`)
@@ -362,7 +362,7 @@ env="HOME=/home/root",shared-control ssh-rsa ` + pubSerialized + ` user@host`)
 }
 
 func TestInvalidEntry(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	authInvalid := []byte(`ssh-rsa`)
 	_, _, _, _, err := ParseAuthorizedKey(authInvalid)
 	if err == nil {
@@ -454,7 +454,7 @@ var knownHostsParseTests = []struct {
 }
 
 func TestKnownHostsParsing(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	rsaPub, rsaPubSerialized := getTestKey()
 
 	for i, test := range knownHostsParseTests {
@@ -503,7 +503,7 @@ func TestKnownHostsParsing(t *testing.T) {
 }
 
 func TestFingerprintLegacyMD5(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, _ := getTestKey()
 	fingerprint := FingerprintLegacyMD5(pub)
 	want := "fb:61:6d:1a:e3:f0:95:45:3c:a0:79:be:4a:93:63:66" // ssh-keygen -lf -E md5 rsa
@@ -513,7 +513,7 @@ func TestFingerprintLegacyMD5(t *testing.T) {
 }
 
 func TestFingerprintSHA256(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	pub, _ := getTestKey()
 	fingerprint := FingerprintSHA256(pub)
 	want := "SHA256:Anr3LjZK8YVpjrxu79myrW9Hrb/wpcMNpVvTq/RcBm8" // ssh-keygen -lf rsa

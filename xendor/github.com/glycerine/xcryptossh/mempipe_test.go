@@ -96,7 +96,7 @@ func memPipe() (a, b *memTransport) {
 }
 
 func TestMemPipe(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	a, b := memPipe()
 	if err := a.writePacket([]byte{42}); err != nil {
 		t.Fatalf("writePacket: %v", err)
@@ -120,7 +120,7 @@ func TestMemPipe(t *testing.T) {
 }
 
 func TestDoubleClose(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 	a, _ := memPipe()
 	err := a.Close()
 	if err != nil {

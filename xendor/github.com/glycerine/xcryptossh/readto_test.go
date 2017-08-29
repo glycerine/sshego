@@ -14,7 +14,7 @@ import (
 // the writeto_test.go.
 //
 func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()

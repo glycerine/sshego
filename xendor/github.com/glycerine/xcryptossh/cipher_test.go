@@ -13,7 +13,7 @@ import (
 )
 
 func TestDefaultCiphersExist(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for _, cipherAlgo := range supportedCiphers {
 		if _, ok := cipherModes[cipherAlgo]; !ok {
@@ -23,7 +23,7 @@ func TestDefaultCiphersExist(t *testing.T) {
 }
 
 func TestPacketCiphers(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	// Still test aes128cbc cipher although it's commented out.
 	cipherModes[aes128cbcID] = &streamCipherMode{16, aes.BlockSize, 0, nil}
@@ -70,7 +70,7 @@ func TestPacketCiphers(t *testing.T) {
 }
 
 func TestCBCOracleCounterMeasure(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	cipherModes[aes128cbcID] = &streamCipherMode{16, aes.BlockSize, 0, nil}
 	defer delete(cipherModes, aes128cbcID)

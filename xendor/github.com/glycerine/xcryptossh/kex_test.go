@@ -14,7 +14,7 @@ import (
 )
 
 func TestKexes(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	type kexResultErr struct {
 		result *kexResult

@@ -129,7 +129,7 @@ func handshakePair(clientConf *ClientConfig, addr string, noise bool) (client *h
 }
 
 func TestHandshakeBasic(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	if runtime.GOOS == "plan9" {
 		t.Skip("see golang.org/issue/7237")
@@ -232,7 +232,7 @@ func TestHandshakeBasic(t *testing.T) {
 }
 
 func TestForceFirstKex(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
@@ -288,7 +288,7 @@ func TestForceFirstKex(t *testing.T) {
 }
 
 func TestHandshakeAutoRekeyWrite(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
@@ -361,7 +361,7 @@ func (c *syncChecker) Check(dialAddr string, addr net.Addr, key PublicKey) error
 }
 
 func TestHandshakeAutoRekeyRead(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
@@ -443,7 +443,7 @@ func (n *errorKeyingTransport) readPacket(ctx context.Context) ([]byte, error) {
 }
 
 func TestHandshakeErrorHandlingRead(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, i, -1, false)
@@ -451,7 +451,7 @@ func TestHandshakeErrorHandlingRead(t *testing.T) {
 }
 
 func TestHandshakeErrorHandlingWrite(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, -1, i, false)
@@ -459,7 +459,7 @@ func TestHandshakeErrorHandlingWrite(t *testing.T) {
 }
 
 func TestHandshakeErrorHandlingReadCoupled(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, i, -1, true)
@@ -467,7 +467,7 @@ func TestHandshakeErrorHandlingReadCoupled(t *testing.T) {
 }
 
 func TestHandshakeErrorHandlingWriteCoupled(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	for i := 0; i < 20; i++ {
 		testHandshakeErrorHandlingN(t, -1, i, true)
@@ -549,7 +549,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 }
 
 func TestDisconnect(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
@@ -600,7 +600,7 @@ func TestDisconnect(t *testing.T) {
 }
 
 func TestHandshakeRekeyDefault(t *testing.T) {
-	defer xtestend(xtestbegin())
+	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
