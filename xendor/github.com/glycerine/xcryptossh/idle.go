@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// history is useful for debugging, but
+// slower.
+const provideHistory bool = false
+
 // idleTimer allows a client of the ssh
 // library to notice if there has been a
 // stall in i/o activity. This enables
@@ -51,6 +55,12 @@ type idleTimer struct {
 	overcount  int64
 	undercount int64
 	beginnano  int64 // not monotonic time source.
+
+	// if these are not zero, we'll
+	// shutdown after receiving a read/write.
+	// access with atomic.
+	isOneshotRead  int32
+	isOneshotWrite int32
 }
 
 type callbacks struct {
@@ -108,21 +118,36 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 // internally, effectively reseting to zero the value
 // returned from an immediate next call to NanosecSince().
 //
-func (t *idleTimer) Reset() (err error) {
+// Set isRead to true for reads, false for writes.
+//
+func (t *idleTimer) Reset(isRead bool) {
+
+	// shutdown oneshot?
+	if (isRead && atomic.LoadInt32(&t.isOneshotRead) != 0) ||
+		(!isRead && atomic.LoadInt32(&t.isOneshotWrite) != 0) {
+		t.halt.ReqStop.Close()
+		select {
+		case <-t.halt.Done.Chan:
+		case <-time.After(10 * time.Second):
+			panic("deadlocked during idleTimer oneshut shutdown")
+		}
+		return
+	}
+
 	mnow := monoNow()
 	now := time.Now()
 
-	// diagnose
-	atomic.CompareAndSwapInt64(&t.beginnano, 0, now.UnixNano())
-	tlast := atomic.LoadInt64(&t.last)
-	adur := atomic.LoadInt64(&t.atomicdur)
-	if adur > 0 {
-		diff := mnow - tlast
-		if diff > adur {
-			atomic.AddInt64(&t.overcount, 1)
-			err = newErrTimeout(fmt.Sprintf("Reset() diff %v > %v adur", diff, adur), t)
-		} else {
-			atomic.AddInt64(&t.undercount, 1)
+	if provideHistory {
+		atomic.CompareAndSwapInt64(&t.beginnano, 0, now.UnixNano())
+		tlast := atomic.LoadInt64(&t.last)
+		adur := atomic.LoadInt64(&t.atomicdur)
+		if adur > 0 {
+			diff := mnow - tlast
+			if diff > adur {
+				atomic.AddInt64(&t.overcount, 1)
+			} else {
+				atomic.AddInt64(&t.undercount, 1)
+			}
 		}
 	}
 
@@ -131,6 +156,9 @@ func (t *idleTimer) Reset() (err error) {
 }
 
 func (t *idleTimer) historyOfResets(dur time.Duration) string {
+	if !provideHistory {
+		return "provideHistory==false"
+	}
 	now := time.Now()
 	begin := atomic.LoadInt64(&t.beginnano)
 	if begin == 0 {
@@ -174,7 +202,16 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 	case <-tk.done:
 	case <-t.halt.ReqStop.Chan:
 	}
+}
 
+func (t *idleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
+	atomic.StoreInt32(&t.isOneshotRead, 1)
+	t.SetIdleTimeout(dur)
+}
+
+func (t *idleTimer) SetWriteOneshotIdleTimeout(dur time.Duration) {
+	atomic.StoreInt32(&t.isOneshotWrite, 1)
+	t.SetIdleTimeout(dur)
 }
 
 func (t *idleTimer) GetResetHistory() string {
@@ -276,7 +313,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 			case tk := <-t.setIdleTimeoutCh:
 				/* change state, maybe */
 				t.timeOutRaised = ""
-				t.Reset()
+				atomic.StoreInt64(&t.last, monoNow()) // Reset
 				if dur > 0 {
 					// timeouts active currently
 					if tk.newdur == dur {
@@ -305,7 +342,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 
 					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
-					t.Reset()
+					atomic.StoreInt64(&t.last, monoNow()) // Reset
 					close(tk.done)
 					continue
 				} else {
@@ -324,7 +361,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 
 					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
-					t.Reset()
+					atomic.StoreInt64(&t.last, monoNow()) // Reset
 					close(tk.done)
 					continue
 				}

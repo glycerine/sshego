@@ -97,7 +97,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	var buf [1024]byte
 	n, err := r.Read(buf[:])
 	if err != nil {
-		panic(fmt.Sprintf("Read: %v", err)) // panic due to EOF here, from buffer.go:171, or buffer.go:176 where b.closed is true
+		panic(fmt.Sprintf("Read: %v", err))
 	}
 	got := string(buf[:n])
 	if got != magic {
@@ -227,6 +227,112 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 
 	err = w.Close()
 	if err != nil {
+		panic(fmt.Sprintf("Close: %v", err))
+	}
+}
+
+// deadlines
+
+func TestSimpleReadDeadline(t *testing.T) {
+	defer xtestend(xtestbegin(t))
+
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	r, w, mux := channelPair(t, halt)
+	defer w.Close()
+	defer r.Close()
+	defer mux.Close()
+
+	var buf [1024]byte
+	cancel := make(chan bool)
+
+	go func() {
+		select {
+		case <-time.After(10 * time.Second):
+			panic("20 msec Read timeout did not fire after 10 sec")
+		case <-cancel:
+		}
+	}()
+
+	// use a quick timeout so the test runs quickly.
+	err := r.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
+	if err != nil {
+		panic(fmt.Sprintf("SetReadDeadline: %v", err))
+	}
+
+	// no writer, so this should timeout.
+	n, err := r.Read(buf[:])
+
+	if err == nil || !err.(net.Error).Timeout() || n > 0 {
+		panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true with n = 0"))
+	}
+	cancel <- true
+
+	err = w.Close()
+	switch {
+	case err == nil:
+		//ok
+	case err == io.EOF:
+		// ok
+	default:
+		panic(fmt.Sprintf("Close: %v", err))
+	}
+}
+
+func TestSimpleWriteDeadline(t *testing.T) {
+	defer xtestend(xtestbegin(t))
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
+	r, w, mux := channelPair(t, halt)
+	defer w.Close()
+	defer r.Close()
+	defer mux.Close()
+	deadlineNext := make(chan bool)
+
+	abandon := "should never be written"
+	magic := "expected saluations"
+	go func() {
+		// use a quick timeout so the test runs quickly.
+		err := w.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
+		if err != nil {
+			t.Fatalf("SetWriteDeadline: %v", err)
+		}
+		n, err := w.Write([]byte(abandon))
+		if err == nil || !err.(net.Error).Timeout() {
+			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
+		}
+
+		close(deadlineNext)
+		p("SimpleWriteDeadline: about to write which should succeed")
+		_, err = w.Write([]byte(magic))
+		if err != nil {
+			p("SimpleWriteDeadline: just write failed unexpectedly")
+			panic(fmt.Sprintf("write after cancelling write deadline: %v", err)) // timeout after canceling!
+		}
+		p("SimpleWriteDeadline: just write which did succeed")
+	}()
+
+	<-deadlineNext
+
+	var buf [1024]byte
+	n, err := r.Read(buf[:])
+	if err != nil {
+		panic(fmt.Sprintf("Read: %v", err))
+	}
+	got := string(buf[:n])
+	if got != magic {
+		panic(fmt.Sprintf("Read: got %q want %q", got, magic))
+	}
+
+	err = w.Close()
+	switch {
+	case err == nil:
+		//ok
+	case err == io.EOF:
+		// ok
+	default:
 		panic(fmt.Sprintf("Close: %v", err))
 	}
 }

@@ -78,7 +78,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 	defer func() {
 		b.Cond.L.Unlock()
 		if err == nil {
-			b.idle.Reset()
+			b.idle.Reset(true)
 		}
 	}()
 

@@ -118,6 +118,18 @@ type Channel interface {
 	// were making fine progress.
 	//
 	SetIdleTimeout(dur time.Duration) error
+
+	// SetReadDeadline sets the deadline for future Read calls
+	// and any currently-blocked Read call.
+	// A zero value for t means Read will not time out.
+	SetReadDeadline(t time.Time) error
+
+	// SetWriteDeadline sets the deadline for future Write calls
+	// and any currently-blocked Write call.
+	// Even if write times out, it may return n > 0, indicating that
+	// some of the data was successfully written.
+	// A zero value for t means Write will not time out.
+	SetWriteDeadline(t time.Time) error
 }
 
 // Request is a request sent outside of the normal stream of
@@ -274,7 +286,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
 	if err == nil {
-		c.idleTimer.Reset()
+		c.idleTimer.Reset(false)
 	}
 	c.writeMu.Unlock()
 	return err
@@ -295,7 +307,7 @@ func (c *channel) sendMessage(msg interface{}) error {
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
 	defer func() {
 		if err == nil {
-			c.idleTimer.Reset()
+			c.idleTimer.Reset(false)
 		}
 	}()
 	if c.sentEOF {
@@ -321,7 +333,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if space, err = c.remoteWin.reserve(space); err != nil {
 			return n, err
 		}
-		c.idleTimer.Reset()
+		c.idleTimer.Reset(false)
 		if want := headerLength + space; uint32(cap(packet)) < want {
 			packet = make([]byte, want)
 		} else {
@@ -340,7 +352,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if err = c.writePacket(packet); err != nil {
 			return n, err
 		}
-		c.idleTimer.Reset()
+		c.idleTimer.Reset(false)
 
 		n += len(todo)
 		data = data[len(todo):]
@@ -423,7 +435,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
 	if err == nil {
-		c.idleTimer.Reset()
+		c.idleTimer.Reset(true)
 	}
 
 	if n > 0 {
@@ -481,7 +493,7 @@ func (c *channel) responseMessageReceived() error {
 }
 
 func (c *channel) handlePacket(packet []byte) error {
-	c.idleTimer.Reset()
+	c.idleTimer.Reset(true)
 	switch packet[0] {
 	case msgChannelData, msgChannelExtendedData:
 		return c.handleData(packet)
@@ -811,4 +823,22 @@ func (c *channel) SetIdleTimeout(dur time.Duration) error {
 
 func (c *channel) GetResetHistory() string {
 	return c.idleTimer.GetResetHistory()
+}
+
+func (c *channel) SetReadDeadline(t time.Time) error {
+	if t.IsZero() {
+		c.idleTimer.SetReadOneshotIdleTimeout(0)
+	} else {
+		c.idleTimer.SetReadOneshotIdleTimeout(t.Sub(time.Now()))
+	}
+	return nil
+}
+
+func (c *channel) SetWriteDeadline(t time.Time) error {
+	if t.IsZero() {
+		c.idleTimer.SetWriteOneshotIdleTimeout(0)
+	} else {
+		c.idleTimer.SetWriteOneshotIdleTimeout(t.Sub(time.Now()))
+	}
+	return nil
 }
