@@ -34,22 +34,23 @@ func (s *server) Accept() (NewChannel, error) {
 	return n, nil
 }
 
-func sshPipe() (Conn, *server, error) {
+func sshPipe(halt *Halter) (Conn, *server, error) {
 	c1, c2, err := netPipe()
 	if err != nil {
 		return nil, nil, err
 	}
 	ctx := context.Background()
 	clientConf := ClientConfig{
-		User: "user",
+		User:            "user",
+		HostKeyCallback: InsecureIgnoreHostKey(),
 		Config: Config{
-			Halt: NewHalter(),
+			Halt: halt,
 		},
 	}
 	serverConf := ServerConfig{
 		NoClientAuth: true,
 		Config: Config{
-			Halt: NewHalter(),
+			Halt: halt,
 		},
 	}
 	serverConf.AddHostKey(testSigners["ecdsa"])
@@ -77,10 +78,12 @@ func sshPipe() (Conn, *server, error) {
 
 func BenchmarkEndToEnd(b *testing.B) {
 	b.StopTimer()
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
 
 	ctx := context.Background()
 
-	client, server, err := sshPipe()
+	client, server, err := sshPipe(halt)
 	if err != nil {
 		b.Fatalf("sshPipe: %v", err)
 	}

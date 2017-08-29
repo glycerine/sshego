@@ -234,9 +234,17 @@ func TestHandshakeBasic(t *testing.T) {
 func TestForceFirstKex(t *testing.T) {
 	defer xtestend(xtestbegin())
 
+	halt := NewHalter()
+	defer halt.ReqStop.Close()
+
 	// like handshakePair, but must access the keyingTransport.
 	checker := &testChecker{}
-	clientConf := &ClientConfig{HostKeyCallback: checker.Check}
+	clientConf := &ClientConfig{
+		HostKeyCallback: checker.Check,
+		Config: Config{
+			Halt: halt,
+		},
+	}
 	a, b, err := netPipe()
 	if err != nil {
 		t.Fatalf("netPipe: %v", err)
@@ -257,7 +265,7 @@ func TestForceFirstKex(t *testing.T) {
 	ctx := context.Background()
 	client := newClientTransport(ctx, trC, v, v, clientConf, "addr", a.RemoteAddr())
 
-	serverConf := &ServerConfig{}
+	serverConf := &ServerConfig{Config: Config{Halt: halt}}
 	serverConf.AddHostKey(testSigners["ecdsa"])
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.SetDefaults()
