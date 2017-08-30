@@ -57,10 +57,9 @@ type idleTimer struct {
 	beginnano  int64 // not monotonic time source.
 
 	// if these are not zero, we'll
-	// shutdown after receiving a read/write.
+	// shutdown after receiving a read.
 	// access with atomic.
-	isOneshotRead  int32
-	isOneshotWrite int32
+	isOneshotRead int32
 }
 
 type callbacks struct {
@@ -123,8 +122,10 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 func (t *idleTimer) Reset(isRead bool) {
 
 	// shutdown oneshot?
-	if (isRead && atomic.LoadInt32(&t.isOneshotRead) != 0) ||
-		(!isRead && atomic.LoadInt32(&t.isOneshotWrite) != 0) {
+	// NB we don't support write deadlines now, and
+	// never supported having different write and read
+	// deadlines, which would need two separate idle timers.
+	if isRead && atomic.LoadInt32(&t.isOneshotRead) != 0 {
 		t.halt.ReqStop.Close()
 		select {
 		case <-t.halt.Done.Chan:
@@ -206,17 +207,6 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 
 func (t *idleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
 	atomic.StoreInt32(&t.isOneshotRead, 1)
-	t.SetIdleTimeout(dur)
-}
-
-func (t *idleTimer) SetWriteOneshotIdleTimeout(dur time.Duration) {
-	atomic.StoreInt32(&t.isOneshotWrite, 1)
-	t.SetIdleTimeout(dur)
-}
-
-func (t *idleTimer) SetBothOneshotIdleTimeout(dur time.Duration) {
-	atomic.StoreInt32(&t.isOneshotRead, 1)
-	atomic.StoreInt32(&t.isOneshotWrite, 1)
 	t.SetIdleTimeout(dur)
 }
 
