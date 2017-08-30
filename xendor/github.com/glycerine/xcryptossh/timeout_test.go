@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -269,82 +268,6 @@ func TestSimpleReadDeadline(t *testing.T) {
 		panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true with n = 0"))
 	}
 	cancel <- true
-
-	err = w.Close()
-	switch {
-	case err == nil:
-		//ok
-	case err == io.EOF:
-		// ok
-	default:
-		panic(fmt.Sprintf("Close: %v", err))
-	}
-}
-
-func TestSimpleWriteDeadline(t *testing.T) {
-	defer xtestend(xtestbegin(t))
-
-	halt := NewHalter()
-	defer halt.ReqStop.Close()
-
-	// can't use channelPair, since writes always
-	// suceed immediately. So use sshPipe().
-
-	ctx := context.Background()
-
-	client, server, err := sshPipe(halt)
-	if err != nil {
-		panic(fmt.Sprintf("sshPipe: %v", err))
-	}
-
-	defer client.Close()
-	defer server.Close()
-
-	done := make(chan int)
-	stallRead := make(chan bool)
-
-	abandon := "should never be written"
-
-	go func() {
-		newCh, err := server.Accept()
-		if err != nil {
-			panic(fmt.Sprintf("Client: %v", err))
-		}
-		r, incoming, err := newCh.Accept()
-		_ = r
-		go DiscardRequests(ctx, incoming, halt)
-
-		// r.Read() goes here, but we are trying
-		// to simulate a reader *not* reading so the
-		// writer can timeout.
-		pp("write deadline test: read stalled as per test plan!")
-		<-stallRead
-
-		r.Close()
-		close(done)
-	}()
-
-	w, in, err := client.OpenChannel(ctx, "write-deadline-test", nil)
-	if err != nil {
-		panic(fmt.Sprintf("OpenChannel: %v", err))
-	}
-	go DiscardRequests(ctx, in, halt)
-
-	// ch.Write() goes here
-
-	// use a quick timeout so the test runs quickly.
-	err = w.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
-	if err != nil {
-		t.Fatalf("SetWriteDeadline: %v", err)
-	}
-	n, err := w.Write([]byte(abandon))
-	_ = n
-	pp("w.Write got n=%v, err =%v", n, err)
-	if err == nil || !err.(net.Error).Timeout() {
-		panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
-	}
-	// close(stallRead)
-	<-done
 
 	err = w.Close()
 	switch {

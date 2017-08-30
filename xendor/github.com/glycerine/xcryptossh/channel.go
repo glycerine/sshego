@@ -123,24 +123,6 @@ type Channel interface {
 	// and any currently-blocked Read call.
 	// A zero value for t means Read will not time out.
 	SetReadDeadline(t time.Time) error
-
-	// SetWriteDeadline sets the deadline for future Write calls
-	// and any currently-blocked Write call.
-	// Even if write times out, it may return n > 0, indicating that
-	// some of the data was successfully written.
-	// A zero value for t means Write will not time out.
-	SetWriteDeadline(t time.Time) error
-
-	// SetDeadline sets the read and write deadlines associated
-	// with the connection. It is equivalent to calling both
-	// SetReadDeadline and SetWriteDeadline.
-	SetDeadline(t time.Time) error
-
-	// LocalAddr returns the local network address.
-	LocalAddr() net.Addr
-
-	// RemoteAddr returns the remote network address.
-	RemoteAddr() net.Addr
 }
 
 // Request is a request sent outside of the normal stream of
@@ -841,24 +823,6 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 		c.idleTimer.SetReadOneshotIdleTimeout(0)
 	} else {
 		c.idleTimer.SetReadOneshotIdleTimeout(t.Sub(time.Now()))
-	}
-	return nil
-}
-
-func (c *channel) SetWriteDeadline(t time.Time) error {
-	if t.IsZero() {
-		c.idleTimer.SetWriteOneshotIdleTimeout(0)
-	} else {
-		c.idleTimer.SetWriteOneshotIdleTimeout(t.Sub(time.Now()))
-	}
-	return nil
-}
-
-func (c *channel) SetDeadline(t time.Time) error {
-	if t.IsZero() {
-		c.idleTimer.SetBothOneshotIdleTimeout(0)
-	} else {
-		c.idleTimer.SetBothOneshotIdleTimeout(t.Sub(time.Now()))
 	}
 	return nil
 }
