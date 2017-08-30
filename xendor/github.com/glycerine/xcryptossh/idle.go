@@ -60,6 +60,12 @@ type idleTimer struct {
 	// shutdown after receiving a read.
 	// access with atomic.
 	isOneshotRead int32
+
+	// include writes when reseting the idle timer.
+	// defaults to false b/c write success doesn't
+	// really mean anything.
+	// Like openSSH, there's a 2MB buffer underneath.
+	resetOnWrites int32
 }
 
 type callbacks struct {
@@ -120,6 +126,10 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 // Set isRead to true for reads, false for writes.
 //
 func (t *idleTimer) Reset(isRead bool) {
+
+	if !isRead && atomic.LoadInt32(&t.resetOnWrites) == 0 {
+		return
+	}
 
 	// shutdown oneshot?
 	// NB we don't support write deadlines now, and
@@ -193,8 +203,8 @@ func (t *idleTimer) NanosecSince() int64 {
 // This is the main API for idleTimer. Most users will
 // only need to use this call.
 //
-func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
-	tk := newSetTimeoutTicket(dur)
+func (t *idleTimer) SetIdleTimeout(dur time.Duration, writesBump bool) {
+	tk := newSetTimeoutTicket(dur, writesBump)
 	select {
 	case t.setIdleTimeoutCh <- tk:
 	case <-t.halt.ReqStop.Chan:
@@ -207,7 +217,7 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration) {
 
 func (t *idleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
 	atomic.StoreInt32(&t.isOneshotRead, 1)
-	t.SetIdleTimeout(dur)
+	t.SetIdleTimeout(dur, false)
 }
 
 func (t *idleTimer) GetResetHistory() string {
@@ -243,14 +253,16 @@ func (t *idleTimer) Stop() {
 }
 
 type setTimeoutTicket struct {
-	newdur time.Duration
-	done   chan struct{}
+	newdur     time.Duration
+	done       chan struct{}
+	writesBump bool
 }
 
-func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
+func newSetTimeoutTicket(dur time.Duration, writesBump bool) *setTimeoutTicket {
 	return &setTimeoutTicket{
-		newdur: dur,
-		done:   make(chan struct{}),
+		newdur:     dur,
+		done:       make(chan struct{}),
+		writesBump: writesBump,
 	}
 }
 
@@ -310,6 +322,14 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				/* change state, maybe */
 				t.timeOutRaised = ""
 				atomic.StoreInt64(&t.last, monoNow()) // Reset
+				if tk.newdur > 0 {
+					if tk.writesBump {
+						atomic.StoreInt32(&t.resetOnWrites, 1)
+					} else {
+						atomic.StoreInt32(&t.resetOnWrites, 0)
+					}
+				}
+
 				if dur > 0 {
 					// timeouts active currently
 					if tk.newdur == dur {

@@ -89,9 +89,10 @@ type Channel interface {
 	Done() <-chan struct{}
 
 	// SetIdleTimeout starts an idle timer on
-	// both Reads and Writes, that will cause them
-	// to timeout after dur if there is no successful
-	// Read() or Write() activity.
+	// Reads that will cause them
+	// to timeout after dur. If writesBump is true
+	// then successful Writes will also delay
+	// an idle timeout.
 	//
 	// Providing dur of 0 will disable the idle timeout.
 	// Zero is the default until SetIdleTimeout() is called.
@@ -117,7 +118,7 @@ type Channel interface {
 	// to restart long interrupted transfers that
 	// were making fine progress.
 	//
-	SetIdleTimeout(dur time.Duration) error
+	SetIdleTimeout(dur time.Duration, writesBump bool) error
 
 	// SetReadDeadline sets the deadline for future Read calls
 	// and any currently-blocked Read call.
@@ -809,8 +810,8 @@ func (c *channel) RemoteAddr() net.Addr {
 // Any new timer (if dur > 0) begins from the return of
 // the SetIdleTimeout() invocation.
 //
-func (c *channel) SetIdleTimeout(dur time.Duration) error {
-	c.idleTimer.SetIdleTimeout(dur)
+func (c *channel) SetIdleTimeout(dur time.Duration, writesBump bool) error {
+	c.idleTimer.SetIdleTimeout(dur, writesBump)
 	return nil
 }
 
