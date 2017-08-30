@@ -822,7 +822,18 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 	if t.IsZero() {
 		c.idleTimer.SetReadOneshotIdleTimeout(0)
 	} else {
-		c.idleTimer.SetReadOneshotIdleTimeout(t.Sub(time.Now()))
+		var dur time.Duration
+		now := time.Now()
+		if !now.Before(t) {
+			// they are late, but they don't want to block,
+			// or they would have sent us a zero time.
+			// So set a minimal timeout that will unblock
+			// any reads immediately.
+			dur = time.Nanosecond
+		} else {
+			dur = t.Sub(now)
+		}
+		c.idleTimer.SetReadOneshotIdleTimeout(dur)
 	}
 	return nil
 }
