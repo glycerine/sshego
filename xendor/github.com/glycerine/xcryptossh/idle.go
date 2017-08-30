@@ -217,7 +217,7 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration, writesBump bool) {
 
 func (t *idleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
 	atomic.StoreInt32(&t.isOneshotRead, 1)
-	t.SetIdleTimeout(dur, false)
+	t.SetIdleTimeout(dur, false) // writes don't bump read timeouts, of course.
 }
 
 func (t *idleTimer) GetResetHistory() string {

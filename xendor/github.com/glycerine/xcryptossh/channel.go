@@ -92,7 +92,11 @@ type Channel interface {
 	// Reads that will cause them
 	// to timeout after dur. If writesBump is true
 	// then successful Writes will also delay
-	// an idle timeout.
+	// an idle timeout. The writesBump true setting
+	// is less useful than it sounds, because Write()
+	// to a Channel will "succeed" before they
+	// reach the remote end. They are buffered
+	// internally.
 	//
 	// Providing dur of 0 will disable the idle timeout.
 	// Zero is the default until SetIdleTimeout() is called.
@@ -254,10 +258,6 @@ type channel struct {
 	// the first invocation of Close() has any
 	// effect; the result return nil immediately.
 	hasClosed int32
-
-	// read and write deadlines
-	rline time.Time
-	wline time.Time
 
 	// idleTimer provides a means
 	// for ssh.Channel users to check how
