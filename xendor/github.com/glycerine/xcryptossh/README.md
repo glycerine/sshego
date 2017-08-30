@@ -37,9 +37,14 @@ type Channel interface {
 
         ...
 	// SetIdleTimeout starts an idle timer on
-	// both Reads and Writes, that will cause them
-	// to timeout after dur if there is no successful
-	// Read() or Write() activity.
+	// Reads that will cause them
+	// to timeout after dur. If writesBump is true
+	// then successful Writes will also delay
+	// an idle timeout. The writesBump true setting
+	// is less useful than it sounds, because Write()
+	// to a Channel will "succeed" before they
+	// reach the remote end. They are buffered
+	// internally.
 	//
 	// Providing dur of 0 will disable the idle timeout.
 	// Zero is the default until SetIdleTimeout() is called.
@@ -48,7 +53,7 @@ type Channel interface {
 	// clear any raised timeout left over from prior use.
 	// Any new timer (if dur > 0) begins from the return of
 	// the SetIdleTimeout() invocation.
-        //
+	//
 	// Idle timeouts are easier to use than deadlines,
 	// as they don't need to be refreshed after
 	// every read and write. Hence routines like io.Copy()
@@ -62,10 +67,10 @@ type Channel interface {
 	// good ongoing copy that happens to be
 	// taking a few seconds longer than our
 	// guesstimate. We avoid the pain of trying
-        // to restart long interrupted transfers that
-        // were making fine progress.
+	// to restart long interrupted transfers that
+	// were making fine progress.
 	//
-	SetIdleTimeout(dur time.Duration) error
+	SetIdleTimeout(dur time.Duration, writesBump bool) error
 }
 ~~~
 
