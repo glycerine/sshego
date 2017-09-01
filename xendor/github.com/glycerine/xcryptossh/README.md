@@ -35,16 +35,17 @@ package ssh
 // that is multiplexed over an SSH connection.
 type Channel interface {
 
-        ...
+    ...
 	// SetIdleTimeout starts an idle timer on
-	// Reads that will cause them
-	// to timeout after dur. If writesBump is true
-	// then successful Writes will also delay
-	// an idle timeout. The writesBump true setting
-	// is less useful than it sounds, because Write()
-	// to a Channel will "succeed" before they
-	// reach the remote end. They are buffered
-	// internally.
+	// that will cause them to timeout after dur.
+	// A successful Read will bump the idle
+	// timeout into the future. Successful writes
+	// don't bump the timer because Write() to
+	// a Channel will "succeed" in the sense of
+	// returning a nil error long before they
+	// reach the remote end (or not). Writes
+	// are buffered internally. Hence write success
+	// has no impact on idle timeout.
 	//
 	// Providing dur of 0 will disable the idle timeout.
 	// Zero is the default until SetIdleTimeout() is called.
@@ -70,7 +71,7 @@ type Channel interface {
 	// to restart long interrupted transfers that
 	// were making fine progress.
 	//
-	SetIdleTimeout(dur time.Duration, writesBump bool) error
+	SetIdleTimeout(dur time.Duration) error
 }
 ~~~
 
