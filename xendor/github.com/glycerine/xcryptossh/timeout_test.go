@@ -137,7 +137,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 	}()
 
 	// use a quick timeout so the test runs quickly.
-	err := r.SetIdleTimeout(2*time.Millisecond, true)
+	err := r.SetIdleTimeout(2*time.Millisecond, false)
 	if err != nil {
 		panic(fmt.Sprintf("SetIdleTimeout: %v", err))
 	}
