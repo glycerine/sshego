@@ -226,7 +226,12 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	}
 
 	err = w.Close()
-	if err != nil {
+	switch {
+	case err == nil:
+		//ok
+	case err == io.EOF:
+		// ok
+	default:
 		panic(fmt.Sprintf("Close: %v", err))
 	}
 }
