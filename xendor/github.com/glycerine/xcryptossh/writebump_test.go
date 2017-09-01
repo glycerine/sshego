@@ -10,29 +10,12 @@ import (
 // Given a read-only idle timeout of 1 sec, and a write happening
 // every 100 msec: when reads stop, even with the ongoing write
 // success, the read should still timeout. i.e. read timeout should
-// be independent of write success. This is a test of the
-// writesBump parameter to SetIdleTimeout().
+// be independent of write success. This is needed because
+// writers are buffered and typically return a nil error, but
+// this tells us nothing about the status of connectivity.
 func TestTimeout009ReadsIdleOutEvenIfWritesOK(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
-	writeBump := false
-	helper009(t, writeBump)
-
-	// this test *should* panic, that means everything is working/test is green.
-	writeBump = true
-	gotPanic := false
-	expectPanic := func() {
-		defer func() {
-			if nil != recover() {
-				gotPanic = true
-			}
-		}()
-		helper009(t, writeBump)
-	}
-	expectPanic()
-
-}
-func helper009(t *testing.T, writeBump bool) {
 	halt := NewHalter()
 	defer halt.ReqStop.Close()
 
@@ -50,7 +33,7 @@ func helper009(t *testing.T, writeBump bool) {
 	tExpectIdleOut := t0.Add(idleout)
 
 	// set the timeout on the reader
-	err := r.SetIdleTimeout(idleout, writeBump)
+	err := r.SetIdleTimeout(idleout)
 	if err != nil {
 		panic(fmt.Sprintf("r.SetIdleTimeout: %v", err))
 	}

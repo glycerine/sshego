@@ -26,7 +26,7 @@ func TestTimeout007WriteIdlesOutWhenReadsStop(t *testing.T) {
 	tstop := t0.Add(overall)
 
 	// set the timeout on the writer
-	err := w.SetIdleTimeout(idleout, true)
+	err := w.SetIdleTimeout(idleout)
 	if err != nil {
 		panic(fmt.Sprintf("w.SetIdleTimeout: %v", err))
 	}

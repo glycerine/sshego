@@ -70,7 +70,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 	magic := "expected saluations"
 	go func() {
 		// use a quick timeout so the test runs quickly.
-		err := w.SetIdleTimeout(50*time.Millisecond, true)
+		err := w.SetIdleTimeout(50 * time.Millisecond)
 		if err != nil {
 			t.Fatalf("SetIdleTimeout: %v", err)
 		}
@@ -80,7 +80,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 			panic(fmt.Sprintf("expected to get a net.Error that had Timeout() true: '%v'. wrote n=%v", err, n))
 		}
 
-		err = w.SetIdleTimeout(0, false)
+		err = w.SetIdleTimeout(0)
 		if err != nil {
 			t.Fatalf("canceling idle timeout: %v", err)
 		}
@@ -137,7 +137,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 	}()
 
 	// use a quick timeout so the test runs quickly.
-	err := r.SetIdleTimeout(2*time.Millisecond, false)
+	err := r.SetIdleTimeout(2 * time.Millisecond)
 	if err != nil {
 		panic(fmt.Sprintf("SetIdleTimeout: %v", err))
 	}
@@ -183,7 +183,7 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	}()
 
 	// use a quick timeout so the test runs quickly.
-	err := r.SetIdleTimeout(2*time.Millisecond, true)
+	err := r.SetIdleTimeout(2 * time.Millisecond)
 	if err != nil {
 		panic(fmt.Sprintf("SetIdleTimeout: %v", err))
 	}
@@ -197,7 +197,7 @@ func TestSimpleReadAfterTimeout(t *testing.T) {
 	cancel <- true
 
 	// And we *must* reset the timeout status before trying to Read again.
-	err = r.SetIdleTimeout(0, false)
+	err = r.SetIdleTimeout(0)
 	if err != nil {
 		panic(fmt.Sprintf("reset with SetIdleTimeout: %v", err))
 	}
