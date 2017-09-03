@@ -129,6 +129,11 @@ type Channel interface {
 	//
 	SetIdleTimeout(dur time.Duration) (*IdleTimer, error)
 
+	// GetIdleTimer allows monitoring of idle timeout
+	// by other parties. It doesn't disturb the
+	// timer if it happens to be running.
+	GetIdleTimer() *IdleTimer
+
 	// SetReadDeadline sets the deadline for future Read calls
 	// and any currently-blocked Read call.
 	// A zero value for t means Read will not time out.
@@ -842,4 +847,8 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 		c.idleTimer.SetReadOneshotIdleTimeout(dur)
 	}
 	return nil
+}
+
+func (c *channel) GetIdleTimer() *IdleTimer {
+	return c.idleTimer
 }
