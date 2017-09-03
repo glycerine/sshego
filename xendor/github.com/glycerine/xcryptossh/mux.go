@@ -357,7 +357,7 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 		PeersId:          ch.localId,
 	}
 	if err := m.sendMessage(open); err != nil {
-		ch.idleTimer.halt.ReqStop.Close()
+		ch.idleTimer.Halt.ReqStop.Close()
 		return nil, err
 	}
 
@@ -372,10 +372,10 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 		case *channelOpenConfirmMsg:
 			return ch, nil
 		case *channelOpenFailureMsg:
-			ch.idleTimer.halt.ReqStop.Close()
+			ch.idleTimer.Halt.ReqStop.Close()
 			return nil, &OpenChannelError{msgt.Reason, msgt.Message}
 		default:
-			ch.idleTimer.halt.ReqStop.Close()
+			ch.idleTimer.Halt.ReqStop.Close()
 			return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msgt)
 		}
 	case <-done:

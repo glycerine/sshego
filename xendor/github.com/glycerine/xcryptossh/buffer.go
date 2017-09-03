@@ -110,7 +110,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 		timedOut := ""
 		select {
 		case timedOut = <-b.idle.TimedOut:
-		case <-b.idle.halt.ReqStop.Chan:
+		case <-b.idle.Halt.ReqStop.Chan:
 		}
 		if timedOut != "" {
 			err = newErrTimeout(timedOut, b.idle)

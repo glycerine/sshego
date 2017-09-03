@@ -638,7 +638,7 @@ func (ch *channel) Reject(reason RejectionReason, message string) error {
 		Language: "en",
 	}
 	ch.decided = true
-	ch.idleTimer.halt.ReqStop.Close()
+	ch.idleTimer.Halt.ReqStop.Close()
 
 	return ch.sendMessage(reject)
 }
@@ -676,7 +676,7 @@ func (ch *channel) Close() error {
 		return errUndecided
 	}
 
-	ch.idleTimer.halt.ReqStop.Close()
+	ch.idleTimer.Halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{
 		PeersId: ch.remoteId})

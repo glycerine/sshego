@@ -22,11 +22,17 @@ import (
 // are also occassionally required.
 //
 type IdleTimer struct {
+	// TimedOut sends empty string if no timeout, else details.
+	TimedOut chan string
+
+	// Halt is the standard means of requesting
+	// stop and waiting for that stop to be done.
+	Halt *Halter
+
 	mut     sync.Mutex
 	idleDur time.Duration
 	last    int64
 
-	halt            *Halter
 	timeoutCallback []func()
 
 	// GetIdleTimeoutCh returns the current idle timeout duration in use.
@@ -36,7 +42,6 @@ type IdleTimer struct {
 	// SetIdleTimeout() will always set the timeOutRaised state to false.
 	// Likewise for sending on setIdleTimeoutCh.
 	setIdleTimeoutCh chan *setTimeoutTicket
-	TimedOut         chan string // sends empty string if no timeout, else details.
 
 	setCallback   chan *callbacks
 	addCallback   chan *callbacks
@@ -75,7 +80,7 @@ func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
 		setCallback:      make(chan *callbacks),
 		addCallback:      make(chan *callbacks),
 		TimedOut:         make(chan string),
-		halt:             NewHalter(),
+		Halt:             NewHalter(),
 	}
 	if callback != nil {
 		t.timeoutCallback = append(t.timeoutCallback, callback)
@@ -92,7 +97,7 @@ func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
 func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
 	select {
 	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
-	case <-t.halt.ReqStop.Chan:
+	case <-t.Halt.ReqStop.Chan:
 	}
 }
 
@@ -103,7 +108,7 @@ func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
 	}
 	select {
 	case t.addCallback <- &callbacks{onTimeout: timeoutFunc}:
-	case <-t.halt.ReqStop.Chan:
+	case <-t.Halt.ReqStop.Chan:
 	}
 }
 
@@ -127,9 +132,9 @@ func (t *IdleTimer) Reset() {
 	// never supported having different write and read
 	// deadlines, which would need two separate idle timers.
 	if atomic.LoadInt32(&t.isOneshotRead) != 0 {
-		t.halt.ReqStop.Close()
+		t.Halt.ReqStop.Close()
 		select {
-		case <-t.halt.Done.Chan:
+		case <-t.Halt.Done.Chan:
 		case <-time.After(10 * time.Second):
 			panic("deadlocked during IdleTimer oneshut shutdown")
 		}
@@ -163,11 +168,11 @@ func (t *IdleTimer) SetIdleTimeout(dur time.Duration) error {
 	tk := newSetTimeoutTicket(dur)
 	select {
 	case t.setIdleTimeoutCh <- tk:
-	case <-t.halt.ReqStop.Chan:
+	case <-t.Halt.ReqStop.Chan:
 	}
 	select {
 	case <-tk.done:
-	case <-t.halt.ReqStop.Chan:
+	case <-t.Halt.ReqStop.Chan:
 	}
 	return nil
 }
@@ -182,17 +187,17 @@ func (t *IdleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
 func (t *IdleTimer) GetIdleTimeout() (dur time.Duration) {
 	select {
 	case dur = <-t.getIdleTimeoutCh:
-	case <-t.halt.ReqStop.Chan:
+	case <-t.Halt.ReqStop.Chan:
 	}
 	return
 }
 
 func (t *IdleTimer) Stop() {
-	t.halt.ReqStop.Close()
+	t.Halt.ReqStop.Close()
 	select {
-	case <-t.halt.Done.Chan:
+	case <-t.Halt.Done.Chan:
 	case <-time.After(10 * time.Second):
-		panic("IdleTimer.Stop() problem! t.halt.Done.Chan not received  after 10sec! serious problem")
+		panic("IdleTimer.Stop() problem! t.Halt.Done.Chan not received  after 10sec! serious problem")
 	}
 }
 
@@ -230,11 +235,11 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 			if heartbeat != nil {
 				heartbeat.Stop() // allow GC
 			}
-			t.halt.Done.Close()
+			t.Halt.Done.Close()
 		}()
 		for {
 			select {
-			case <-t.halt.ReqStop.Chan:
+			case <-t.Halt.ReqStop.Chan:
 				return
 
 			case t.TimedOut <- t.timeOutRaised:
