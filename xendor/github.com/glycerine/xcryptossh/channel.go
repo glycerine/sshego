@@ -123,7 +123,11 @@ type Channel interface {
 	// to restart long interrupted transfers that
 	// were making fine progress.
 	//
-	SetIdleTimeout(dur time.Duration) error
+	// The returned IdleTime pointer can be queried
+	// to observe if a timeout has occurred and when
+	// the last successful Read() happened.
+	//
+	SetIdleTimeout(dur time.Duration) (*IdleTimer, error)
 
 	// SetReadDeadline sets the deadline for future Read calls
 	// and any currently-blocked Read call.
@@ -815,9 +819,9 @@ func (c *channel) RemoteAddr() net.Addr {
 // Any new timer (if dur > 0) begins from the return of
 // the SetIdleTimeout() invocation.
 //
-func (c *channel) SetIdleTimeout(dur time.Duration) error {
+func (c *channel) SetIdleTimeout(dur time.Duration) (*IdleTimer, error) {
 	c.idleTimer.SetIdleTimeout(dur)
-	return nil
+	return c.idleTimer, nil
 }
 
 func (c *channel) SetReadDeadline(t time.Time) error {
