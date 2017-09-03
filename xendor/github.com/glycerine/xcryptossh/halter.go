@@ -68,6 +68,7 @@ type Halter struct {
 
 	// The owning goutine should call Done.Close() as its last
 	// actual once it has received the ReqStop() signal.
+	// Err, if any, should be set before Done is called.
 	Done IdemCloseChan
 
 	// Other goroutines call ReqStop.Close() in order
@@ -83,13 +84,81 @@ type Halter struct {
 	// functions should set Err (if non nil)
 	// prior to calling Done.Close().
 	Err error
+
+	upstream   map[*Halter]*RunStatus // notify when done.
+	downstream map[*Halter]*RunStatus // reqStop if we are reqStop
+	mut        sync.Mutex
+}
+
+func (h *Halter) AddUpstream(u *Halter) {
+	h.mut.Lock()
+	h.upstream[u] = nil
+	h.mut.Unlock()
+}
+
+func (h *Halter) AddDownstream(d *Halter) {
+	h.mut.Lock()
+	h.downstream[d] = nil
+	h.mut.Unlock()
+}
+
+// RunStatus provides lifecycle snapshots.
+type RunStatus struct {
+
+	// lifecycle
+	Ready         bool
+	StopRequested bool
+	Done          bool
+
+	// can be waited on for finish.
+	// Once closed, call Status()
+	// again to get any Err that
+	// was the cause/leftover.
+	DoneCh <-chan struct{}
+
+	// final error if any.
+	Err error
+}
+
+func (h *Halter) Update() {
+	h.mut.Lock()
+	if h.ReqStop.IsClosed() {
+		for d := range h.downstream {
+			d.RequestStop()
+		}
+	}
+	snap := h.Status()
+	for u := range h.upstream {
+		u.UpdateFromDownstream(h, snap)
+	}
+	h.mut.Unlock()
+}
+
+func (h *Halter) UpdateFromDownstream(d *Halter, rs *RunStatus) {
+	h.mut.Lock()
+	h.downstream[d] = rs
+	h.mut.Unlock()
+}
+
+func (h *Halter) Status() (r *RunStatus) {
+	r = &RunStatus{}
+	r.Ready = h.Ready.IsClosed()
+	r.StopRequested = h.ReqStop.IsClosed()
+	r.Done = h.Done.IsClosed()
+	if r.Done {
+		r.Err = h.Err
+	}
+	r.DoneCh = h.Done.Chan
+	return
 }
 
 func NewHalter() *Halter {
 	return &Halter{
-		Ready:   *NewIdemCloseChan(),
-		Done:    *NewIdemCloseChan(),
-		ReqStop: *NewIdemCloseChan(),
+		Ready:      *NewIdemCloseChan(),
+		Done:       *NewIdemCloseChan(),
+		ReqStop:    *NewIdemCloseChan(),
+		upstream:   make(map[*Halter]*RunStatus),
+		downstream: make(map[*Halter]*RunStatus),
 	}
 }
 

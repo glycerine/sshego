@@ -928,33 +928,15 @@ func (c *channel) GetWriteIdleTimer() *IdleTimer {
 	return c.idleW
 }
 
-type RunStatus struct {
-
-	// lifecycle
-	Ready         bool
-	Timedout      bool
-	StopRequested bool
-	Done          bool
-
-	// can be waited on for finish.
-	// Once closed, call Status()
-	// again to get any Err that
-	// was the cause/leftover.
-	DoneCh <-chan struct{}
-
-	// final error if any.
-	Err error
-}
-
 // Status observes the goroutine lifecycle.
 func (c *channel) Status() (r *RunStatus) {
+	r = &RunStatus{}
 	r.Ready = c.idleR.Halt.Ready.IsClosed()
 	r.StopRequested = c.idleR.Halt.ReqStop.IsClosed()
 	r.Done = c.idleR.Halt.Done.IsClosed()
 	if r.Done {
 		r.Err = c.idleR.Halt.Err
 	}
-	_, _, _, _, r.Timedout = c.idleR.IdleStatus()
 	r.DoneCh = c.idleR.Halt.Done.Chan
 	return
 }
