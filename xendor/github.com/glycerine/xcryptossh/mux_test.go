@@ -72,7 +72,7 @@ func TestMuxChannelExtendedThreadSafety(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	writer, reader, mux := channelPair(t, halt)
 	defer writer.Close()
@@ -117,7 +117,7 @@ func TestMuxReadWrite(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	s, c, mux := channelPair(t, halt)
 	defer s.Close()
@@ -172,7 +172,7 @@ func TestMuxChannelOverflow(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	reader, writer, mux := channelPair(t, halt)
 	defer reader.Close()
@@ -209,7 +209,7 @@ func TestMuxChannelCloseWriteUnblock(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	reader, writer, mux := channelPair(t, halt)
 	defer reader.Close()
@@ -236,7 +236,7 @@ func TestMuxConnectionCloseWriteUnblock(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	reader, writer, mux := channelPair(t, halt)
 	defer reader.Close()
@@ -263,7 +263,7 @@ func TestMuxReject(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	client, server := muxPair(halt)
 	defer server.Close()
@@ -303,7 +303,7 @@ func TestMuxChannelRequest(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	client, server, mux := channelPair(t, halt)
 	defer server.Close()
@@ -355,7 +355,7 @@ func TestMuxGlobalRequest(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	clientMux, serverMux := muxPair(halt)
 	defer serverMux.Close()
@@ -404,7 +404,7 @@ func TestMuxGlobalRequest(t *testing.T) {
 func TestMuxGlobalRequestUnblock(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	clientMux, serverMux := muxPair(halt)
 	defer serverMux.Close()
@@ -430,7 +430,7 @@ func TestMuxGlobalRequestUnblock(t *testing.T) {
 func TestMuxChannelRequestUnblock(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	a, b, connB := channelPair(t, halt)
 	defer a.Close()
@@ -455,7 +455,7 @@ func TestMuxChannelRequestUnblock(t *testing.T) {
 func TestMuxCloseChannel(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer mux.Close()
@@ -484,7 +484,7 @@ func TestMuxCloseChannel(t *testing.T) {
 func TestMuxCloseWriteChannel(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer mux.Close()
@@ -511,7 +511,7 @@ func TestMuxCloseWriteChannel(t *testing.T) {
 func TestMuxInvalidRecord(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	a, b := muxPair(halt)
 	defer a.Close()
@@ -538,7 +538,7 @@ func TestZeroWindowAdjust(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	a, b, mux := channelPair(t, halt)
 	defer a.Close()
@@ -564,7 +564,7 @@ func TestMuxMaxPacketSize(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	a, b, mux := channelPair(t, halt)
 	defer a.Close()

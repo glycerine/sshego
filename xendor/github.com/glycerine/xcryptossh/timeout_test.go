@@ -60,7 +60,7 @@ func init() {
 func TestSimpleWriteTimeout(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer w.Close()
@@ -122,7 +122,7 @@ func TestSimpleWriteTimeout(t *testing.T) {
 func TestSimpleReadTimeout(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer w.Close()
@@ -168,7 +168,7 @@ func TestSimpleReadTimeout(t *testing.T) {
 func TestSimpleReadAfterTimeout(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer w.Close()
@@ -246,7 +246,7 @@ func TestSimpleReadDeadline(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 	defer w.Close()

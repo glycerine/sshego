@@ -133,7 +133,7 @@ func setClose(r, w Channel, closeReader bool) {
 
 func testCts(timeOutOnReader bool, t *testing.T) {
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 
@@ -148,8 +148,8 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 
 	haltr := NewHalter()
 	haltw := NewHalter()
-	defer haltr.ReqStop.Close()
-	defer haltw.ReqStop.Close()
+	defer haltr.RequestStop()
+	defer haltw.RequestStop()
 
 	setTo(r, w, timeOutOnReader, idleout)
 	readErr := make(chan error)
@@ -201,8 +201,8 @@ collectionLoop:
 			// Closing is faster than setting a timeout and waiting for it.
 			setClose(r, w, !timeOutOnReader)
 
-			haltr.ReqStop.Close()
-			haltw.ReqStop.Close()
+			haltr.RequestStop()
+			haltw.RequestStop()
 
 			if complete() {
 				break collectionLoop
@@ -282,7 +282,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 			}
 			numwrites++
 			select {
-			case <-halt.ReqStop.Chan:
+			case <-halt.ReqStopChan():
 				return readOk
 			default:
 			}
@@ -325,7 +325,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 				break
 			}
 			select {
-			case <-halt.ReqStop.Chan:
+			case <-halt.ReqStopChan():
 				return writeOk
 			default:
 			}

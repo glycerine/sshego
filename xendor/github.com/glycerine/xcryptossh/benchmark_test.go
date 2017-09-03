@@ -79,7 +79,7 @@ func sshPipe(halt *Halter) (Conn, *server, error) {
 func BenchmarkEndToEnd(b *testing.B) {
 	b.StopTimer()
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	ctx := context.Background()
 

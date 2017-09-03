@@ -175,7 +175,7 @@ func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payl
 			return false, nil, fmt.Errorf("ssh: unexpected response to request: %#v", msg)
 		}
 
-	case <-m.halt.ReqStop.Chan:
+	case <-m.halt.ReqStopChan():
 		return false, nil, io.EOF
 	case <-ctx.Done():
 		return false, nil, io.EOF
@@ -284,7 +284,7 @@ func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 			mux:       m,
 		}:
 			// just the send
-		case <-m.halt.ReqStop.Chan:
+		case <-m.halt.ReqStopChan():
 			return io.EOF
 		case <-ctx.Done():
 			return io.EOF
@@ -292,7 +292,7 @@ func (m *mux) handleGlobalPacket(ctx context.Context, packet []byte) error {
 	case *globalRequestSuccessMsg, *globalRequestFailureMsg:
 		select {
 		case m.globalResponses <- msg:
-		case <-m.halt.ReqStop.Chan:
+		case <-m.halt.ReqStopChan():
 			return io.EOF
 		case <-ctx.Done():
 			return io.EOF
@@ -327,7 +327,7 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 	c.remoteWin.add(msg.PeersWindow)
 	select {
 	case m.incomingChannels <- c:
-	case <-m.halt.ReqStop.Chan:
+	case <-m.halt.ReqStopChan():
 		return io.EOF
 	case <-ctx.Done():
 		return io.EOF
@@ -357,14 +357,14 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 		PeersId:          ch.localId,
 	}
 	if err := m.sendMessage(open); err != nil {
-		ch.idleR.Halt.ReqStop.Close()
-		ch.idleW.Halt.ReqStop.Close()
+		ch.idleR.Halt.RequestStop()
+		ch.idleW.Halt.RequestStop()
 		return nil, err
 	}
 
 	var done chan struct{}
 	if m.halt != nil {
-		done = m.halt.ReqStop.Chan
+		done = m.halt.ReqStopChan()
 	}
 
 	select {
@@ -373,12 +373,12 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*
 		case *channelOpenConfirmMsg:
 			return ch, nil
 		case *channelOpenFailureMsg:
-			ch.idleR.Halt.ReqStop.Close()
-			ch.idleW.Halt.ReqStop.Close()
+			ch.idleR.Halt.RequestStop()
+			ch.idleW.Halt.RequestStop()
 			return nil, &OpenChannelError{msgt.Reason, msgt.Message}
 		default:
-			ch.idleR.Halt.ReqStop.Close()
-			ch.idleW.Halt.ReqStop.Close()
+			ch.idleR.Halt.RequestStop()
+			ch.idleW.Halt.RequestStop()
 			return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msgt)
 		}
 	case <-done:

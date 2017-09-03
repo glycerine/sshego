@@ -358,7 +358,7 @@ func (w *window) reserveShouldReturn() (bye bool, err error) {
 		if timedOut != "" {
 			return true, newErrTimeout(timedOut, w.idle)
 		}
-	case <-w.idle.Halt.ReqStop.Chan:
+	case <-w.idle.Halt.ReqStopChan():
 		// original tests expect io.EOF and not ErrShutDown,
 		// so we continue with an EOF here, even though
 		// we are shutting down.

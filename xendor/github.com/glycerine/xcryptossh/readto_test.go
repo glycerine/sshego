@@ -17,7 +17,7 @@ func TestTimeout008ReadIdlesOutWhenWriteStops(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, w, mux := channelPair(t, halt)
 

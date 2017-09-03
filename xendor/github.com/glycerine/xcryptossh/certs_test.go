@@ -185,7 +185,7 @@ func TestHostKeyCert(t *testing.T) {
 	}
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 	certSigner, err := NewCertSigner(cert, testSigners["rsa"])
 	if err != nil {
 		t.Errorf("NewCertSigner: %v", err)
@@ -228,7 +228,7 @@ func TestHostKeyCert(t *testing.T) {
 			},
 		}
 		_, _, _, err = NewClientConn(ctx, c2, test.addr, config)
-		defer config.Halt.ReqStop.Close()
+		defer config.Halt.RequestStop()
 
 		if (err == nil) != test.succeed {
 			t.Fatalf("NewClientConn(%q): %v", test.addr, err)

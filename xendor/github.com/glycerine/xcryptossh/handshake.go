@@ -115,7 +115,7 @@ func newHandshakeTransport(ctx context.Context, conn keyingTransport, config *Co
 	select {
 	case t.requestKex <- struct{}{}:
 		return t
-	case <-t.config.Halt.ReqStop.Chan:
+	case <-t.config.Halt.ReqStopChan():
 		return nil
 	case <-ctx.Done():
 		return nil
@@ -204,7 +204,7 @@ func (t *handshakeTransport) readPacket(ctx context.Context) ([]byte, error) {
 			return nil, t.readError
 		}
 		return p, nil
-	case <-t.config.Halt.ReqStop.Chan:
+	case <-t.config.Halt.ReqStopChan():
 		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, io.EOF
@@ -226,7 +226,7 @@ func (t *handshakeTransport) readLoop(ctx context.Context) {
 		}
 		select {
 		case t.incoming <- p:
-		case <-t.config.Halt.ReqStop.Chan:
+		case <-t.config.Halt.ReqStopChan():
 			return
 		case <-ctx.Done():
 			return
@@ -298,7 +298,7 @@ write:
 				}
 			case <-t.requestKex:
 				break
-			case <-t.config.Halt.ReqStop.Chan:
+			case <-t.config.Halt.ReqStopChan():
 				return
 			case <-ctx.Done():
 				return
@@ -317,7 +317,7 @@ write:
 			if request != nil {
 				select {
 				case request.done <- err:
-				case <-t.config.Halt.ReqStop.Chan:
+				case <-t.config.Halt.ReqStopChan():
 					return
 				case <-ctx.Done():
 					return
@@ -360,7 +360,7 @@ write:
 
 		select {
 		case request.done <- t.writeError:
-		case <-t.config.Halt.ReqStop.Chan:
+		case <-t.config.Halt.ReqStopChan():
 			return
 		case <-ctx.Done():
 			return
@@ -395,13 +395,13 @@ write:
 				if init != nil {
 					select {
 					case init.done <- t.writeError:
-					case <-t.config.Halt.ReqStop.Chan:
+					case <-t.config.Halt.ReqStopChan():
 						return
 					case <-ctx.Done():
 						return
 					}
 				}
-			case <-t.config.Halt.ReqStop.Chan:
+			case <-t.config.Halt.ReqStopChan():
 				return
 			case <-ctx.Done():
 				return
@@ -471,12 +471,12 @@ func (t *handshakeTransport) readOnePacket(ctx context.Context, first bool) ([]b
 	case t.startKex <- &kex:
 		select {
 		case err = <-kex.done:
-		case <-t.config.Halt.ReqStop.Chan:
+		case <-t.config.Halt.ReqStopChan():
 			return nil, io.EOF
 		case <-ctx.Done():
 			return nil, io.EOF
 		}
-	case <-t.config.Halt.ReqStop.Chan:
+	case <-t.config.Halt.ReqStopChan():
 		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, io.EOF

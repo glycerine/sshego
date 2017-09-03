@@ -141,7 +141,7 @@ func TestHandshakeBasic(t *testing.T) {
 	}
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 	checker.waitCall <- 1
 	trC, trS, err := handshakePair(
 		&ClientConfig{
@@ -235,7 +235,7 @@ func TestForceFirstKex(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	// like handshakePair, but must access the keyingTransport.
 	checker := &testChecker{}
@@ -291,7 +291,7 @@ func TestHandshakeAutoRekeyWrite(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 	checker := &syncChecker{
 		called:   make(chan int, 10),
 		waitCall: nil,
@@ -364,7 +364,7 @@ func TestHandshakeAutoRekeyRead(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	sync := &syncChecker{
 		called:   make(chan int, 2),
@@ -487,7 +487,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 	key := testSigners["ecdsa"]
 	serverConf := Config{RekeyThreshold: minRekeyThreshold}
 	serverConf.SetDefaults()
-	defer serverConf.Halt.ReqStop.Close()
+	defer serverConf.Halt.RequestStop()
 	ctx := context.Background()
 	serverConn := newHandshakeTransport(ctx, &errorKeyingTransport{a, readLimit, writeLimit}, &serverConf, []byte{'a'}, []byte{'b'})
 	serverConn.hostKeys = []Signer{key}
@@ -496,7 +496,7 @@ func testHandshakeErrorHandlingN(t *testing.T, readLimit, writeLimit int, couple
 
 	clientConf := Config{RekeyThreshold: 10 * minRekeyThreshold}
 	clientConf.SetDefaults()
-	defer clientConf.Halt.ReqStop.Close()
+	defer clientConf.Halt.RequestStop()
 	clientConn := newHandshakeTransport(ctx, &errorKeyingTransport{b, -1, -1}, &clientConf, []byte{'a'}, []byte{'b'})
 	clientConn.hostKeyAlgorithms = []string{key.PublicKey().Type()}
 	clientConn.hostKeyCallback = InsecureIgnoreHostKey()
@@ -552,7 +552,7 @@ func TestDisconnect(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	if runtime.GOOS == "plan9" {
 		t.Skip("see golang.org/issue/7237")
@@ -603,7 +603,7 @@ func TestHandshakeRekeyDefault(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	clientConf := &ClientConfig{
 		Config: Config{

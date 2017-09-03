@@ -85,7 +85,7 @@ func TestSessionShell(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(shellHandler, t, halt)
 	defer conn.Close()
@@ -117,7 +117,7 @@ func TestSessionStdoutPipe(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(shellHandler, t, halt)
 	defer conn.Close()
@@ -159,7 +159,7 @@ func TestSessionOutput(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(fixedOutputHandler, t, halt)
 	defer conn.Close()
@@ -190,7 +190,7 @@ func TestSessionCombinedOutput(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(fixedOutputHandler, t, halt)
 	defer conn.Close()
@@ -221,7 +221,7 @@ func TestExitStatusNonZero(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitStatusNonZeroHandler, t, halt)
 	defer conn.Close()
@@ -253,7 +253,7 @@ func TestExitStatusZero(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitStatusZeroHandler, t, halt)
 	defer conn.Close()
@@ -279,7 +279,7 @@ func TestExitSignalAndStatus(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitSignalAndStatusHandler, t, halt)
 	defer conn.Close()
@@ -311,7 +311,7 @@ func TestKnownExitSignalOnly(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitSignalHandler, t, halt)
 	defer conn.Close()
@@ -343,7 +343,7 @@ func TestUnknownExitSignal(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitSignalUnknownHandler, t, halt)
 	defer conn.Close()
@@ -374,7 +374,7 @@ func TestExitWithoutStatusOrSignal(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(exitWithoutSignalOrStatus, t, halt)
 	defer conn.Close()
@@ -409,7 +409,7 @@ func TestServerWindow(t *testing.T) {
 	origBytes := origBuf.Bytes()
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(echoHandler, t, halt)
 	defer conn.Close()
@@ -461,7 +461,7 @@ func TestClientHandlesKeepalives(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(channelKeepaliveSender, t, halt)
 	defer conn.Close()
@@ -675,7 +675,7 @@ func TestClientWriteEOF(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	conn := dial(simpleEchoHandler, t, halt)
 	defer conn.Close()
@@ -728,7 +728,7 @@ func TestSessionID(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	c1, c2, err := netPipe()
 	if err != nil {
@@ -838,7 +838,7 @@ func TestHostKeyAlgorithms(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
-	defer serverConf.Halt.ReqStop.Close()
+	defer serverConf.Halt.RequestStop()
 	serverConf.AddHostKey(testSigners["rsa"])
 	serverConf.AddHostKey(testSigners["ecdsa"])
 
@@ -874,7 +874,7 @@ func TestHostKeyAlgorithms(t *testing.T) {
 			Halt: NewHalter(),
 		},
 	}
-	defer clientConf.Halt.ReqStop.Close()
+	defer clientConf.Halt.RequestStop()
 	connect(clientConf, KeyAlgoECDSA256)
 
 	// Client asks for RSA explicitly.

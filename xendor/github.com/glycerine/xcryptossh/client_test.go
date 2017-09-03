@@ -30,7 +30,7 @@ func testClientVersion(t *testing.T, config *ClientConfig, expected string) {
 	ctx := context.Background()
 
 	NewClientConn(ctx, clientConn, "", config)
-	defer config.Halt.ReqStop.Close()
+	defer config.Halt.RequestStop()
 	actual := <-receivedVersion
 	if actual != expected {
 		t.Fatalf("got %s; want %s", actual, expected)
@@ -78,7 +78,7 @@ func TestHostKeyCheck(t *testing.T) {
 		ctx := context.Background()
 
 		go NewServerConn(ctx, c1, serverConf)
-		defer serverConf.Halt.ReqStop.Close()
+		defer serverConf.Halt.RequestStop()
 
 		clientConf := ClientConfig{
 			User: "user",
@@ -91,7 +91,7 @@ func TestHostKeyCheck(t *testing.T) {
 		}
 
 		_, _, _, err = NewClientConn(ctx, c2, "", &clientConf)
-		defer clientConf.Halt.ReqStop.Close()
+		defer clientConf.Halt.RequestStop()
 
 		if err != nil {
 			if tt.wantError == "" || !strings.Contains(err.Error(), tt.wantError) {

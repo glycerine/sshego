@@ -154,7 +154,7 @@ func (c *Client) HandleGlobalRequests(ctx context.Context, incoming <-chan *Requ
 				// the behaviour of OpenSSH.
 				r.Reply(false, nil)
 			}
-		case <-c.Halt.ReqStop.Chan:
+		case <-c.Halt.ReqStopChan():
 			return
 		case <-c.Conn.Done():
 			return
@@ -169,7 +169,7 @@ func (c *Client) HandleChannelOpens(ctx context.Context, in <-chan NewChannel) {
 
 	for {
 		select {
-		case <-c.Halt.ReqStop.Chan:
+		case <-c.Halt.ReqStopChan():
 			return
 		case <-c.Conn.Done():
 			return
@@ -183,7 +183,7 @@ func (c *Client) HandleChannelOpens(ctx context.Context, in <-chan NewChannel) {
 				if handler != nil {
 					select {
 					case handler <- ch:
-					case <-c.Halt.ReqStop.Chan:
+					case <-c.Halt.ReqStopChan():
 						return
 					case <-c.Conn.Done():
 						return

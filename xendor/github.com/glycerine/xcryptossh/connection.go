@@ -86,7 +86,7 @@ func DiscardRequests(ctx context.Context, in <-chan *Request, halt *Halter) {
 
 	var reqStop chan struct{}
 	if halt != nil {
-		reqStop = halt.ReqStop.Chan
+		reqStop = halt.ReqStopChan()
 	}
 	for {
 		select {
@@ -129,12 +129,12 @@ func newConnection(c net.Conn, cfg *Config) *connection {
 }
 
 func (c *connection) Close() error {
-	c.halt.ReqStop.Close()
+	c.halt.RequestStop()
 	return c.sshConn.conn.Close()
 }
 
 func (c *connection) Done() <-chan struct{} {
-	return c.halt.ReqStop.Chan
+	return c.halt.ReqStopChan()
 }
 
 // sshconn provides net.Conn metadata, but disallows direct reads and

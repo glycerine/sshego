@@ -17,7 +17,7 @@ func TestTimeout009ReadsIdleOutEvenIfWritesOK(t *testing.T) {
 	defer xtestend(xtestbegin(t))
 
 	halt := NewHalter()
-	defer halt.ReqStop.Close()
+	defer halt.RequestStop()
 
 	r, wun, mux := channelPair(t, halt)
 	defer wun.Close()
@@ -166,7 +166,7 @@ func to009pingWrite(w Channel, tstop time.Time, writeFreq time.Duration, overall
 			w.Write(buf)
 			ping = time.After(writeFreq)
 
-		case <-halt.ReqStop.Chan:
+		case <-halt.ReqStopChan():
 			return
 		case <-overallTime:
 			return

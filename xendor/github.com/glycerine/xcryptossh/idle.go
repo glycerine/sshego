@@ -98,7 +98,7 @@ func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
 func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
 	select {
 	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
-	case <-t.Halt.ReqStop.Chan:
+	case <-t.Halt.ReqStopChan():
 	}
 }
 
@@ -109,7 +109,7 @@ func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
 	}
 	select {
 	case t.addCallback <- &callbacks{onTimeout: timeoutFunc}:
-	case <-t.Halt.ReqStop.Chan:
+	case <-t.Halt.ReqStopChan():
 	}
 }
 
@@ -137,7 +137,7 @@ func (t *IdleTimer) AttemptOK() {
 	// never supported having different write and read
 	// deadlines, which would need two separate idle timers.
 	if atomic.LoadInt32(&t.isOneshot) != 0 {
-		t.Halt.ReqStop.Close()
+		t.Halt.RequestStop()
 		select {
 		case <-t.Halt.Done.Chan:
 		case <-time.After(10 * time.Second):
@@ -203,11 +203,11 @@ func (t *IdleTimer) SetIdleTimeout(dur time.Duration) error {
 	tk := newSetTimeoutTicket(dur)
 	select {
 	case t.setIdleTimeoutCh <- tk:
-	case <-t.Halt.ReqStop.Chan:
+	case <-t.Halt.ReqStopChan():
 	}
 	select {
 	case <-tk.done:
-	case <-t.Halt.ReqStop.Chan:
+	case <-t.Halt.ReqStopChan():
 	}
 	return nil
 }
@@ -222,13 +222,13 @@ func (t *IdleTimer) SetOneshotIdleTimeout(dur time.Duration) {
 func (t *IdleTimer) GetIdleTimeout() (dur time.Duration) {
 	select {
 	case dur = <-t.getIdleTimeoutCh:
-	case <-t.Halt.ReqStop.Chan:
+	case <-t.Halt.ReqStopChan():
 	}
 	return
 }
 
 func (t *IdleTimer) Stop() {
-	t.Halt.ReqStop.Close()
+	t.Halt.RequestStop()
 	select {
 	case <-t.Halt.Done.Chan:
 	case <-time.After(10 * time.Second):
@@ -274,7 +274,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 		}()
 		for {
 			select {
-			case <-t.Halt.ReqStop.Chan:
+			case <-t.Halt.ReqStopChan():
 				return
 
 			case t.TimedOut <- t.timeOutRaised:

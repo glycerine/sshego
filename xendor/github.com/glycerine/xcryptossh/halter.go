@@ -62,20 +62,20 @@ func (c *IdemCloseChan) IsClosed() bool {
 // overall lifecycle of a resource.
 type Halter struct {
 
-	// Ready is closed when
+	// ready is closed when
 	// the resouce embedding the Halter is ready.
-	Ready IdemCloseChan
+	ready IdemCloseChan
 
 	// The owning goutine should call Done.Close() as its last
 	// actual once it has received the ReqStop() signal.
 	// Err, if any, should be set before Done is called.
-	Done IdemCloseChan
+	done IdemCloseChan
 
-	// Other goroutines call ReqStop.Close() in order
+	// Other goroutines call RequestStop() in order
 	// to request that the owning goroutine stop immediately.
-	// The owning goroutine should select on ReqStop.Chan
+	// The owning goroutine should select on ReqStopChan()
 	// in order to recognize shutdown requests.
-	ReqStop IdemCloseChan
+	reqStop IdemCloseChan
 
 	// Err represents the "return value" of the
 	// function launched in the goroutine.
@@ -122,7 +122,7 @@ type RunStatus struct {
 
 func (h *Halter) Update() {
 	h.mut.Lock()
-	if h.ReqStop.IsClosed() {
+	if h.reqStop.IsClosed() {
 		for d := range h.downstream {
 			d.RequestStop()
 		}
@@ -142,55 +142,71 @@ func (h *Halter) UpdateFromDownstream(d *Halter, rs *RunStatus) {
 
 func (h *Halter) Status() (r *RunStatus) {
 	r = &RunStatus{}
-	r.Ready = h.Ready.IsClosed()
-	r.StopRequested = h.ReqStop.IsClosed()
-	r.Done = h.Done.IsClosed()
+	r.Ready = h.ready.IsClosed()
+	r.StopRequested = h.reqStop.IsClosed()
+	r.Done = h.done.IsClosed()
 	if r.Done {
 		r.Err = h.Err
 	}
-	r.DoneCh = h.Done.Chan
+	r.DoneCh = h.done.Chan
 	return
 }
 
 func NewHalter() *Halter {
 	return &Halter{
-		Ready:      *NewIdemCloseChan(),
-		Done:       *NewIdemCloseChan(),
-		ReqStop:    *NewIdemCloseChan(),
+		ready:      *NewIdemCloseChan(),
+		done:       *NewIdemCloseChan(),
+		reqStop:    *NewIdemCloseChan(),
 		upstream:   make(map[*Halter]*RunStatus),
 		downstream: make(map[*Halter]*RunStatus),
 	}
+}
+
+func (h *Halter) ReqStopChan() chan struct{} {
+	return h.reqStop.Chan
+}
+
+func (h *Halter) DoneChan() chan struct{} {
+	return h.done.Chan
+}
+
+func (h *Halter) ReadyChan() chan struct{} {
+	return h.ready.Chan
 }
 
 // RequestStop closes the h.ReqStop channel
 // if it has not already done so. Safe for
 // multiple goroutine access.
 func (h *Halter) RequestStop() {
-	h.ReqStop.Close()
+	h.reqStop.Close()
 }
 
-// MarkReady closes the h.Ready channel
+// MarkReady closes the h.ready channel
 // if it has not already done so. Safe for
 // multiple goroutine access.
 func (h *Halter) MarkReady() {
-	h.Done.Close()
+	h.ready.Close()
 }
 
 // MarkDone closes the h.Done channel
 // if it has not already done so. Safe for
 // multiple goroutine access.
 func (h *Halter) MarkDone() {
-	h.Done.Close()
+	h.done.Close()
 }
 
 // IsStopRequested returns true iff h.ReqStop has been Closed().
 func (h *Halter) IsStopRequested() bool {
-	return h.ReqStop.IsClosed()
+	return h.reqStop.IsClosed()
 }
 
 // IsDone returns true iff h.Done has been Closed().
 func (h *Halter) IsDone() bool {
-	return h.Done.IsClosed()
+	return h.done.IsClosed()
+}
+
+func (h *Halter) IsReady() bool {
+	return h.ready.IsClosed()
 }
 
 // MAD provides a link between context.Context
@@ -201,15 +217,15 @@ func (h *Halter) IsDone() bool {
 func MAD(ctx context.Context, cancelctx context.CancelFunc, halt *Halter) {
 	go func() {
 		cchan := ctx.Done()
-		hchan1 := halt.ReqStop.Chan
-		hchan2 := halt.Done.Chan
+		hchan1 := halt.reqStop.Chan
+		hchan2 := halt.done.Chan
 		cDone := false
 		hDone := false
 		for {
 			select {
 			case <-cchan:
-				halt.ReqStop.Close()
-				halt.Done.Close()
+				halt.reqStop.Close()
+				halt.done.Close()
 				cDone = true
 				cchan = nil
 			case <-hchan1:

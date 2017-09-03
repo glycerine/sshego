@@ -551,7 +551,7 @@ func (c *channel) handlePacket(packet []byte) error {
 
 	var reqStop chan struct{}
 	if c.mux.halt != nil {
-		reqStop = c.mux.halt.ReqStop.Chan
+		reqStop = c.mux.halt.ReqStopChan()
 	}
 
 	switch msg := decoded.(type) {
@@ -675,8 +675,8 @@ func (ch *channel) Reject(reason RejectionReason, message string) error {
 		Language: "en",
 	}
 	ch.decided = true
-	ch.idleR.Halt.ReqStop.Close()
-	ch.idleW.Halt.ReqStop.Close()
+	ch.idleR.Halt.RequestStop()
+	ch.idleW.Halt.RequestStop()
 
 	return ch.sendMessage(reject)
 }
@@ -709,8 +709,8 @@ func (ch *channel) Close() error {
 		// idempotent Close
 		return nil
 	}
-	ch.idleR.Halt.ReqStop.Close()
-	ch.idleW.Halt.ReqStop.Close()
+	ch.idleR.Halt.RequestStop()
+	ch.idleW.Halt.RequestStop()
 
 	if !ch.decided {
 		return errUndecided
@@ -735,7 +735,7 @@ func (ch *channel) Stderr() io.ReadWriter {
 
 func (ch *channel) Done() <-chan struct{} {
 	if ch.mux.halt != nil {
-		return ch.mux.halt.ReqStop.Chan
+		return ch.mux.halt.ReqStopChan()
 	}
 	return nil
 }
@@ -762,7 +762,7 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 	}
 	var reqStop chan struct{}
 	if ch.mux.halt != nil {
-		reqStop = ch.mux.halt.ReqStop.Chan
+		reqStop = ch.mux.halt.ReqStopChan()
 	}
 
 	if wantReply {
@@ -931,12 +931,12 @@ func (c *channel) GetWriteIdleTimer() *IdleTimer {
 // Status observes the goroutine lifecycle.
 func (c *channel) Status() (r *RunStatus) {
 	r = &RunStatus{}
-	r.Ready = c.idleR.Halt.Ready.IsClosed()
-	r.StopRequested = c.idleR.Halt.ReqStop.IsClosed()
-	r.Done = c.idleR.Halt.Done.IsClosed()
+	r.Ready = c.idleR.Halt.IsReady()
+	r.StopRequested = c.idleR.Halt.IsStopRequested()
+	r.Done = c.idleR.Halt.IsDone()
 	if r.Done {
 		r.Err = c.idleR.Halt.Err
 	}
-	r.DoneCh = c.idleR.Halt.Done.Chan
+	r.DoneCh = c.idleR.Halt.DoneChan()
 	return
 }
