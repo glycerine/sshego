@@ -158,6 +158,10 @@ type Channel interface {
 
 	// SetDeadline sets the read and write deadlines.
 	SetDeadline(t time.Time) error
+
+	// Status lets clients query this Channel's lifecycle
+	// progress.
+	Status() *RunStatus
 }
 
 // Request is a request sent outside of the normal stream of
@@ -705,13 +709,12 @@ func (ch *channel) Close() error {
 		// idempotent Close
 		return nil
 	}
+	ch.idleR.Halt.ReqStop.Close()
+	ch.idleW.Halt.ReqStop.Close()
 
 	if !ch.decided {
 		return errUndecided
 	}
-
-	ch.idleR.Halt.ReqStop.Close()
-	ch.idleW.Halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{
 		PeersId: ch.remoteId})
@@ -923,4 +926,35 @@ func (c *channel) GetReadIdleTimer() *IdleTimer {
 
 func (c *channel) GetWriteIdleTimer() *IdleTimer {
 	return c.idleW
+}
+
+type RunStatus struct {
+
+	// lifecycle
+	Ready         bool
+	Timedout      bool
+	StopRequested bool
+	Done          bool
+
+	// can be waited on for finish.
+	// Once closed, call Status()
+	// again to get any Err that
+	// was the cause/leftover.
+	DoneCh <-chan struct{}
+
+	// final error if any.
+	Err error
+}
+
+// Status observes the goroutine lifecycle.
+func (c *channel) Status() (r *RunStatus) {
+	r.Ready = c.idleR.Halt.Ready.IsClosed()
+	r.StopRequested = c.idleR.Halt.ReqStop.IsClosed()
+	r.Done = c.idleR.Halt.Done.IsClosed()
+	if r.Done {
+		r.Err = c.idleR.Halt.Err
+	}
+	_, _, _, _, r.Timedout = c.idleR.IdleStatus()
+	r.DoneCh = c.idleR.Halt.Done.Chan
+	return
 }
