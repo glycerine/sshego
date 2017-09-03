@@ -36,7 +36,7 @@ func Test501BasicServerListenStartupAcceptAndShutdown(t *testing.T) {
 		pp("past <-acceptDone")
 
 		//pp("about to <-cfg.Esshd.Done")
-		//<-cfg.Esshd.Halt.Done.Chan
+		//<-cfg.Esshd.Halt.DoneChan()
 		//pp("past <-cfg.Esshd.Done")
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 		fmt.Printf("\n done with 501\n")

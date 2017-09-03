@@ -39,8 +39,8 @@ type Esshd struct {
 }
 
 func (e *Esshd) Stop() error {
-	e.Halt.ReqStop.Close()
-	<-e.Halt.Done.Chan
+	e.Halt.RequestStop()
+	<-e.Halt.DoneChan()
 	return nil
 }
 
@@ -350,7 +350,7 @@ func (e *Esshd) Start(ctx context.Context) {
 			if e.cr != nil {
 				close(e.cr.reqStop)
 			}
-			e.Halt.Done.Close()
+			e.Halt.MarkDone()
 		}()
 
 		p("info: Essh.Start() in server.go: listening on "+
@@ -369,7 +369,7 @@ func (e *Esshd) Start(ctx context.Context) {
 				select {
 				case <-ctx.Done():
 					return
-				case <-e.Halt.ReqStop.Chan:
+				case <-e.Halt.ReqStopChan():
 					return
 				case u := <-e.addUserToDatabase:
 					p("received on e.addUserToDatabase, calling finishUserBuildout with supplied *User u: '%#v'", u)
@@ -378,7 +378,7 @@ func (e *Esshd) Start(ctx context.Context) {
 					select {
 					case e.replyWithCreatedUser <- u:
 						//p("sent: e.replyWithCreatedUser <- u")
-					case <-e.Halt.ReqStop.Chan:
+					case <-e.Halt.ReqStopChan():
 						return
 					}
 
@@ -389,8 +389,8 @@ func (e *Esshd) Start(ctx context.Context) {
 
 					select {
 					case e.replyWithDeletedDone <- ok:
-					case <-e.Halt.ReqStop.Chan:
-						e.Halt.Done.Close()
+					case <-e.Halt.ReqStopChan():
+						e.Halt.MarkDone()
 						return
 					}
 
@@ -464,7 +464,7 @@ func (a *PerAttempt) discardRequests(ctx context.Context, in <-chan *ssh.Request
 			if req != nil && req.WantReply {
 				req.Reply(false, nil)
 			}
-		case <-a.cfg.Esshd.Halt.ReqStop.Chan:
+		case <-a.cfg.Esshd.Halt.ReqStopChan():
 			return
 		case <-ctx.Done():
 			return

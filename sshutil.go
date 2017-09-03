@@ -524,10 +524,10 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 		go func() {
 			var h1, h2 chan struct{}
 			if config.Halt != nil {
-				h1 = config.Halt.ReqStop.Chan
+				h1 = config.Halt.ReqStopChan()
 			}
 			if halt != nil {
-				h2 = halt.ReqStop.Chan
+				h2 = halt.ReqStopChan()
 			}
 			select {
 			case <-h1:

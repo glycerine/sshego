@@ -151,8 +151,8 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 			break
 		} else {
 			cancelctx()
-			childHalt.ReqStop.Close()
-			childHalt.Done.Close()
+			childHalt.RequestStop()
+			childHalt.MarkDone()
 			if strings.Contains(err.Error(), "getsockopt: connection refused") {
 				// simple connection error, just try again in a bit
 				time.Sleep(10 * time.Millisecond)
@@ -265,7 +265,7 @@ func (cfg *SshegoConfig) NewSSHClient(ctx context.Context, c ssh.Conn, chans <-c
 		// or ???
 		//		ca := &ConnectionAlert{
 		//			PortOne:  make(chan ssh.Channel),
-		//			ShutDown: cfg.Halt.ReqStop.Chan,
+		//			ShutDown: cfg.Halt.ReqStopChan(),
 		//		}
 
 		newChanChan := conn.HandleChannelOpen("custom-inproc-stream")

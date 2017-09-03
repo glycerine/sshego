@@ -75,7 +75,7 @@ func (cfg *SshegoConfig) handleChannels(ctx context.Context, chans <-chan ssh.Ne
 				return
 			}
 			go cfg.handleChannel(ctx, newChannel, sshconn, ca)
-		case <-cfg.Esshd.Halt.ReqStop.Chan:
+		case <-cfg.Esshd.Halt.ReqStopChan():
 			return
 		case <-shut:
 			return

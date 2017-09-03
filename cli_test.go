@@ -96,7 +96,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 		// done with testing, cleanup
 		s.SrvCfg.Esshd.Stop()
-		<-s.SrvCfg.Esshd.Halt.Done.Chan
+		<-s.SrvCfg.Esshd.Halt.DoneChan()
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }

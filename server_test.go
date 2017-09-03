@@ -26,7 +26,7 @@ func Test101StartupAndShutdown(t *testing.T) {
 
 		cfg.Esshd.Start(ctx)
 		cfg.Esshd.Stop()
-		<-cfg.Esshd.Halt.Done.Chan
+		<-cfg.Esshd.Halt.DoneChan()
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }
@@ -139,10 +139,10 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		fmt.Printf("\n excellent: as expected, err was '%s'\n", err)
 
 		// done with testing, cleanup
-		halt.ReqStop.Close()
-		halt.Done.Close()
+		halt.RequestStop()
+		halt.MarkDone()
 		srvCfg.Esshd.Stop()
-		<-srvCfg.Esshd.Halt.Done.Chan
+		<-srvCfg.Esshd.Halt.DoneChan()
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
 	})
 }

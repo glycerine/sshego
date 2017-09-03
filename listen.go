@@ -33,7 +33,7 @@ func NewBasicServer(cfg *SshegoConfig) *BasicServer {
 func (b *BasicServer) Close() error {
 	// In case we haven't yet actually started, close Done too.
 	// Multiple Close() calls on Halter are fine.
-	b.cfg.Esshd.Halt.Done.Close()
+	b.cfg.Esshd.Halt.MarkDone()
 	return b.cfg.Esshd.Stop()
 }
 
@@ -79,11 +79,11 @@ func (b *BasicListener) Close() error {
 	// channel too.
 
 	// global shutdown: works but not what we want!
-	//	b.bs.cfg.Esshd.Halt.Done.Close()
+	//	b.bs.cfg.Esshd.Halt.MarkDone()
 	//	return b.bs.cfg.Esshd.Stop()
 
-	b.halt.Done.Close()
-	b.halt.ReqStop.Close()
+	b.halt.MarkDone()
+	b.halt.RequestStop()
 	return nil
 }
 
@@ -151,7 +151,7 @@ func (b *BasicListener) Accept(ctx context.Context) (net.Conn, error) {
 
 	// don't Close()! We may want to re-use this listener
 	// for another Accept().
-	// defer b.halt.Done.Close()
+	// defer b.halt.MarkDone()
 
 	for {
 		// TODO: fail2ban: notice bad login IPs and if too many, block the IP.
@@ -168,10 +168,10 @@ func (b *BasicListener) Accept(ctx context.Context) (net.Conn, error) {
 			// 'accept tcp 127.0.0.1:54796: i/o timeout'
 			// p("simple timeout err: '%v'", err)
 			select {
-			case <-e.Halt.ReqStop.Chan:
+			case <-e.Halt.ReqStopChan():
 				p("e.Halt.ReqStop detected")
 				return nil, fmt.Errorf("shutting down")
-			case <-b.halt.ReqStop.Chan:
+			case <-b.halt.ReqStopChan():
 				p("b.halt.ReqStop detected")
 				return nil, fmt.Errorf("shutting down")
 			default:
@@ -189,7 +189,7 @@ func (b *BasicListener) Accept(ctx context.Context) (net.Conn, error) {
 		// need to get the direct-tcp connection back directly.
 		ca := &ConnectionAlert{
 			PortOne:  make(chan ssh.Channel),
-			ShutDown: b.esshd.Halt.ReqStop.Chan,
+			ShutDown: b.esshd.Halt.ReqStopChan(),
 		}
 		err = attempt.PerConnection(ctx, nConn, ca)
 		if err != nil {
@@ -197,9 +197,9 @@ func (b *BasicListener) Accept(ctx context.Context) (net.Conn, error) {
 		}
 
 		select {
-		case <-b.halt.ReqStop.Chan:
+		case <-b.halt.ReqStopChan():
 			return nil, fmt.Errorf("shutting down")
-		case <-b.esshd.Halt.ReqStop.Chan:
+		case <-b.esshd.Halt.ReqStopChan():
 			return nil, fmt.Errorf("shutting down")
 		case sshc := <-ca.PortOne:
 			return &withLocalAddr{sshc}, nil
