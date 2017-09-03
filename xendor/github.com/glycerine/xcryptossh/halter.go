@@ -87,7 +87,7 @@ type Halter struct {
 	errmut sync.Mutex
 
 	upstream   map[*Halter]*RunStatus // notify when done.
-	downstream map[*Halter]*RunStatus // reqStop if we are reqStop
+	downstream map[*Halter]*RunStatus // send reqStop when we are reqStop
 	mut        sync.Mutex
 }
 
@@ -110,9 +110,21 @@ func (h *Halter) AddUpstream(u *Halter) {
 	h.mut.Unlock()
 }
 
+func (h *Halter) RemoveUpstream(u *Halter) {
+	h.mut.Lock()
+	delete(h.upstream, u)
+	h.mut.Unlock()
+}
+
 func (h *Halter) AddDownstream(d *Halter) {
 	h.mut.Lock()
 	h.downstream[d] = nil
+	h.mut.Unlock()
+}
+
+func (h *Halter) RemoveDownstream(d *Halter) {
+	h.mut.Lock()
+	delete(h.downstream, d)
 	h.mut.Unlock()
 }
 
@@ -132,26 +144,6 @@ type RunStatus struct {
 
 	// final error if any.
 	Err error
-}
-
-func (h *Halter) Update() {
-	h.mut.Lock()
-	if h.reqStop.IsClosed() {
-		for d := range h.downstream {
-			d.RequestStop()
-		}
-	}
-	snap := h.Status()
-	for u := range h.upstream {
-		u.UpdateFromDownstream(h, snap)
-	}
-	h.mut.Unlock()
-}
-
-func (h *Halter) UpdateFromDownstream(d *Halter, rs *RunStatus) {
-	h.mut.Lock()
-	h.downstream[d] = rs
-	h.mut.Unlock()
 }
 
 func (h *Halter) Status() (r *RunStatus) {
@@ -195,10 +187,18 @@ func (h *Halter) ReadyChan() chan struct{} {
 func (h *Halter) RequestStop() {
 	h.reqStop.Close()
 
-	// tell dowstream
+	// recursively tell dowstream
 	h.mut.Lock()
 	for d := range h.downstream {
 		d.RequestStop()
+	}
+	h.mut.Unlock()
+}
+
+func (h *Halter) waitForDownstreamDone() {
+	h.mut.Lock()
+	for d := range h.downstream {
+		<-d.DoneChan()
 	}
 	h.mut.Unlock()
 }
@@ -210,19 +210,25 @@ func (h *Halter) MarkReady() {
 	h.ready.Close()
 }
 
-// MarkDone closes the h.Done channel
+// MarkDone closes the h.DoneChan() channel
 // if it has not already done so. Safe for
-// multiple goroutine access.
+// multiple goroutine access. MarkDone
+// returns only once all downstream
+// Halters have called MarkDone. See
+// MarkDoneNoBlock for an alternative.
+//
 func (h *Halter) MarkDone() {
+	h.RequestStop()
+	h.waitForDownstreamDone()
 	h.done.Close()
+}
 
-	// tell upstream.
-	h.mut.Lock()
-	snap := h.Status()
-	for u := range h.upstream {
-		u.UpdateFromDownstream(h, snap)
-	}
-	h.mut.Unlock()
+// MarkDoneNoBlock doesn't wait for
+// downstream goroutines to be done
+// before it returns.
+func (h *Halter) MarkDoneNoBlock() {
+	h.RequestStop()
+	h.done.Close()
 }
 
 // IsStopRequested returns true iff h.ReqStop has been Closed().
@@ -260,12 +266,18 @@ func MAD(ctx context.Context, cancelctx context.CancelFunc, halt *Halter) {
 				cchan = nil
 			case <-hchan1:
 				hDone = true
-				cancelctx()
+				if cancelctx != nil {
+					cancelctx()
+				}
+				cancelctx = nil
 				hchan1 = nil
 				hchan2 = nil
 			case <-hchan2:
 				hDone = true
-				cancelctx()
+				if cancelctx != nil {
+					cancelctx()
+				}
+				cancelctx = nil
 				hchan1 = nil
 				hchan2 = nil
 			}
