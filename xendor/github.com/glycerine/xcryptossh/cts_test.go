@@ -173,12 +173,12 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 collectionLoop:
 	for {
 		select {
-		case <-haltr.Done.Chan:
+		case <-haltr.DoneChan():
 			haltrDone = true
 			if complete() {
 				break collectionLoop
 			}
-		case <-haltw.Done.Chan:
+		case <-haltw.DoneChan():
 			haltwDone = true
 			if complete() {
 				break collectionLoop
@@ -257,7 +257,7 @@ func readerToRing(idleout time.Duration, r Channel, halt *Halter, overall time.D
 	defer func() {
 		p("readerToRing returning on readErr, err = '%v'", err)
 		readErr <- err
-		halt.Done.Close()
+		halt.MarkDone()
 	}()
 
 	ring := newInfiniteRing()
@@ -305,7 +305,7 @@ func seqWordsToWriter(w Channel, halt *Halter, tstop time.Time, writeErr chan er
 	defer func() {
 		//p("seqWordsToWriter returning err = '%v'", err)
 		writeErr <- err
-		halt.Done.Close()
+		halt.MarkDone()
 	}()
 	src := newSequentialWords()
 	*pSeqWords = src

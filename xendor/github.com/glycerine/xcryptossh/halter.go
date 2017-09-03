@@ -66,7 +66,7 @@ type Halter struct {
 	// the resouce embedding the Halter is ready.
 	ready IdemCloseChan
 
-	// The owning goutine should call Done.Close() as its last
+	// The owning goutine should call MarkDone() as its last
 	// actual once it has received the ReqStop() signal.
 	// Err, if any, should be set before Done is called.
 	done IdemCloseChan
@@ -82,7 +82,7 @@ type Halter struct {
 	// To avoid races, it should be read only
 	// after Done has been closed. Goroutine
 	// functions should set Err (if non nil)
-	// prior to calling Done.Close().
+	// prior to calling MarkDone().
 	Err error
 
 	upstream   map[*Halter]*RunStatus // notify when done.

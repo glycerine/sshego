@@ -139,7 +139,7 @@ func (t *IdleTimer) AttemptOK() {
 	if atomic.LoadInt32(&t.isOneshot) != 0 {
 		t.Halt.RequestStop()
 		select {
-		case <-t.Halt.Done.Chan:
+		case <-t.Halt.DoneChan():
 		case <-time.After(10 * time.Second):
 			panic("deadlocked during IdleTimer oneshut shutdown")
 		}
@@ -230,9 +230,9 @@ func (t *IdleTimer) GetIdleTimeout() (dur time.Duration) {
 func (t *IdleTimer) Stop() {
 	t.Halt.RequestStop()
 	select {
-	case <-t.Halt.Done.Chan:
+	case <-t.Halt.DoneChan():
 	case <-time.After(10 * time.Second):
-		panic("IdleTimer.Stop() problem! t.Halt.Done.Chan not received  after 10sec! serious problem")
+		panic("IdleTimer.Stop() problem! t.Halt.DoneChan() not received  after 10sec! serious problem")
 	}
 }
 
@@ -270,7 +270,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 			if heartbeat != nil {
 				heartbeat.Stop() // allow GC
 			}
-			t.Halt.Done.Close()
+			t.Halt.MarkDone()
 		}()
 		for {
 			select {

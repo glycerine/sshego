@@ -387,7 +387,7 @@ write:
 	go func() {
 
 		defer func() {
-			t.config.Halt.Done.Close()
+			t.config.Halt.MarkDone()
 		}()
 		for {
 			select {

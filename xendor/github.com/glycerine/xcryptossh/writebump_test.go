@@ -151,7 +151,7 @@ func to009ReaderToRing(idleout time.Duration, r Channel, overall time.Duration, 
 // we return after overall
 func to009pingWrite(w Channel, tstop time.Time, writeFreq time.Duration, overall time.Duration, writeErr chan error, halt *Halter) (err error) {
 	defer func() {
-		halt.Done.Close()
+		halt.MarkDone()
 		p("readerToRing returning on readErr, err = '%v'", err)
 		writeErr <- err
 	}()
