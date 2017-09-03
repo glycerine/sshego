@@ -935,7 +935,7 @@ func (c *channel) Status() (r *RunStatus) {
 	r.StopRequested = c.idleR.Halt.IsStopRequested()
 	r.Done = c.idleR.Halt.IsDone()
 	if r.Done {
-		r.Err = c.idleR.Halt.Err
+		r.Err = c.idleR.Halt.Err()
 	}
 	r.DoneCh = c.idleR.Halt.DoneChan()
 	return

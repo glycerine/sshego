@@ -83,11 +83,25 @@ type Halter struct {
 	// after Done has been closed. Goroutine
 	// functions should set Err (if non nil)
 	// prior to calling MarkDone().
-	Err error
+	err    error
+	errmut sync.Mutex
 
 	upstream   map[*Halter]*RunStatus // notify when done.
 	downstream map[*Halter]*RunStatus // reqStop if we are reqStop
 	mut        sync.Mutex
+}
+
+func (h *Halter) Err() (err error) {
+	h.errmut.Lock()
+	err = h.err
+	h.errmut.Unlock()
+	return
+}
+
+func (h *Halter) SetErr(err error) {
+	h.errmut.Lock()
+	h.err = err
+	h.errmut.Unlock()
 }
 
 func (h *Halter) AddUpstream(u *Halter) {
@@ -141,12 +155,13 @@ func (h *Halter) UpdateFromDownstream(d *Halter, rs *RunStatus) {
 }
 
 func (h *Halter) Status() (r *RunStatus) {
+	// don't hold locks here!
 	r = &RunStatus{}
 	r.Ready = h.ready.IsClosed()
 	r.StopRequested = h.reqStop.IsClosed()
 	r.Done = h.done.IsClosed()
 	if r.Done {
-		r.Err = h.Err
+		r.Err = h.Err()
 	}
 	r.DoneCh = h.done.Chan
 	return
@@ -179,6 +194,13 @@ func (h *Halter) ReadyChan() chan struct{} {
 // multiple goroutine access.
 func (h *Halter) RequestStop() {
 	h.reqStop.Close()
+
+	// tell dowstream
+	h.mut.Lock()
+	for d := range h.downstream {
+		d.RequestStop()
+	}
+	h.mut.Unlock()
 }
 
 // MarkReady closes the h.ready channel
@@ -193,6 +215,14 @@ func (h *Halter) MarkReady() {
 // multiple goroutine access.
 func (h *Halter) MarkDone() {
 	h.done.Close()
+
+	// tell upstream.
+	h.mut.Lock()
+	snap := h.Status()
+	for u := range h.upstream {
+		u.UpdateFromDownstream(h, snap)
+	}
+	h.mut.Unlock()
 }
 
 // IsStopRequested returns true iff h.ReqStop has been Closed().
