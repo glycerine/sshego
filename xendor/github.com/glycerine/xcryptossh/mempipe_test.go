@@ -19,7 +19,7 @@ type memTransport struct {
 	write   *memTransport
 	sync.Mutex
 	*sync.Cond
-	idle *idleTimer
+	idle *IdleTimer
 }
 
 func (t *memTransport) timeout() {

@@ -20,7 +20,7 @@ type buffer struct {
 	tail *element // the buffer that will be read last
 
 	closed bool
-	idle   *idleTimer
+	idle   *IdleTimer
 }
 
 // An element represents a single link in a linked list.
@@ -30,7 +30,7 @@ type element struct {
 }
 
 // newBuffer returns an empty buffer that is not closed.
-func newBuffer(idle *idleTimer) *buffer {
+func newBuffer(idle *IdleTimer) *buffer {
 	e := new(element)
 	b := &buffer{
 		Cond: newCond(),
@@ -78,7 +78,7 @@ func (b *buffer) Read(buf []byte) (n int, err error) {
 	defer func() {
 		b.Cond.L.Unlock()
 		if err == nil {
-			b.idle.Reset(true)
+			b.idle.Reset()
 		}
 	}()
 

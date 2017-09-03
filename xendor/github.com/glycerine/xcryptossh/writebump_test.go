@@ -56,7 +56,6 @@ collectionLoop:
 	for {
 		select {
 		case <-time.After(2 * overall):
-			pp("reset history: %v", r.GetResetHistory())
 			panic(fmt.Sprintf("TestTimeout009WriteIdlesOutWhenReadsStop: waited " +
 				"two overall, yet still no idle timeout!"))
 

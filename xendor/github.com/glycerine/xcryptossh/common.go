@@ -313,7 +313,7 @@ type window struct {
 	win          uint32 // RFC 4254 5.2 says the window size can grow to 2^32-1
 	writeWaiters int
 	closed       bool
-	idle         *idleTimer
+	idle         *IdleTimer
 }
 
 // add adds win to the amount of window available

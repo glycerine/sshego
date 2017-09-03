@@ -23,12 +23,12 @@ const xtestLeakCheckOn = false
 // errWhere satisfies net.Error
 type errWhere struct {
 	msg   string
-	who   *idleTimer
+	who   *IdleTimer
 	when  time.Time
 	where string
 }
 
-func newErrTimeout(msg string, who *idleTimer) *errWhere {
+func newErrTimeout(msg string, who *IdleTimer) *errWhere {
 	return newErrWhere("timeout:"+msg, who)
 }
 
@@ -93,16 +93,16 @@ func stacktrace() string {
 	return string(stack)
 }
 
-func newErrWhere(msg string, who *idleTimer) *errWhere {
+func newErrWhere(msg string, who *IdleTimer) *errWhere {
 	return &errWhere{msg: msg, who: who, when: time.Now()}
 }
 
-func newErrWhereWithStack(msg string, who *idleTimer) *errWhere {
+func newErrWhereWithStack(msg string, who *IdleTimer) *errWhere {
 	return &errWhere{msg: msg, who: who, when: time.Now(), where: stacktrace()}
 }
 
 func (e errWhere) Error() string {
-	return fmt.Sprintf("%s, from idleTimer %p, generated at '%v'. stack='\n%v\n'",
+	return fmt.Sprintf("%s, from IdleTimer %p, generated at '%v'. stack='\n%v\n'",
 		e.msg, e.who, e.when, string(e.where))
 }
 

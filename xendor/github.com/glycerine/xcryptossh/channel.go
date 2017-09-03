@@ -267,7 +267,7 @@ type channel struct {
 	// use by multiple goroutines. Users
 	// should call SetIdleDur() and Reset() on it to before
 	// any subsequent calls to TimedOut().
-	idleTimer *idleTimer
+	idleTimer *IdleTimer
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -434,7 +434,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
 	if err == nil {
-		c.idleTimer.Reset(true)
+		c.idleTimer.Reset()
 	}
 
 	if n > 0 {
@@ -492,7 +492,7 @@ func (c *channel) responseMessageReceived() error {
 }
 
 func (c *channel) handlePacket(packet []byte) error {
-	c.idleTimer.Reset(true)
+	c.idleTimer.Reset()
 	switch packet[0] {
 	case msgChannelData, msgChannelExtendedData:
 		return c.handleData(packet)
@@ -572,7 +572,7 @@ func (c *channel) handlePacket(packet []byte) error {
 }
 
 func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
-	idle := newIdleTimer(nil, 0)
+	idle := NewIdleTimer(nil, 0)
 	ch := &channel{
 		remoteWin:        window{Cond: newCond(), idle: idle},
 		myWindow:         channelWindowSize,
@@ -816,13 +816,8 @@ func (c *channel) RemoteAddr() net.Addr {
 // the SetIdleTimeout() invocation.
 //
 func (c *channel) SetIdleTimeout(dur time.Duration) error {
-	const writesBump = false
-	c.idleTimer.SetIdleTimeout(dur, writesBump)
+	c.idleTimer.SetIdleTimeout(dur)
 	return nil
-}
-
-func (c *channel) GetResetHistory() string {
-	return c.idleTimer.GetResetHistory()
 }
 
 func (c *channel) SetReadDeadline(t time.Time) error {

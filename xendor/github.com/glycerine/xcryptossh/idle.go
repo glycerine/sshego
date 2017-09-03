@@ -7,11 +7,7 @@ import (
 	"time"
 )
 
-// history is useful for debugging, but
-// slower.
-const provideHistory bool = false
-
-// idleTimer allows a client of the ssh
+// IdleTimer allows a client of the ssh
 // library to notice if there has been a
 // stall in i/o activity. This enables
 // clients to impliment timeout logic
@@ -19,11 +15,13 @@ const provideHistory bool = false
 // long-duration-but-still-successful
 // reads/writes.
 //
-// It is probably simpler to use the
+// It is simpler to use the
 // SetIdleTimeout(dur time.Duration)
-// method on the channel.
+// method on the channel, but
+// methods like LastAndMonoNow()
+// are also occassionally required.
 //
-type idleTimer struct {
+type IdleTimer struct {
 	mut     sync.Mutex
 	idleDur time.Duration
 	last    int64
@@ -44,9 +42,6 @@ type idleTimer struct {
 	addCallback   chan *callbacks
 	timeOutRaised string
 
-	// history of Reset() calls.
-	getHistoryCh chan *getHistoryTicket
-
 	// each of these, for instance,
 	// atomicdur is updated atomically, and should
 	// be read atomically. For use by Reset() and
@@ -60,32 +55,25 @@ type idleTimer struct {
 	// shutdown after receiving a read.
 	// access with atomic.
 	isOneshotRead int32
-
-	// include writes when reseting the idle timer.
-	// defaults to false b/c write success doesn't
-	// really mean anything.
-	// Like openSSH, there's a 2MB buffer underneath.
-	resetOnWrites int32
 }
 
 type callbacks struct {
 	onTimeout func()
 }
 
-// newIdleTimer creates a new idleTimer which will call
+// NewIdleTimer creates a new IdleTimer which will call
 // the `callback` function provided after `dur` inactivity.
 // If callback is nil, you must use setTimeoutCallback()
 // to establish the callback before activating the timer
 // with SetIdleTimeout. The `dur` can be 0 to begin with no
 // timeout, in which case the timer will be inactive until
 // SetIdleTimeout is called.
-func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
-	t := &idleTimer{
+func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
+	t := &IdleTimer{
 		getIdleTimeoutCh: make(chan time.Duration),
 		setIdleTimeoutCh: make(chan *setTimeoutTicket),
 		setCallback:      make(chan *callbacks),
 		addCallback:      make(chan *callbacks),
-		getHistoryCh:     make(chan *getHistoryTicket),
 		TimedOut:         make(chan string),
 		halt:             NewHalter(),
 	}
@@ -101,7 +89,7 @@ func newIdleTimer(callback func(), dur time.Duration) *idleTimer {
 // already registered. Unless that is what you want,
 // use addTimeoutCallback().
 //
-func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
+func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
 	select {
 	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
 	case <-t.halt.ReqStop.Chan:
@@ -109,7 +97,7 @@ func (t *idleTimer) setTimeoutCallback(timeoutFunc func()) {
 }
 
 // add without removing exiting callbacks
-func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
+func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
 	if timeoutFunc == nil {
 		panic("cannot call addTimeoutCallback with nil function!")
 	}
@@ -119,92 +107,60 @@ func (t *idleTimer) addTimeoutCallback(timeoutFunc func()) {
 	}
 }
 
+func (t *IdleTimer) LastAndMonoNow() (last int64, mnow int64) {
+	last = atomic.LoadInt64(&t.last)
+	mnow = monoNow()
+	return
+}
+
 // Reset stores the current monotonic timestamp
 // internally, effectively reseting to zero the value
 // returned from an immediate next call to NanosecSince().
 //
-// Set isRead to true for reads, false for writes.
+// Reset() only ever applies to reads now. Writes
+// lie: they return nil errors when the connection is down.
 //
-func (t *idleTimer) Reset(isRead bool) {
-
-	if !isRead && atomic.LoadInt32(&t.resetOnWrites) == 0 {
-		return
-	}
+func (t *IdleTimer) Reset() {
 
 	// shutdown oneshot?
 	// NB we don't support write deadlines now, and
 	// never supported having different write and read
 	// deadlines, which would need two separate idle timers.
-	if isRead && atomic.LoadInt32(&t.isOneshotRead) != 0 {
+	if atomic.LoadInt32(&t.isOneshotRead) != 0 {
 		t.halt.ReqStop.Close()
 		select {
 		case <-t.halt.Done.Chan:
 		case <-time.After(10 * time.Second):
-			panic("deadlocked during idleTimer oneshut shutdown")
+			panic("deadlocked during IdleTimer oneshut shutdown")
 		}
 		return
 	}
 
 	mnow := monoNow()
-	now := time.Now()
-
-	if provideHistory {
-		atomic.CompareAndSwapInt64(&t.beginnano, 0, now.UnixNano())
-		tlast := atomic.LoadInt64(&t.last)
-		adur := atomic.LoadInt64(&t.atomicdur)
-		if adur > 0 {
-			diff := mnow - tlast
-			if diff > adur {
-				atomic.AddInt64(&t.overcount, 1)
-			} else {
-				atomic.AddInt64(&t.undercount, 1)
-			}
-		}
-	}
-
 	atomic.StoreInt64(&t.last, mnow)
 	return
 }
 
-func (t *idleTimer) historyOfResets(dur time.Duration) string {
-	if !provideHistory {
-		return "provideHistory==false"
-	}
-	now := time.Now()
-	begin := atomic.LoadInt64(&t.beginnano)
-	if begin == 0 {
-		return ""
-	}
-	beginTm := time.Unix(0, begin)
-
-	mnow := monoNow()
-	last := atomic.LoadInt64(&t.last)
-	lastgap := time.Duration(mnow - last)
-	over := atomic.LoadInt64(&t.overcount)
-	under := atomic.LoadInt64(&t.undercount)
-	return fmt.Sprintf("history of idle Reset: # over dur:%v, # under dur:%v. lastgap: %v.  dur=%v  now: %v. begin: %v", over, under, lastgap, dur, now, beginTm)
-}
-
 // NanosecSince returns how many nanoseconds it has
 // been since the last call to Reset().
-func (t *idleTimer) NanosecSince() int64 {
+func (t *IdleTimer) NanosecSince() int64 {
 	mnow := monoNow()
 	tlast := atomic.LoadInt64(&t.last)
 	res := mnow - tlast
-	//p("idleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
+	//p("IdleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
 	return res
 }
 
 // SetIdleTimeout stores a new idle timeout duration. This
-// activates the idleTimer if dur > 0. Set dur of 0
-// to disable the idleTimer. A disabled idleTimer
+// activates the IdleTimer if dur > 0. Set dur of 0
+// to disable the IdleTimer. A disabled IdleTimer
 // always returns false from TimedOut().
 //
-// This is the main API for idleTimer. Most users will
+// This is the main API for IdleTimer. Most users will
 // only need to use this call.
 //
-func (t *idleTimer) SetIdleTimeout(dur time.Duration, writesBump bool) {
-	tk := newSetTimeoutTicket(dur, writesBump)
+func (t *IdleTimer) SetIdleTimeout(dur time.Duration) error {
+	tk := newSetTimeoutTicket(dur)
 	select {
 	case t.setIdleTimeoutCh <- tk:
 	case <-t.halt.ReqStop.Chan:
@@ -213,29 +169,17 @@ func (t *idleTimer) SetIdleTimeout(dur time.Duration, writesBump bool) {
 	case <-tk.done:
 	case <-t.halt.ReqStop.Chan:
 	}
+	return nil
 }
 
-func (t *idleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
+func (t *IdleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
 	atomic.StoreInt32(&t.isOneshotRead, 1)
-	t.SetIdleTimeout(dur, false) // writes don't bump read timeouts, of course.
-}
-
-func (t *idleTimer) GetResetHistory() string {
-	tk := newGetHistoryTicket()
-	select {
-	case t.getHistoryCh <- tk:
-	case <-t.halt.ReqStop.Chan:
-	}
-	select {
-	case <-tk.done:
-	case <-t.halt.ReqStop.Chan:
-	}
-	return tk.hist
+	t.SetIdleTimeout(dur)
 }
 
 // GetIdleTimeout returns the current idle timeout duration in use.
 // It will return 0 if timeouts are disabled.
-func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
+func (t *IdleTimer) GetIdleTimeout() (dur time.Duration) {
 	select {
 	case dur = <-t.getIdleTimeoutCh:
 	case <-t.halt.ReqStop.Chan:
@@ -243,43 +187,30 @@ func (t *idleTimer) GetIdleTimeout() (dur time.Duration) {
 	return
 }
 
-func (t *idleTimer) Stop() {
+func (t *IdleTimer) Stop() {
 	t.halt.ReqStop.Close()
 	select {
 	case <-t.halt.Done.Chan:
 	case <-time.After(10 * time.Second):
-		panic("idleTimer.Stop() problem! t.halt.Done.Chan not received  after 10sec! serious problem")
+		panic("IdleTimer.Stop() problem! t.halt.Done.Chan not received  after 10sec! serious problem")
 	}
 }
 
 type setTimeoutTicket struct {
-	newdur     time.Duration
-	done       chan struct{}
-	writesBump bool
+	newdur time.Duration
+	done   chan struct{}
 }
 
-func newSetTimeoutTicket(dur time.Duration, writesBump bool) *setTimeoutTicket {
+func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
 	return &setTimeoutTicket{
-		newdur:     dur,
-		done:       make(chan struct{}),
-		writesBump: writesBump,
-	}
-}
-
-type getHistoryTicket struct {
-	hist string
-	done chan struct{}
-}
-
-func newGetHistoryTicket() *getHistoryTicket {
-	return &getHistoryTicket{
-		done: make(chan struct{}),
+		newdur: dur,
+		done:   make(chan struct{}),
 	}
 }
 
 const factor = 10
 
-func (t *idleTimer) backgroundStart(dur time.Duration) {
+func (t *IdleTimer) backgroundStart(dur time.Duration) {
 	atomic.StoreInt64(&t.atomicdur, int64(dur))
 	go func() {
 		var heartbeat *time.Ticker
@@ -322,13 +253,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 				/* change state, maybe */
 				t.timeOutRaised = ""
 				atomic.StoreInt64(&t.last, monoNow()) // Reset
-				if tk.newdur > 0 {
-					if tk.writesBump {
-						atomic.StoreInt32(&t.resetOnWrites, 1)
-					} else {
-						atomic.StoreInt32(&t.resetOnWrites, 0)
-					}
-				}
 
 				if dur > 0 {
 					// timeouts active currently
@@ -382,10 +306,6 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					continue
 				}
 
-			case tk := <-t.getHistoryCh:
-				tk.hist = t.historyOfResets(dur)
-				close(tk.done)
-
 			case <-heartch:
 				if dur == 0 {
 					panic("should be impossible to get heartbeat.C on dur == 0")
@@ -397,8 +317,8 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
-						"since=%v  dur=%v, exceed=%v. historyOfResets='%s'",
-						dur, time.Now(), t, since, udur, since-udur, t.historyOfResets(dur))
+						"since=%v  dur=%v, exceed=%v.",
+						dur, time.Now(), t, since, udur, since-udur)
 
 					// After firing, disable until reactivated.
 					// Still must be a ticker and not a one-shot because it may take
@@ -410,7 +330,7 @@ func (t *idleTimer) backgroundStart(dur time.Duration) {
 					heartbeat = nil
 					heartch = nil
 					if len(t.timeoutCallback) == 0 {
-						panic("idleTimer.timeoutCallback was never set! call t.addTimeoutCallback() first")
+						panic("IdleTimer.timeoutCallback was never set! call t.addTimeoutCallback() first")
 					}
 					// our caller may be holding locks...
 					// and timeoutCallback will want locks...
