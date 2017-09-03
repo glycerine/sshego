@@ -160,3 +160,20 @@ func MAD(ctx context.Context, cancelctx context.CancelFunc, halt *Halter) {
 		}
 	}()
 }
+
+// RunStatus returns a nil err unless done is true.
+func (h *Halter) RunStatus() (ready, reqStop, done bool, err error) {
+	ready = h.Ready.IsClosed()
+	reqStop = h.ReqStop.IsClosed()
+	done = h.Done.IsClosed()
+	if done {
+		err = h.Err
+	}
+	return
+}
+
+// DoneCh is a lazy way of getting h.Done.Chan, but
+// may satisfy an interface.
+func (h *Halter) DoneCh() <-chan struct{} {
+	return h.Done.Chan
+}
