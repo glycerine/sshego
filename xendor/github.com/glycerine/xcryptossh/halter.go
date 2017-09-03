@@ -75,6 +75,14 @@ type Halter struct {
 	// The owning goroutine should select on ReqStop.Chan
 	// in order to recognize shutdown requests.
 	ReqStop IdemCloseChan
+
+	// Err represents the "return value" of the
+	// function launched in the goroutine.
+	// To avoid races, it should be read only
+	// after Done has been closed. Goroutine
+	// functions should set Err (if non nil)
+	// prior to calling Done.Close().
+	Err error
 }
 
 func NewHalter() *Halter {
