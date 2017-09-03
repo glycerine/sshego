@@ -74,11 +74,12 @@ func (b *buffer) timeout() error {
 // Read reads data from the internal buffer in buf.  Reads will block
 // if no data is available, or until the buffer is closed.
 func (b *buffer) Read(buf []byte) (n int, err error) {
+	b.idle.BeginAttempt()
 	b.Cond.L.Lock()
 	defer func() {
 		b.Cond.L.Unlock()
 		if err == nil {
-			b.idle.Reset()
+			b.idle.AttemptOK()
 		}
 	}()
 

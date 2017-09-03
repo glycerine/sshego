@@ -29,9 +29,10 @@ type IdleTimer struct {
 	// stop and waiting for that stop to be done.
 	Halt *Halter
 
-	mut     sync.Mutex
-	idleDur time.Duration
-	last    int64
+	mut       sync.Mutex
+	idleDur   time.Duration
+	lastStart int64
+	lastOK    int64
 
 	timeoutCallback []func()
 
@@ -49,7 +50,7 @@ type IdleTimer struct {
 
 	// each of these, for instance,
 	// atomicdur is updated atomically, and should
-	// be read atomically. For use by Reset() and
+	// be read atomically. For use by AttemptOK) and
 	// internal reporting only.
 	atomicdur  int64
 	overcount  int64
@@ -57,9 +58,9 @@ type IdleTimer struct {
 	beginnano  int64 // not monotonic time source.
 
 	// if these are not zero, we'll
-	// shutdown after receiving a read.
+	// shutdown after receiving an OK.
 	// access with atomic.
-	isOneshotRead int32
+	isOneshot int32
 }
 
 type callbacks struct {
@@ -113,25 +114,29 @@ func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
 }
 
 func (t *IdleTimer) LastAndMonoNow() (last int64, mnow int64) {
-	last = atomic.LoadInt64(&t.last)
+	last = atomic.LoadInt64(&t.lastOK)
 	mnow = monoNow()
 	return
+}
+
+func (t *IdleTimer) BeginAttempt() {
+	atomic.StoreInt64(&t.lastStart, monoNow()) // Reset
 }
 
 // Reset stores the current monotonic timestamp
 // internally, effectively reseting to zero the value
 // returned from an immediate next call to NanosecSince().
 //
-// Reset() only ever applies to reads now. Writes
+// AttemptOK() only ever applies to reads now. Writes
 // lie: they return nil errors when the connection is down.
 //
-func (t *IdleTimer) Reset() {
+func (t *IdleTimer) AttemptOK() {
 
 	// shutdown oneshot?
 	// NB we don't support write deadlines now, and
 	// never supported having different write and read
 	// deadlines, which would need two separate idle timers.
-	if atomic.LoadInt32(&t.isOneshotRead) != 0 {
+	if atomic.LoadInt32(&t.isOneshot) != 0 {
 		t.Halt.ReqStop.Close()
 		select {
 		case <-t.Halt.Done.Chan:
@@ -142,18 +147,48 @@ func (t *IdleTimer) Reset() {
 	}
 
 	mnow := monoNow()
-	atomic.StoreInt64(&t.last, mnow)
+	atomic.StoreInt64(&t.lastOK, mnow)
 	return
 }
 
-// NanosecSince returns how many nanoseconds it has
-// been since the last call to Reset().
-func (t *IdleTimer) NanosecSince() int64 {
-	mnow := monoNow()
-	tlast := atomic.LoadInt64(&t.last)
-	res := mnow - tlast
-	//p("IdleTimer=%p, NanosecSince:  mnow=%v, t.last=%v, so mnow-t.last=%v\n\n", t, mnow, tlast, res)
-	return res
+// IdleStatus returns three monotonic timestamps.
+//
+//  * lastStart is the last time BeginAttempt() was called.
+//
+//  * lastOK is the last time AttemptOK() was called.
+//
+//  * mnow is the current monotonic timestamp.
+//
+// Note that lastStart == -1 means there has been no
+// BeginAttempt() call started since we set the idle timeout. In
+// this case an idle timeout determination may not be appropriate
+// because has been no Read attempted since then.
+//
+// * todur returns the duration in nanoseconds of any timeout
+//   that has been set.
+//
+// * timedout returns true if it appears a Read attempt
+//   has timed out before finishing successfully. Note
+//   that the Read may have returned with an error and
+//   may not be currently active.
+//
+func (t *IdleTimer) IdleStatus() (lastStart, lastOK, mnow, todur int64, timedout bool) {
+	mnow = monoNow()
+	lastOK = atomic.LoadInt64(&t.lastOK)
+	lastStart = atomic.LoadInt64(&t.lastStart)
+	todur = atomic.LoadInt64(&t.atomicdur)
+
+	if todur <= 0 || lastStart <= 0 || lastOK >= lastStart {
+		// no timeout set or no Reads attempted, don't timeout
+		return
+	}
+	// INVAR: lastStart > 0
+	// INVAR: lastStart > lastOK
+	since := mnow - lastStart
+	if since > todur {
+		timedout = true
+	}
+	return
 }
 
 // SetIdleTimeout stores a new idle timeout duration. This
@@ -177,8 +212,8 @@ func (t *IdleTimer) SetIdleTimeout(dur time.Duration) error {
 	return nil
 }
 
-func (t *IdleTimer) SetReadOneshotIdleTimeout(dur time.Duration) {
-	atomic.StoreInt32(&t.isOneshotRead, 1)
+func (t *IdleTimer) SetOneshotIdleTimeout(dur time.Duration) {
+	atomic.StoreInt32(&t.isOneshot, 1)
 	t.SetIdleTimeout(dur)
 }
 
@@ -257,7 +292,9 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 			case tk := <-t.setIdleTimeoutCh:
 				/* change state, maybe */
 				t.timeOutRaised = ""
-				atomic.StoreInt64(&t.last, monoNow()) // Reset
+				// lastStart == -1 means there has been no
+				// Read started since we set the idle timeout.
+				atomic.StoreInt64(&t.lastStart, -1) // Reset
 
 				if dur > 0 {
 					// timeouts active currently
@@ -287,7 +324,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 
 					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
-					atomic.StoreInt64(&t.last, monoNow()) // Reset
+					atomic.StoreInt64(&t.lastStart, -1) // Reset
 					close(tk.done)
 					continue
 				} else {
@@ -306,7 +343,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 
 					heartbeat = time.NewTicker(dur / factor)
 					heartch = heartbeat.C
-					atomic.StoreInt64(&t.last, monoNow()) // Reset
+					atomic.StoreInt64(&t.lastStart, -1) // Reset
 					close(tk.done)
 					continue
 				}
@@ -315,10 +352,10 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 				if dur == 0 {
 					panic("should be impossible to get heartbeat.C on dur == 0")
 				}
-				since := t.NanosecSince()
-				udur := int64(dur)
-				if since > udur {
-					q("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. waking %v callbacks", time.Now(), t, since, udur, since-udur, len(t.timeoutCallback))
+				lastStart, lastOK, mnow, udur, isTimeout := t.IdleStatus()
+				since := mnow - lastStart
+				if isTimeout {
+					q("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. lastOK=%v, waking %v callbacks", time.Now(), t, since, udur, since-udur, lastOK, len(t.timeoutCallback))
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+

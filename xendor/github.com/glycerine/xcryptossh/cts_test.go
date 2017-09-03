@@ -107,13 +107,13 @@ func TestCtsWriteWithNoIdleTimeout(t *testing.T) {
 func setTo(r, w Channel, timeOutOnReader bool, idleout time.Duration) {
 	// set the timeout on the reader/writer
 	if timeOutOnReader {
-		_, err := r.SetIdleTimeout(idleout)
+		err := r.SetReadIdleTimeout(idleout)
 		if err != nil {
 			panic(fmt.Sprintf("r.SetIdleTimeout: %v", err))
 		}
 	} else {
 		// set the timeout on the writer
-		_, err := w.SetIdleTimeout(idleout)
+		err := w.SetWriteIdleTimeout(idleout)
 		if err != nil {
 			panic(fmt.Sprintf("w.SetIdleTimeout: %v", err))
 		}
@@ -137,8 +137,8 @@ func testCts(timeOutOnReader bool, t *testing.T) {
 
 	r, w, mux := channelPair(t, halt)
 
-	p("r.idleTimer = %p", r.idleTimer)
-	p("w.idleTimer = %p", w.idleTimer)
+	p("r.idleTimer = %p", r.idleR)
+	p("w.idleTimer = %p", w.idleW)
 
 	idleout := 2000 * time.Millisecond
 	overall := 10 * idleout

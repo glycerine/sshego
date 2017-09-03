@@ -26,6 +26,9 @@ const (
 	channelWindowSize = 64 * channelMaxPacket
 )
 
+// verify interface satisfied.
+var _ net.Conn = &channel{}
+
 type HasTimeout interface {
 	timeout()
 }
@@ -88,7 +91,7 @@ type Channel interface {
 	// returned channel will be closed when the Channel is closed.
 	Done() <-chan struct{}
 
-	// SetIdleTimeout starts an idle timer on
+	// SetReadIdleTimeout starts an idle timer on
 	// that will cause them to timeout after dur.
 	// A successful Read will bump the idle
 	// timeout into the future. Successful writes
@@ -100,12 +103,12 @@ type Channel interface {
 	// has no impact on idle timeout.
 	//
 	// Providing dur of 0 will disable the idle timeout.
-	// Zero is the default until SetIdleTimeout() is called.
+	// Zero is the default until SetReadIdleTimeout() is called.
 	//
-	// SetIdleTimeout() will always reset and
+	// SetReadIdleTimeout() will always reset and
 	// clear any raised timeout left over from prior use.
 	// Any new timer (if dur > 0) begins from the return of
-	// the SetIdleTimeout() invocation.
+	// the SetReadIdleTimeout() invocation.
 	//
 	// Idle timeouts are easier to use than deadlines,
 	// as they don't need to be refreshed after
@@ -123,21 +126,38 @@ type Channel interface {
 	// to restart long interrupted transfers that
 	// were making fine progress.
 	//
-	// The returned IdleTime pointer can be queried
-	// to observe if a timeout has occurred and when
-	// the last successful Read() happened.
-	//
-	SetIdleTimeout(dur time.Duration) (*IdleTimer, error)
+	SetReadIdleTimeout(dur time.Duration) error
 
-	// GetIdleTimer allows monitoring of idle timeout
+	// SetWriteIdleTimeout is the same as SetReadIdleTimeout,
+	// but for writes.
+	SetWriteIdleTimeout(dur time.Duration) error
+
+	// SetIdleTimeout does both SetReadIdleTimeout
+	// and SetWriteIdleTimeout.
+	SetIdleTimeout(dur time.Duration) error
+
+	// GetReadIdleTimer allows monitoring of idle timeout
 	// by other parties. It doesn't disturb the
 	// timer if it happens to be running.
-	GetIdleTimer() *IdleTimer
+	GetReadIdleTimer() *IdleTimer
+
+	// GetWriteIdleTimer allows monitoring of idle timeout
+	// by other parties. It doesn't disturb the
+	// timer if it happens to be running.
+	GetWriteIdleTimer() *IdleTimer
 
 	// SetReadDeadline sets the deadline for future Read calls
 	// and any currently-blocked Read call.
 	// A zero value for t means Read will not time out.
 	SetReadDeadline(t time.Time) error
+
+	// SetWriteDeadline sets the deadline for future Write calls
+	// and any currently-blocked Write call.
+	// A zero value for t means Write will not time out.
+	SetWriteDeadline(t time.Time) error
+
+	// SetDeadline sets the read and write deadlines.
+	SetDeadline(t time.Time) error
 }
 
 // Request is a request sent outside of the normal stream of
@@ -269,14 +289,17 @@ type channel struct {
 	// effect; the result return nil immediately.
 	hasClosed int32
 
-	// idleTimer provides a means
+	// idleR provides a means
 	// for ssh.Channel users to check how
 	// many nanoseconds have elapsed since the last
-	// error-free read/write. It is safe for
+	// error-free read. It is safe for
 	// use by multiple goroutines. Users
-	// should call SetIdleDur() and Reset() on it to before
+	// should call SetIdleDur() and BeginAttempt() on it to before
 	// any subsequent calls to TimedOut().
-	idleTimer *IdleTimer
+	idleR *IdleTimer
+
+	// idleW is for writes, idleR is for reads.
+	idleW *IdleTimer
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -290,8 +313,7 @@ func (c *channel) writePacket(packet []byte) error {
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
 	if err == nil {
-		// not tracking writes at the moment.
-		//c.idleTimer.Reset(false)
+		c.idleW.AttemptOK()
 	}
 	c.writeMu.Unlock()
 	return err
@@ -310,10 +332,10 @@ func (c *channel) sendMessage(msg interface{}) error {
 // WriteExtended writes data to a specific extended stream. These streams are
 // used, for example, for stderr.
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
+	c.idleW.BeginAttempt()
 	defer func() {
 		if err == nil {
-			// not tracking writes currently.
-			//c.idleTimer.Reset(false)
+			c.idleW.AttemptOK()
 		}
 	}()
 	if c.sentEOF {
@@ -339,8 +361,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if space, err = c.remoteWin.reserve(space); err != nil {
 			return n, err
 		}
-		// not tracking writes currently.
-		//c.idleTimer.Reset(false)
+		c.idleW.AttemptOK()
 		if want := headerLength + space; uint32(cap(packet)) < want {
 			packet = make([]byte, want)
 		} else {
@@ -359,8 +380,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if err = c.writePacket(packet); err != nil {
 			return n, err
 		}
-		// not tracking writes currently.
-		//c.idleTimer.Reset(false)
+		c.idleW.AttemptOK()
 
 		n += len(todo)
 		data = data[len(todo):]
@@ -434,6 +454,7 @@ func (c *channel) adjustWindow(n uint32) error {
 }
 
 func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) {
+	c.idleR.BeginAttempt()
 	switch extended {
 	case 1:
 		n, err = c.extPending.Read(data)
@@ -443,7 +464,7 @@ func (c *channel) ReadExtended(data []byte, extended uint32) (n int, err error) 
 		return 0, fmt.Errorf("ssh: extended code %d unimplemented", extended)
 	}
 	if err == nil {
-		c.idleTimer.Reset()
+		c.idleR.AttemptOK()
 	}
 
 	if n > 0 {
@@ -472,7 +493,8 @@ func (c *channel) close() {
 	c.writeMu.Unlock()
 	// Unblock writers.
 	c.remoteWin.close()
-	c.idleTimer.Stop()
+	c.idleR.Stop()
+	c.idleW.Stop()
 }
 
 func (c *channel) timeout() {
@@ -501,7 +523,7 @@ func (c *channel) responseMessageReceived() error {
 }
 
 func (c *channel) handlePacket(packet []byte) error {
-	c.idleTimer.Reset()
+	c.idleR.AttemptOK()
 	switch packet[0] {
 	case msgChannelData, msgChannelExtendedData:
 		return c.handleData(packet)
@@ -581,12 +603,12 @@ func (c *channel) handlePacket(packet []byte) error {
 }
 
 func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
-	idle := NewIdleTimer(nil, 0)
+	idleR, idleW := NewIdleTimer(nil, 0), NewIdleTimer(nil, 0)
 	ch := &channel{
-		remoteWin:        window{Cond: newCond(), idle: idle},
+		remoteWin:        window{Cond: newCond(), idle: idleR},
 		myWindow:         channelWindowSize,
-		pending:          newBuffer(idle),
-		extPending:       newBuffer(idle),
+		pending:          newBuffer(idleR),
+		extPending:       newBuffer(idleR),
 		direction:        direction,
 		incomingRequests: make(chan *Request, chanSize),
 		msg:              make(chan interface{}, chanSize),
@@ -594,9 +616,11 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		extraData:        extraData,
 		mux:              m,
 		packetPool:       make(map[uint32][]byte),
-		idleTimer:        idle,
+		idleR:            idleR,
+		idleW:            idleW,
 	}
-	idle.addTimeoutCallback(ch.timeout)
+	idleR.addTimeoutCallback(ch.timeout)
+	idleW.addTimeoutCallback(ch.timeout)
 	ch.localId = m.chanList.add(ch)
 	return ch
 }
@@ -647,7 +671,8 @@ func (ch *channel) Reject(reason RejectionReason, message string) error {
 		Language: "en",
 	}
 	ch.decided = true
-	ch.idleTimer.Halt.ReqStop.Close()
+	ch.idleR.Halt.ReqStop.Close()
+	ch.idleW.Halt.ReqStop.Close()
 
 	return ch.sendMessage(reject)
 }
@@ -685,7 +710,8 @@ func (ch *channel) Close() error {
 		return errUndecided
 	}
 
-	ch.idleTimer.Halt.ReqStop.Close()
+	ch.idleR.Halt.ReqStop.Close()
+	ch.idleW.Halt.ReqStop.Close()
 
 	return ch.sendMessage(channelCloseMsg{
 		PeersId: ch.remoteId})
@@ -815,23 +841,61 @@ func (c *channel) RemoteAddr() net.Addr {
 	return &sshChanAddr
 }
 
-// SetIdleTimeout establishes a new timeout duration
+// SetReadIdleTimeout establishes a new timeout duration
 // and starts the timing machinery off and running.
 // A dur of zero will disable timeouts.
 //
-// SetIdleTimeout() will always reset and
+// SetReadIdleTimeout() will always reset and
 // clear any raised timeout left over from prior use.
 // Any new timer (if dur > 0) begins from the return of
-// the SetIdleTimeout() invocation.
+// the SetReadIdleTimeout() invocation.
 //
-func (c *channel) SetIdleTimeout(dur time.Duration) (*IdleTimer, error) {
-	c.idleTimer.SetIdleTimeout(dur)
-	return c.idleTimer, nil
+func (c *channel) SetReadIdleTimeout(dur time.Duration) error {
+	c.idleR.SetIdleTimeout(dur)
+	return nil
+}
+
+// SetWriteIdleTimeout establishes a new timeout duration
+// and starts the timing machinery off and running.
+// A dur of zero will disable timeouts.
+//
+// SetWriteIdleTimeout() will always reset and
+// clear any raised timeout left over from prior use.
+// Any new timer (if dur > 0) begins from the return of
+// the SetWriteIdleTimeout() invocation.
+//
+func (c *channel) SetWriteIdleTimeout(dur time.Duration) error {
+	c.idleW.SetIdleTimeout(dur)
+	return nil
+}
+
+// SetIdleTimeout does both SetReadIdleTimeout and SetWriteIdleTimeout.
+func (c *channel) SetIdleTimeout(dur time.Duration) error {
+	c.idleR.SetIdleTimeout(dur)
+	c.idleW.SetIdleTimeout(dur)
+	return nil
 }
 
 func (c *channel) SetReadDeadline(t time.Time) error {
+	return c.setDeadline(t, true)
+}
+
+func (c *channel) SetWriteDeadline(t time.Time) error {
+	return c.setDeadline(t, false)
+}
+
+func (c *channel) SetDeadline(t time.Time) error {
+	c.setDeadline(t, false)
+	return c.setDeadline(t, true)
+}
+
+func (c *channel) setDeadline(t time.Time, reads bool) error {
 	if t.IsZero() {
-		c.idleTimer.SetReadOneshotIdleTimeout(0)
+		if reads {
+			c.idleR.SetOneshotIdleTimeout(0)
+		} else {
+			c.idleW.SetOneshotIdleTimeout(0)
+		}
 	} else {
 		var dur time.Duration
 		now := time.Now()
@@ -844,11 +908,19 @@ func (c *channel) SetReadDeadline(t time.Time) error {
 		} else {
 			dur = t.Sub(now)
 		}
-		c.idleTimer.SetReadOneshotIdleTimeout(dur)
+		if reads {
+			c.idleR.SetOneshotIdleTimeout(dur)
+		} else {
+			c.idleW.SetOneshotIdleTimeout(dur)
+		}
 	}
 	return nil
 }
 
-func (c *channel) GetIdleTimer() *IdleTimer {
-	return c.idleTimer
+func (c *channel) GetReadIdleTimer() *IdleTimer {
+	return c.idleR
+}
+
+func (c *channel) GetWriteIdleTimer() *IdleTimer {
+	return c.idleW
 }

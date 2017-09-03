@@ -33,7 +33,7 @@ func TestTimeout009ReadsIdleOutEvenIfWritesOK(t *testing.T) {
 	tExpectIdleOut := t0.Add(idleout)
 
 	// set the timeout on the reader
-	_, err := r.SetIdleTimeout(idleout)
+	err := r.SetReadIdleTimeout(idleout)
 	if err != nil {
 		panic(fmt.Sprintf("r.SetIdleTimeout: %v", err))
 	}

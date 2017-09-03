@@ -55,12 +55,12 @@ func channelPair(t *testing.T, halt *Halter) (*channel, *channel, *mux) {
 	// setup the idleTimers on the memTransports.
 	tc := c.conn.(*memTransport)
 	tc.Lock()
-	tc.idle = chc.idleTimer
+	tc.idle = chc.idleR
 	tc.Unlock()
 
 	ts := s.conn.(*memTransport)
 	ts.Lock()
-	ts.idle = chs.idleTimer
+	ts.idle = chs.idleR
 	ts.Unlock()
 
 	return chs, chc, c
