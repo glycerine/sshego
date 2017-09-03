@@ -281,7 +281,8 @@ func (c *channel) writePacket(packet []byte) error {
 	c.sentClose = (packet[0] == msgChannelClose)
 	err := c.mux.conn.writePacket(packet)
 	if err == nil {
-		c.idleTimer.Reset(false)
+		// not tracking writes at the moment.
+		//c.idleTimer.Reset(false)
 	}
 	c.writeMu.Unlock()
 	return err
@@ -302,7 +303,8 @@ func (c *channel) sendMessage(msg interface{}) error {
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
 	defer func() {
 		if err == nil {
-			c.idleTimer.Reset(false)
+			// not tracking writes currently.
+			//c.idleTimer.Reset(false)
 		}
 	}()
 	if c.sentEOF {
@@ -328,7 +330,8 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if space, err = c.remoteWin.reserve(space); err != nil {
 			return n, err
 		}
-		c.idleTimer.Reset(false)
+		// not tracking writes currently.
+		//c.idleTimer.Reset(false)
 		if want := headerLength + space; uint32(cap(packet)) < want {
 			packet = make([]byte, want)
 		} else {
@@ -347,7 +350,8 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 		if err = c.writePacket(packet); err != nil {
 			return n, err
 		}
-		c.idleTimer.Reset(false)
+		// not tracking writes currently.
+		//c.idleTimer.Reset(false)
 
 		n += len(todo)
 		data = data[len(todo):]
