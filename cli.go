@@ -82,9 +82,7 @@ type DialConfig struct {
 	// a keepalive every minute.
 	SkipKeepAlive bool
 
-	// CancelKeepAlive can be closed to cleanup the
-	// keepalive goroutine.
-	CancelKeepAlive chan struct{}
+	KeepAliveEvery time.Duration // default 30 seconds
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -207,11 +205,10 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	sshClientConn.TmpCtx = okCtx
 	nc, err := sshClientConn.Dial("tcp", hp)
 
-	// Start keepalives on the tcp, unless turned off.
+	// Start keepalives, unless turned off.
 	if err == nil {
 		if !dc.SkipKeepAlive {
-			err, cancel := StartKeepalives(okCtx, sshClientConn)
-			dc.CancelKeepAlive = cancel
+			err = StartKeepalives(okCtx, dc.KeepAliveEvery, sshClientConn)
 			panicOn(err)
 		}
 	}
@@ -222,23 +219,26 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 // that will send a keepalive on sshClientConn
 // every 60 seconds. Closing the returned
 // channel will exit the goroutine.
-func StartKeepalives(ctx context.Context, sshClientConn *ssh.Client) (error, chan struct{}) {
-	cancel := make(chan struct{})
+func StartKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
+	if dur <= 0 {
+		dur = 60 * time.Second
+	}
+
 	_, _, err := sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
 	if err != nil {
-		return err, cancel
+		return err
 	}
 	go func() {
 		for {
 			select {
-			case <-time.After(time.Minute):
+			case <-time.After(dur):
 				sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
-			case <-cancel:
+			case <-sshClientConn.Halt.ReqStopChan():
 				return
 			}
 		}
 	}()
-	return nil, cancel
+	return nil
 }
 
 // derived from ssh.NewClient: NewSSHClient creates a Client on top of the given connection.
