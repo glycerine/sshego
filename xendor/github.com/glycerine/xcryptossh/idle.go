@@ -113,8 +113,9 @@ func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
 	}
 }
 
-func (t *IdleTimer) LastAndMonoNow() (last int64, mnow int64) {
-	last = atomic.LoadInt64(&t.lastOK)
+func (t *IdleTimer) LastOKLastStartAndMonoNow() (lastOK, lastStart, mnow int64) {
+	lastOK = atomic.LoadInt64(&t.lastOK)
+	lastStart = atomic.LoadInt64(&t.lastStart)
 	mnow = monoNow()
 	return
 }
