@@ -92,15 +92,9 @@ type Channel interface {
 	Done() <-chan struct{}
 
 	// SetReadIdleTimeout starts an idle timer on
-	// that will cause them to timeout after dur.
+	// Reads that will cause them to timeout after dur.
 	// A successful Read will bump the idle
-	// timeout into the future. Successful writes
-	// don't bump the timer because Write() to
-	// a Channel will "succeed" in the sense of
-	// returning a nil error long before they
-	// reach the remote end (or not). Writes
-	// are buffered internally. Hence write success
-	// has no impact on idle timeout.
+	// timeout into the future.
 	//
 	// Providing dur of 0 will disable the idle timeout.
 	// Zero is the default until SetReadIdleTimeout() is called.
@@ -113,7 +107,7 @@ type Channel interface {
 	// Idle timeouts are easier to use than deadlines,
 	// as they don't need to be refreshed after
 	// every read and write. Hence routines like io.Copy()
-	// that makes many calls to Read() and Write()
+	// that make many calls to Read() and Write()
 	// can be leveraged, while still having a timeout in
 	// the case of no activity.
 	//
@@ -129,7 +123,14 @@ type Channel interface {
 	SetReadIdleTimeout(dur time.Duration) error
 
 	// SetWriteIdleTimeout is the same as SetReadIdleTimeout,
-	// but for writes.
+	// but applies to writes rather than reads.
+	// Note that Write() to
+	// a Channel will "succeed" in the sense of
+	// returning a nil error long before they
+	// reach the remote end (or not). Writes
+	// are buffered internally. Hence the write
+	// idle timer may be less useful than
+	// the read timer.
 	SetWriteIdleTimeout(dur time.Duration) error
 
 	// SetIdleTimeout does both SetReadIdleTimeout
