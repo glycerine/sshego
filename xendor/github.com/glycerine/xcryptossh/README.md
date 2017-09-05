@@ -104,18 +104,10 @@ Excellent. Tested on OSX and Linux.
 
 All tests pass under -race. The tests no longer leak goroutines.
 
-## branch with write deadline failing test
+## net.Conn limitations
 
-I experimented with write deadlines, with the aim of
-implementing net.Conn, but could not get them
-to work. It appears that SSH will happily Write() to an
-ssh.Channel and return nil error, even if there is
-never any corresponding Read() on the other end. See the
-branch `write_deadlines`. https://github.com/glycerine/xcryptossh/tree/write_deadlines
+ssh.Channel now impliments net.Conn, but there is a caveat
+that you should be aware of. Write() calls will return a nil
+error before data reaches the remote end.
 
-In particular, run the TestSimpleWriteDeadline test in `timeout_test.go`, e.g.
-~~~
-$ go test -v -timeout 120m -race -run WriteDeadline`
-~~~
 
-Read deadlines, via both SetIdleTimeout() and SetReadDeadline() on a Channel, are available.
