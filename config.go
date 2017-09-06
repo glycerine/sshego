@@ -22,6 +22,7 @@ type SshegoConfig struct {
 	Halt     *ssh.Halter
 
 	KeepAliveEvery time.Duration
+	PingOkCallback func(*KeepAlivePing)
 
 	ConfigPath string
 

@@ -225,7 +225,7 @@ type KeepAlivePing struct {
 // that will send a keepalive on sshClientConn
 // every dur (default every second).
 //
-func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
+func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client, okCallback func(*KeepAlivePing)) error {
 	if dur <= 0 {
 		dur = time.Second
 	}
@@ -280,6 +280,9 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 							log.Printf("startKeepalives: have "+
 								"responsePayload.Replied: '%v'/serial=%v. at now='%v'",
 								ping.Replied, ping.Serial, time.Now())
+						}
+						if okCallback != nil {
+							okCallback(&ping)
 						}
 					}
 				}

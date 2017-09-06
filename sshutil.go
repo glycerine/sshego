@@ -544,7 +544,7 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 	cli := cfg.NewSSHClient(ctx, c, chans, reqs, halt)
 
 	if cfg.KeepAliveEvery > 0 {
-		err = startKeepalives(ctx, cfg.KeepAliveEvery, cli)
+		err = startKeepalives(ctx, cfg.KeepAliveEvery, cli, cfg.PingOkCallback)
 	}
 	return cli, conn, err
 }
