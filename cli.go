@@ -11,6 +11,10 @@ import (
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
+//go:generate greenpack
+
+//msgp:ignore DialConfig
+
 // DialConfig provides Dial() with what
 // it needs in order to establish an encrypted
 // and authenticated ssh connection.
@@ -111,6 +115,9 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	cfg.Debug = dc.Verbose
 	cfg.TestAllowOneshotConnect = dc.TestAllowOneshotConnect
+	if !dc.SkipKeepAlive {
+		cfg.KeepAliveEvery = dc.KeepAliveEvery
+	}
 	var err error
 
 	p("DialConfig.Dial: dc= %#v\n", dc)
@@ -205,29 +212,31 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	sshClientConn.TmpCtx = okCtx
 	nc, err := sshClientConn.Dial("tcp", hp)
 
-	// Start keepalives, unless turned off.
-	if err == nil {
-		if !dc.SkipKeepAlive {
-			err = StartKeepalives(okCtx, dc.KeepAliveEvery, sshClientConn)
-			panicOn(err)
-		}
-	}
 	return nc, sshClientConn, err
 }
 
-// StartKeepalives starts a background goroutine
+type KeepAlivePing struct {
+	Sent    time.Time `zid:"0"`
+	Replied time.Time `zid:"1"`
+}
+
+// startKeepalives starts a background goroutine
 // that will send a keepalive on sshClientConn
-// every 60 seconds. Closing the returned
-// channel will exit the goroutine.
-func StartKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
+// every dur (default every second).
+//
+func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
 	if dur <= 0 {
-		dur = 60 * time.Second
+		dur = time.Second
 	}
 
-	_, _, err := sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
+	responseStatus, responsePayload, err := sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
 	if err != nil {
 		return err
 	}
+	log.Printf("startKeepalives: have responseStatus:"+
+		" '%v' and responsePayload: '%#v'",
+		responseStatus, responsePayload)
+
 	go func() {
 		for {
 			select {
@@ -249,7 +258,10 @@ func (cfg *SshegoConfig) NewSSHClient(ctx context.Context, c ssh.Conn, chans <-c
 		Halt:            halt,
 	}
 
-	go conn.HandleGlobalRequests(ctx, reqs)
+	// replace conn.HandleGlobalRequests with custom handler.
+	//go conn.HandleGlobalRequests(ctx, reqs)
+	go customHandleGlobalRequests(ctx, conn, reqs)
+
 	go conn.HandleChannelOpens(ctx, chans)
 	go func() {
 		conn.Wait()
@@ -273,5 +285,37 @@ func (cfg *SshegoConfig) NewSSHClient(ctx context.Context, c ssh.Conn, chans <-c
 			go cfg.handleChannels(ctx, newChanChan, c, ca)
 		}
 	}
+
 	return conn
+}
+
+func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incoming <-chan *ssh.Request) {
+
+	for {
+		select {
+		case r := <-incoming:
+			if r != nil {
+				if r.Type == "keepalive@openssh.com" {
+					var ping KeepAlivePing
+					_, err := ping.UnmarshalMsg(r.Payload)
+					panicOn(err)
+					ping.Replied = time.Now()
+					log.Printf("customHandleGlobalRequests sees keepalive! sent at '%v'", ping.Sent)
+					pingReplyBy, err := ping.MarshalMsg(nil)
+					panicOn(err)
+					r.Reply(true, pingReplyBy)
+				} else {
+					// This handles keepalive messages and matches
+					// the behaviour of OpenSSH.
+					r.Reply(false, nil)
+				}
+			}
+		case <-sshCli.Halt.ReqStopChan():
+			return
+		case <-sshCli.Conn.Done():
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 }

@@ -44,7 +44,7 @@ type User struct {
 	QrPath         string
 
 	Issuer     string
-	PublicKey  ssh.PublicKey
+	PublicKey  ssh.PublicKey `msg:"-"`
 	SeenPubKey map[string]LoginRecord
 
 	ScryptedPassword []byte
@@ -88,7 +88,7 @@ type HostDbPersist struct {
 type HostDb struct {
 	UserHomePrefix string
 
-	HostSshSigner ssh.Signer
+	HostSshSigner ssh.Signer `msg:"-"`
 	cfg           *SshegoConfig
 
 	Persist HostDbPersist

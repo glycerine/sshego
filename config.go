@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
@@ -19,6 +20,8 @@ import (
 type SshegoConfig struct {
 	Nickname string
 	Halt     *ssh.Halter
+
+	KeepAliveEvery time.Duration
 
 	ConfigPath string
 

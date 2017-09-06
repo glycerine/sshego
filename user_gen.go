@@ -23,7 +23,7 @@ func (z *HostDb) DecodeMsg(dc *msgp.Reader) (err error) {
 
 	var field []byte
 	_ = field
-	const maxFields0zgensym_189e87a53e58dbf2_1 = 2
+	const maxFields0zgensym_189e87a53e58dbf2_1 = 3
 
 	// -- templateDecodeMsg starts here--
 	var totalEncodedFields0zgensym_189e87a53e58dbf2_1 uint32
@@ -79,7 +79,7 @@ doneWithStruct0zgensym_189e87a53e58dbf2_1:
 				return
 			}
 		case "Persist__rct":
-			found0zgensym_189e87a53e58dbf2_1[1] = true
+			found0zgensym_189e87a53e58dbf2_1[2] = true
 			const maxFields2zgensym_189e87a53e58dbf2_3 = 2
 
 			// -- templateDecodeMsg starts here--
@@ -196,9 +196,9 @@ doneWithStruct0zgensym_189e87a53e58dbf2_1:
 }
 
 // fields of HostDb
-var decodeMsgFieldOrder0zgensym_189e87a53e58dbf2_1 = []string{"UserHomePrefix__str", "Persist__rct"}
+var decodeMsgFieldOrder0zgensym_189e87a53e58dbf2_1 = []string{"UserHomePrefix__str", "", "Persist__rct"}
 
-var decodeMsgFieldSkip0zgensym_189e87a53e58dbf2_1 = []bool{false, false}
+var decodeMsgFieldSkip0zgensym_189e87a53e58dbf2_1 = []bool{false, true, false}
 
 // fields of HostDbPersist
 var decodeMsgFieldOrder2zgensym_189e87a53e58dbf2_3 = []string{"Users_zid00_ptr", "HostPrivateKeyPath_zid01_str"}
@@ -215,8 +215,8 @@ func (z *HostDb) fieldsNotEmpty(isempty []bool) uint32 {
 	if isempty[0] {
 		fieldsInUse--
 	}
-	isempty[1] = false // struct values are never empty
-	if isempty[1] {
+	isempty[2] = false // struct values are never empty
+	if isempty[2] {
 		fieldsInUse--
 	}
 
@@ -230,7 +230,7 @@ func (z *HostDb) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 
 	// honor the omitempty tags
-	var empty_zgensym_189e87a53e58dbf2_4 [2]bool
+	var empty_zgensym_189e87a53e58dbf2_4 [3]bool
 	fieldsInUse_zgensym_189e87a53e58dbf2_5 := z.fieldsNotEmpty(empty_zgensym_189e87a53e58dbf2_4[:])
 
 	// map header
@@ -251,7 +251,7 @@ func (z *HostDb) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_4[1] {
+	if !empty_zgensym_189e87a53e58dbf2_4[2] {
 		// write "Persist__rct"
 		err = en.Append(0xac, 0x50, 0x65, 0x72, 0x73, 0x69, 0x73, 0x74, 0x5f, 0x5f, 0x72, 0x63, 0x74)
 		if err != nil {
@@ -313,7 +313,7 @@ func (z *HostDb) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 
 	// honor the omitempty tags
-	var empty [2]bool
+	var empty [3]bool
 	fieldsInUse := z.fieldsNotEmpty(empty[:])
 	o = msgp.AppendMapHeader(o, fieldsInUse)
 
@@ -323,7 +323,7 @@ func (z *HostDb) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendString(o, z.UserHomePrefix)
 	}
 
-	if !empty[1] {
+	if !empty[2] {
 		// string "Persist__rct"
 		o = append(o, 0xac, 0x50, 0x65, 0x72, 0x73, 0x69, 0x73, 0x74, 0x5f, 0x5f, 0x72, 0x63, 0x74)
 
@@ -371,7 +371,7 @@ func (z *HostDb) UnmarshalMsgWithCfg(bts []byte, cfg *msgp.RuntimeConfig) (o []b
 
 	var field []byte
 	_ = field
-	const maxFields8zgensym_189e87a53e58dbf2_9 = 2
+	const maxFields8zgensym_189e87a53e58dbf2_9 = 3
 
 	// -- templateUnmarshalMsg starts here--
 	var totalEncodedFields8zgensym_189e87a53e58dbf2_9 uint32
@@ -429,7 +429,7 @@ doneWithStruct8zgensym_189e87a53e58dbf2_9:
 				return
 			}
 		case "Persist__rct":
-			found8zgensym_189e87a53e58dbf2_9[1] = true
+			found8zgensym_189e87a53e58dbf2_9[2] = true
 			const maxFields10zgensym_189e87a53e58dbf2_11 = 2
 
 			// -- templateUnmarshalMsg starts here--
@@ -549,9 +549,9 @@ doneWithStruct8zgensym_189e87a53e58dbf2_9:
 }
 
 // fields of HostDb
-var unmarshalMsgFieldOrder8zgensym_189e87a53e58dbf2_9 = []string{"UserHomePrefix__str", "Persist__rct"}
+var unmarshalMsgFieldOrder8zgensym_189e87a53e58dbf2_9 = []string{"UserHomePrefix__str", "", "Persist__rct"}
 
-var unmarshalMsgFieldSkip8zgensym_189e87a53e58dbf2_9 = []bool{false, false}
+var unmarshalMsgFieldSkip8zgensym_189e87a53e58dbf2_9 = []bool{false, true, false}
 
 // fields of HostDbPersist
 var unmarshalMsgFieldOrder10zgensym_189e87a53e58dbf2_11 = []string{"Users_zid00_ptr", "HostPrivateKeyPath_zid01_str"}
@@ -1360,7 +1360,7 @@ func (z *User) DecodeMsg(dc *msgp.Reader) (err error) {
 
 	var field []byte
 	_ = field
-	const maxFields27zgensym_189e87a53e58dbf2_28 = 17
+	const maxFields27zgensym_189e87a53e58dbf2_28 = 18
 
 	// -- templateDecodeMsg starts here--
 	var totalEncodedFields27zgensym_189e87a53e58dbf2_28 uint32
@@ -1458,7 +1458,7 @@ doneWithStruct27zgensym_189e87a53e58dbf2_28:
 				return
 			}
 		case "SeenPubKey__map":
-			found27zgensym_189e87a53e58dbf2_28[8] = true
+			found27zgensym_189e87a53e58dbf2_28[9] = true
 			var zgensym_189e87a53e58dbf2_29 uint32
 			zgensym_189e87a53e58dbf2_29, err = dc.ReadMapHeader()
 			if err != nil {
@@ -1486,43 +1486,43 @@ doneWithStruct27zgensym_189e87a53e58dbf2_28:
 				z.SeenPubKey[zgensym_189e87a53e58dbf2_24] = zgensym_189e87a53e58dbf2_25
 			}
 		case "ScryptedPassword__bin":
-			found27zgensym_189e87a53e58dbf2_28[9] = true
+			found27zgensym_189e87a53e58dbf2_28[10] = true
 			z.ScryptedPassword, err = dc.ReadBytes(z.ScryptedPassword)
 			if err != nil {
 				return
 			}
 		case "ClearPw__str":
-			found27zgensym_189e87a53e58dbf2_28[10] = true
+			found27zgensym_189e87a53e58dbf2_28[11] = true
 			z.ClearPw, err = dc.ReadString()
 			if err != nil {
 				return
 			}
 		case "TOTPorig__str":
-			found27zgensym_189e87a53e58dbf2_28[11] = true
+			found27zgensym_189e87a53e58dbf2_28[12] = true
 			z.TOTPorig, err = dc.ReadString()
 			if err != nil {
 				return
 			}
 		case "FirstLoginTime__tim":
-			found27zgensym_189e87a53e58dbf2_28[12] = true
+			found27zgensym_189e87a53e58dbf2_28[13] = true
 			z.FirstLoginTime, err = dc.ReadTime()
 			if err != nil {
 				return
 			}
 		case "LastLoginTime__tim":
-			found27zgensym_189e87a53e58dbf2_28[13] = true
+			found27zgensym_189e87a53e58dbf2_28[14] = true
 			z.LastLoginTime, err = dc.ReadTime()
 			if err != nil {
 				return
 			}
 		case "LastLoginAddr__str":
-			found27zgensym_189e87a53e58dbf2_28[14] = true
+			found27zgensym_189e87a53e58dbf2_28[15] = true
 			z.LastLoginAddr, err = dc.ReadString()
 			if err != nil {
 				return
 			}
 		case "IPwhitelist__slc":
-			found27zgensym_189e87a53e58dbf2_28[15] = true
+			found27zgensym_189e87a53e58dbf2_28[16] = true
 			var zgensym_189e87a53e58dbf2_30 uint32
 			zgensym_189e87a53e58dbf2_30, err = dc.ReadArrayHeader()
 			if err != nil {
@@ -1540,7 +1540,7 @@ doneWithStruct27zgensym_189e87a53e58dbf2_28:
 				}
 			}
 		case "DisabledAcct__boo":
-			found27zgensym_189e87a53e58dbf2_28[16] = true
+			found27zgensym_189e87a53e58dbf2_28[17] = true
 			z.DisabledAcct, err = dc.ReadBool()
 			if err != nil {
 				return
@@ -1568,9 +1568,9 @@ doneWithStruct27zgensym_189e87a53e58dbf2_28:
 }
 
 // fields of User
-var decodeMsgFieldOrder27zgensym_189e87a53e58dbf2_28 = []string{"MyEmail__str", "MyFullname__str", "MyLogin__str", "PublicKeyPath__str", "PrivateKeyPath__str", "TOTPpath__str", "QrPath__str", "Issuer__str", "SeenPubKey__map", "ScryptedPassword__bin", "ClearPw__str", "TOTPorig__str", "FirstLoginTime__tim", "LastLoginTime__tim", "LastLoginAddr__str", "IPwhitelist__slc", "DisabledAcct__boo"}
+var decodeMsgFieldOrder27zgensym_189e87a53e58dbf2_28 = []string{"MyEmail__str", "MyFullname__str", "MyLogin__str", "PublicKeyPath__str", "PrivateKeyPath__str", "TOTPpath__str", "QrPath__str", "Issuer__str", "", "SeenPubKey__map", "ScryptedPassword__bin", "ClearPw__str", "TOTPorig__str", "FirstLoginTime__tim", "LastLoginTime__tim", "LastLoginAddr__str", "IPwhitelist__slc", "DisabledAcct__boo"}
 
-var decodeMsgFieldSkip27zgensym_189e87a53e58dbf2_28 = []bool{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false}
+var decodeMsgFieldSkip27zgensym_189e87a53e58dbf2_28 = []bool{false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false}
 
 // fieldsNotEmpty supports omitempty tags
 func (z *User) fieldsNotEmpty(isempty []bool) uint32 {
@@ -1610,40 +1610,40 @@ func (z *User) fieldsNotEmpty(isempty []bool) uint32 {
 	if isempty[7] {
 		fieldsInUse--
 	}
-	isempty[8] = (len(z.SeenPubKey) == 0) // string, omitempty
-	if isempty[8] {
-		fieldsInUse--
-	}
-	isempty[9] = (len(z.ScryptedPassword) == 0) // string, omitempty
+	isempty[9] = (len(z.SeenPubKey) == 0) // string, omitempty
 	if isempty[9] {
 		fieldsInUse--
 	}
-	isempty[10] = (len(z.ClearPw) == 0) // string, omitempty
+	isempty[10] = (len(z.ScryptedPassword) == 0) // string, omitempty
 	if isempty[10] {
 		fieldsInUse--
 	}
-	isempty[11] = (len(z.TOTPorig) == 0) // string, omitempty
+	isempty[11] = (len(z.ClearPw) == 0) // string, omitempty
 	if isempty[11] {
 		fieldsInUse--
 	}
-	isempty[12] = (z.FirstLoginTime.IsZero()) // time.Time, omitempty
+	isempty[12] = (len(z.TOTPorig) == 0) // string, omitempty
 	if isempty[12] {
 		fieldsInUse--
 	}
-	isempty[13] = (z.LastLoginTime.IsZero()) // time.Time, omitempty
+	isempty[13] = (z.FirstLoginTime.IsZero()) // time.Time, omitempty
 	if isempty[13] {
 		fieldsInUse--
 	}
-	isempty[14] = (len(z.LastLoginAddr) == 0) // string, omitempty
+	isempty[14] = (z.LastLoginTime.IsZero()) // time.Time, omitempty
 	if isempty[14] {
 		fieldsInUse--
 	}
-	isempty[15] = (len(z.IPwhitelist) == 0) // string, omitempty
+	isempty[15] = (len(z.LastLoginAddr) == 0) // string, omitempty
 	if isempty[15] {
 		fieldsInUse--
 	}
-	isempty[16] = (!z.DisabledAcct) // bool, omitempty
+	isempty[16] = (len(z.IPwhitelist) == 0) // string, omitempty
 	if isempty[16] {
+		fieldsInUse--
+	}
+	isempty[17] = (!z.DisabledAcct) // bool, omitempty
+	if isempty[17] {
 		fieldsInUse--
 	}
 
@@ -1657,7 +1657,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 
 	// honor the omitempty tags
-	var empty_zgensym_189e87a53e58dbf2_31 [17]bool
+	var empty_zgensym_189e87a53e58dbf2_31 [18]bool
 	fieldsInUse_zgensym_189e87a53e58dbf2_32 := z.fieldsNotEmpty(empty_zgensym_189e87a53e58dbf2_31[:])
 
 	// map header
@@ -1762,7 +1762,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[8] {
+	if !empty_zgensym_189e87a53e58dbf2_31[9] {
 		// write "SeenPubKey__map"
 		err = en.Append(0xaf, 0x53, 0x65, 0x65, 0x6e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x5f, 0x5f, 0x6d, 0x61, 0x70)
 		if err != nil {
@@ -1784,7 +1784,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[9] {
+	if !empty_zgensym_189e87a53e58dbf2_31[10] {
 		// write "ScryptedPassword__bin"
 		err = en.Append(0xb5, 0x53, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x5f, 0x62, 0x69, 0x6e)
 		if err != nil {
@@ -1796,7 +1796,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[10] {
+	if !empty_zgensym_189e87a53e58dbf2_31[11] {
 		// write "ClearPw__str"
 		err = en.Append(0xac, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x50, 0x77, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		if err != nil {
@@ -1808,7 +1808,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[11] {
+	if !empty_zgensym_189e87a53e58dbf2_31[12] {
 		// write "TOTPorig__str"
 		err = en.Append(0xad, 0x54, 0x4f, 0x54, 0x50, 0x6f, 0x72, 0x69, 0x67, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		if err != nil {
@@ -1820,7 +1820,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[12] {
+	if !empty_zgensym_189e87a53e58dbf2_31[13] {
 		// write "FirstLoginTime__tim"
 		err = en.Append(0xb3, 0x46, 0x69, 0x72, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x5f, 0x5f, 0x74, 0x69, 0x6d)
 		if err != nil {
@@ -1832,7 +1832,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[13] {
+	if !empty_zgensym_189e87a53e58dbf2_31[14] {
 		// write "LastLoginTime__tim"
 		err = en.Append(0xb2, 0x4c, 0x61, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x5f, 0x5f, 0x74, 0x69, 0x6d)
 		if err != nil {
@@ -1844,7 +1844,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[14] {
+	if !empty_zgensym_189e87a53e58dbf2_31[15] {
 		// write "LastLoginAddr__str"
 		err = en.Append(0xb2, 0x4c, 0x61, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x41, 0x64, 0x64, 0x72, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		if err != nil {
@@ -1856,7 +1856,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[15] {
+	if !empty_zgensym_189e87a53e58dbf2_31[16] {
 		// write "IPwhitelist__slc"
 		err = en.Append(0xb0, 0x49, 0x50, 0x77, 0x68, 0x69, 0x74, 0x65, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x5f, 0x73, 0x6c, 0x63)
 		if err != nil {
@@ -1874,7 +1874,7 @@ func (z *User) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
-	if !empty_zgensym_189e87a53e58dbf2_31[16] {
+	if !empty_zgensym_189e87a53e58dbf2_31[17] {
 		// write "DisabledAcct__boo"
 		err = en.Append(0xb1, 0x44, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x41, 0x63, 0x63, 0x74, 0x5f, 0x5f, 0x62, 0x6f, 0x6f)
 		if err != nil {
@@ -1898,7 +1898,7 @@ func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 
 	// honor the omitempty tags
-	var empty [17]bool
+	var empty [18]bool
 	fieldsInUse := z.fieldsNotEmpty(empty[:])
 	o = msgp.AppendMapHeader(o, fieldsInUse)
 
@@ -1950,7 +1950,7 @@ func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendString(o, z.Issuer)
 	}
 
-	if !empty[8] {
+	if !empty[9] {
 		// string "SeenPubKey__map"
 		o = append(o, 0xaf, 0x53, 0x65, 0x65, 0x6e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x5f, 0x5f, 0x6d, 0x61, 0x70)
 		o = msgp.AppendMapHeader(o, uint32(len(z.SeenPubKey)))
@@ -1963,43 +1963,43 @@ func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 		}
 	}
 
-	if !empty[9] {
+	if !empty[10] {
 		// string "ScryptedPassword__bin"
 		o = append(o, 0xb5, 0x53, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x5f, 0x62, 0x69, 0x6e)
 		o = msgp.AppendBytes(o, z.ScryptedPassword)
 	}
 
-	if !empty[10] {
+	if !empty[11] {
 		// string "ClearPw__str"
 		o = append(o, 0xac, 0x43, 0x6c, 0x65, 0x61, 0x72, 0x50, 0x77, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		o = msgp.AppendString(o, z.ClearPw)
 	}
 
-	if !empty[11] {
+	if !empty[12] {
 		// string "TOTPorig__str"
 		o = append(o, 0xad, 0x54, 0x4f, 0x54, 0x50, 0x6f, 0x72, 0x69, 0x67, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		o = msgp.AppendString(o, z.TOTPorig)
 	}
 
-	if !empty[12] {
+	if !empty[13] {
 		// string "FirstLoginTime__tim"
 		o = append(o, 0xb3, 0x46, 0x69, 0x72, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x5f, 0x5f, 0x74, 0x69, 0x6d)
 		o = msgp.AppendTime(o, z.FirstLoginTime)
 	}
 
-	if !empty[13] {
+	if !empty[14] {
 		// string "LastLoginTime__tim"
 		o = append(o, 0xb2, 0x4c, 0x61, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x5f, 0x5f, 0x74, 0x69, 0x6d)
 		o = msgp.AppendTime(o, z.LastLoginTime)
 	}
 
-	if !empty[14] {
+	if !empty[15] {
 		// string "LastLoginAddr__str"
 		o = append(o, 0xb2, 0x4c, 0x61, 0x73, 0x74, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x41, 0x64, 0x64, 0x72, 0x5f, 0x5f, 0x73, 0x74, 0x72)
 		o = msgp.AppendString(o, z.LastLoginAddr)
 	}
 
-	if !empty[15] {
+	if !empty[16] {
 		// string "IPwhitelist__slc"
 		o = append(o, 0xb0, 0x49, 0x50, 0x77, 0x68, 0x69, 0x74, 0x65, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x5f, 0x73, 0x6c, 0x63)
 		o = msgp.AppendArrayHeader(o, uint32(len(z.IPwhitelist)))
@@ -2008,7 +2008,7 @@ func (z *User) MarshalMsg(b []byte) (o []byte, err error) {
 		}
 	}
 
-	if !empty[16] {
+	if !empty[17] {
 		// string "DisabledAcct__boo"
 		o = append(o, 0xb1, 0x44, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x41, 0x63, 0x63, 0x74, 0x5f, 0x5f, 0x62, 0x6f, 0x6f)
 		o = msgp.AppendBool(o, z.DisabledAcct)
@@ -2032,7 +2032,7 @@ func (z *User) UnmarshalMsgWithCfg(bts []byte, cfg *msgp.RuntimeConfig) (o []byt
 
 	var field []byte
 	_ = field
-	const maxFields33zgensym_189e87a53e58dbf2_34 = 17
+	const maxFields33zgensym_189e87a53e58dbf2_34 = 18
 
 	// -- templateUnmarshalMsg starts here--
 	var totalEncodedFields33zgensym_189e87a53e58dbf2_34 uint32
@@ -2139,7 +2139,7 @@ doneWithStruct33zgensym_189e87a53e58dbf2_34:
 				return
 			}
 		case "SeenPubKey__map":
-			found33zgensym_189e87a53e58dbf2_34[8] = true
+			found33zgensym_189e87a53e58dbf2_34[9] = true
 			if nbs.AlwaysNil {
 				if len(z.SeenPubKey) > 0 {
 					for key, _ := range z.SeenPubKey {
@@ -2180,7 +2180,7 @@ doneWithStruct33zgensym_189e87a53e58dbf2_34:
 				}
 			}
 		case "ScryptedPassword__bin":
-			found33zgensym_189e87a53e58dbf2_34[9] = true
+			found33zgensym_189e87a53e58dbf2_34[10] = true
 			if nbs.AlwaysNil || msgp.IsNil(bts) {
 				if !nbs.AlwaysNil {
 					bts = bts[1:]
@@ -2197,42 +2197,42 @@ doneWithStruct33zgensym_189e87a53e58dbf2_34:
 				return
 			}
 		case "ClearPw__str":
-			found33zgensym_189e87a53e58dbf2_34[10] = true
+			found33zgensym_189e87a53e58dbf2_34[11] = true
 			z.ClearPw, bts, err = nbs.ReadStringBytes(bts)
 
 			if err != nil {
 				return
 			}
 		case "TOTPorig__str":
-			found33zgensym_189e87a53e58dbf2_34[11] = true
+			found33zgensym_189e87a53e58dbf2_34[12] = true
 			z.TOTPorig, bts, err = nbs.ReadStringBytes(bts)
 
 			if err != nil {
 				return
 			}
 		case "FirstLoginTime__tim":
-			found33zgensym_189e87a53e58dbf2_34[12] = true
+			found33zgensym_189e87a53e58dbf2_34[13] = true
 			z.FirstLoginTime, bts, err = nbs.ReadTimeBytes(bts)
 
 			if err != nil {
 				return
 			}
 		case "LastLoginTime__tim":
-			found33zgensym_189e87a53e58dbf2_34[13] = true
+			found33zgensym_189e87a53e58dbf2_34[14] = true
 			z.LastLoginTime, bts, err = nbs.ReadTimeBytes(bts)
 
 			if err != nil {
 				return
 			}
 		case "LastLoginAddr__str":
-			found33zgensym_189e87a53e58dbf2_34[14] = true
+			found33zgensym_189e87a53e58dbf2_34[15] = true
 			z.LastLoginAddr, bts, err = nbs.ReadStringBytes(bts)
 
 			if err != nil {
 				return
 			}
 		case "IPwhitelist__slc":
-			found33zgensym_189e87a53e58dbf2_34[15] = true
+			found33zgensym_189e87a53e58dbf2_34[16] = true
 			if nbs.AlwaysNil {
 				(z.IPwhitelist) = (z.IPwhitelist)[:0]
 			} else {
@@ -2256,7 +2256,7 @@ doneWithStruct33zgensym_189e87a53e58dbf2_34:
 				}
 			}
 		case "DisabledAcct__boo":
-			found33zgensym_189e87a53e58dbf2_34[16] = true
+			found33zgensym_189e87a53e58dbf2_34[17] = true
 			z.DisabledAcct, bts, err = nbs.ReadBoolBytes(bts)
 
 			if err != nil {
@@ -2285,9 +2285,9 @@ doneWithStruct33zgensym_189e87a53e58dbf2_34:
 }
 
 // fields of User
-var unmarshalMsgFieldOrder33zgensym_189e87a53e58dbf2_34 = []string{"MyEmail__str", "MyFullname__str", "MyLogin__str", "PublicKeyPath__str", "PrivateKeyPath__str", "TOTPpath__str", "QrPath__str", "Issuer__str", "SeenPubKey__map", "ScryptedPassword__bin", "ClearPw__str", "TOTPorig__str", "FirstLoginTime__tim", "LastLoginTime__tim", "LastLoginAddr__str", "IPwhitelist__slc", "DisabledAcct__boo"}
+var unmarshalMsgFieldOrder33zgensym_189e87a53e58dbf2_34 = []string{"MyEmail__str", "MyFullname__str", "MyLogin__str", "PublicKeyPath__str", "PrivateKeyPath__str", "TOTPpath__str", "QrPath__str", "Issuer__str", "", "SeenPubKey__map", "ScryptedPassword__bin", "ClearPw__str", "TOTPorig__str", "FirstLoginTime__tim", "LastLoginTime__tim", "LastLoginAddr__str", "IPwhitelist__slc", "DisabledAcct__boo"}
 
-var unmarshalMsgFieldSkip33zgensym_189e87a53e58dbf2_34 = []bool{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false}
+var unmarshalMsgFieldSkip33zgensym_189e87a53e58dbf2_34 = []bool{false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false}
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *User) Msgsize() (s int) {
