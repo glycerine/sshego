@@ -23,7 +23,7 @@ func (z *KeepAlivePing) DecodeMsg(dc *msgp.Reader) (err error) {
 
 	var field []byte
 	_ = field
-	const maxFields0zgensym_c523013f9c573deb_1 = 2
+	const maxFields0zgensym_c523013f9c573deb_1 = 3
 
 	// -- templateDecodeMsg starts here--
 	var totalEncodedFields0zgensym_c523013f9c573deb_1 uint32
@@ -84,6 +84,12 @@ doneWithStruct0zgensym_c523013f9c573deb_1:
 			if err != nil {
 				return
 			}
+		case "Serial_zid02_i64":
+			found0zgensym_c523013f9c573deb_1[2] = true
+			z.Serial, err = dc.ReadInt64()
+			if err != nil {
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -107,22 +113,26 @@ doneWithStruct0zgensym_c523013f9c573deb_1:
 }
 
 // fields of KeepAlivePing
-var decodeMsgFieldOrder0zgensym_c523013f9c573deb_1 = []string{"Sent_zid00_tim", "Replied_zid01_tim"}
+var decodeMsgFieldOrder0zgensym_c523013f9c573deb_1 = []string{"Sent_zid00_tim", "Replied_zid01_tim", "Serial_zid02_i64"}
 
-var decodeMsgFieldSkip0zgensym_c523013f9c573deb_1 = []bool{false, false}
+var decodeMsgFieldSkip0zgensym_c523013f9c573deb_1 = []bool{false, false, false}
 
 // fieldsNotEmpty supports omitempty tags
 func (z KeepAlivePing) fieldsNotEmpty(isempty []bool) uint32 {
 	if len(isempty) == 0 {
-		return 2
+		return 3
 	}
-	var fieldsInUse uint32 = 2
+	var fieldsInUse uint32 = 3
 	isempty[0] = (z.Sent.IsZero()) // time.Time, omitempty
 	if isempty[0] {
 		fieldsInUse--
 	}
 	isempty[1] = (z.Replied.IsZero()) // time.Time, omitempty
 	if isempty[1] {
+		fieldsInUse--
+	}
+	isempty[2] = (z.Serial == 0) // number, omitempty
+	if isempty[2] {
 		fieldsInUse--
 	}
 
@@ -136,7 +146,7 @@ func (z KeepAlivePing) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 
 	// honor the omitempty tags
-	var empty_zgensym_c523013f9c573deb_2 [2]bool
+	var empty_zgensym_c523013f9c573deb_2 [3]bool
 	fieldsInUse_zgensym_c523013f9c573deb_3 := z.fieldsNotEmpty(empty_zgensym_c523013f9c573deb_2[:])
 
 	// map header
@@ -169,6 +179,18 @@ func (z KeepAlivePing) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 
+	if !empty_zgensym_c523013f9c573deb_2[2] {
+		// write "Serial_zid02_i64"
+		err = en.Append(0xb0, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x5f, 0x7a, 0x69, 0x64, 0x30, 0x32, 0x5f, 0x69, 0x36, 0x34)
+		if err != nil {
+			return err
+		}
+		err = en.WriteInt64(z.Serial)
+		if err != nil {
+			return
+		}
+	}
+
 	return
 }
 
@@ -181,7 +203,7 @@ func (z KeepAlivePing) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 
 	// honor the omitempty tags
-	var empty [2]bool
+	var empty [3]bool
 	fieldsInUse := z.fieldsNotEmpty(empty[:])
 	o = msgp.AppendMapHeader(o, fieldsInUse)
 
@@ -195,6 +217,12 @@ func (z KeepAlivePing) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "Replied_zid01_tim"
 		o = append(o, 0xb1, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x65, 0x64, 0x5f, 0x7a, 0x69, 0x64, 0x30, 0x31, 0x5f, 0x74, 0x69, 0x6d)
 		o = msgp.AppendTime(o, z.Replied)
+	}
+
+	if !empty[2] {
+		// string "Serial_zid02_i64"
+		o = append(o, 0xb0, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x5f, 0x7a, 0x69, 0x64, 0x30, 0x32, 0x5f, 0x69, 0x36, 0x34)
+		o = msgp.AppendInt64(o, z.Serial)
 	}
 
 	return
@@ -215,7 +243,7 @@ func (z *KeepAlivePing) UnmarshalMsgWithCfg(bts []byte, cfg *msgp.RuntimeConfig)
 
 	var field []byte
 	_ = field
-	const maxFields4zgensym_c523013f9c573deb_5 = 2
+	const maxFields4zgensym_c523013f9c573deb_5 = 3
 
 	// -- templateUnmarshalMsg starts here--
 	var totalEncodedFields4zgensym_c523013f9c573deb_5 uint32
@@ -279,6 +307,13 @@ doneWithStruct4zgensym_c523013f9c573deb_5:
 			if err != nil {
 				return
 			}
+		case "Serial_zid02_i64":
+			found4zgensym_c523013f9c573deb_5[2] = true
+			z.Serial, bts, err = nbs.ReadInt64Bytes(bts)
+
+			if err != nil {
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -302,12 +337,12 @@ doneWithStruct4zgensym_c523013f9c573deb_5:
 }
 
 // fields of KeepAlivePing
-var unmarshalMsgFieldOrder4zgensym_c523013f9c573deb_5 = []string{"Sent_zid00_tim", "Replied_zid01_tim"}
+var unmarshalMsgFieldOrder4zgensym_c523013f9c573deb_5 = []string{"Sent_zid00_tim", "Replied_zid01_tim", "Serial_zid02_i64"}
 
-var unmarshalMsgFieldSkip4zgensym_c523013f9c573deb_5 = []bool{false, false}
+var unmarshalMsgFieldSkip4zgensym_c523013f9c573deb_5 = []bool{false, false, false}
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z KeepAlivePing) Msgsize() (s int) {
-	s = 1 + 15 + msgp.TimeSize + 18 + msgp.TimeSize
+	s = 1 + 15 + msgp.TimeSize + 18 + msgp.TimeSize + 17 + msgp.Int64Size
 	return
 }

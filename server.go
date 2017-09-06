@@ -475,7 +475,7 @@ func (a *PerAttempt) discardRequestsExceptKeepalives(ctx context.Context, in <-c
 				}
 
 				now := time.Now()
-				log.Printf("sshego server.go: discardRequestsExceptKeepalives sees keepalive! ping.Sent: '%v'. setting replied to now='%v'", ping.Sent, now)
+				log.Printf("sshego server.go: discardRequestsExceptKeepalives sees keepalive %v! ping.Sent: '%v'. setting replied to now='%v'", ping.Serial, ping.Sent, now)
 
 				ping.Replied = now
 				pingReplyBy, err := ping.MarshalMsg(nil)

@@ -218,6 +218,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 type KeepAlivePing struct {
 	Sent    time.Time `zid:"0"`
 	Replied time.Time `zid:"1"`
+	Serial  int64     `zid:"2"`
 }
 
 // startKeepalives starts a background goroutine
@@ -229,10 +230,12 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 		dur = time.Second
 	}
 
+	serial := int64(0)
 	var ping KeepAlivePing
 	ping.Sent = time.Now()
 	pingBy, err := ping.MarshalMsg(nil)
 	panicOn(err)
+	serial++
 
 	responseStatus, responsePayload, err := sshClientConn.SendRequest(ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 	if err != nil {
@@ -246,7 +249,7 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 			var ping KeepAlivePing
 			_, err := ping.UnmarshalMsg(responsePayload)
 			if err == nil {
-				log.Printf("startKeepalives: have responsePayload.Replied: '%v'. at now='%v'", ping.Replied, time.Now())
+				log.Printf("startKeepalives: have responsePayload.Replied: '%v'/serial=%v. at now='%v'", ping.Replied, ping.Serial, time.Now())
 			}
 		}
 	}
@@ -255,10 +258,32 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 			select {
 			case <-time.After(dur):
 				ping.Sent = time.Now()
+				ping.Serial = serial
+				serial++
 				pingBy, err := ping.MarshalMsg(nil)
 				panicOn(err)
 
-				sshClientConn.SendRequest(ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
+				responseStatus, responsePayload, err := sshClientConn.SendRequest(
+					ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
+				if err != nil {
+					log.Printf("startKeepalives: regular keepalive send error: '%v'", err)
+					continue
+				}
+				log.Printf("startKeepalives: have responseStatus: '%v'", responseStatus)
+
+				if responseStatus {
+					n := len(responsePayload)
+					if n > 0 {
+						var ping KeepAlivePing
+						_, err := ping.UnmarshalMsg(responsePayload)
+						if err == nil {
+							log.Printf("startKeepalives: have "+
+								"responsePayload.Replied: '%v'/serial=%v. at now='%v'",
+								ping.Replied, ping.Serial, time.Now())
+						}
+					}
+				}
+
 			case <-sshClientConn.Halt.ReqStopChan():
 				return
 			}
