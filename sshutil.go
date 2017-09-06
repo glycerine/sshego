@@ -272,8 +272,9 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		}
 
 		cliCfg := &ssh.ClientConfig{
-			User: username,
-			Auth: auth,
+			User:     username,
+			HostPort: fmt.Sprintf("%v:%v", sshdHost, sshdPort),
+			Auth:     auth,
 			// HostKeyCallback, if not nil, is called during the cryptographic
 			// handshake to validate the server's host key. A nil HostKeyCallback
 			// implies that all host keys are accepted.
