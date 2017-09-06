@@ -110,6 +110,9 @@ type connection struct {
 	// the Config used
 	cfg *Config
 
+	// for client connections, provides the User, HostPort
+	clicfg *ClientConfig
+
 	// clean shutdown mechanism
 	halt *Halter
 
@@ -120,10 +123,12 @@ type connection struct {
 	// and if keepalives are sent;
 	// and if the keepalives timeout, then:
 	// we will call back to reconnectNeededCallback.
-	reconnectNeededCallback func()
+	reconnectNeededCallback func(user, hostport string)
 }
 
-func newConnection(nc net.Conn, cfg *Config) *connection {
+func newConnection(nc net.Conn, cfg *Config, clicfg *ClientConfig) *connection {
+	// clicfg will be nil for server side.
+
 	if cfg.Halt == nil {
 		panic("assert: cfg.Halt cannot be nil in newConnection()")
 	}
@@ -131,6 +136,7 @@ func newConnection(nc net.Conn, cfg *Config) *connection {
 		sshConn: sshConn{conn: nc},
 		halt:    cfg.Halt,
 		cfg:     cfg,
+		clicfg:  clicfg,
 	}
 
 	return conn

@@ -83,7 +83,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		c.Close()
 		return nil, nil, nil, errors.New("ssh: config must provide Halt")
 	}
-	conn := newConnection(c, &fullConf.Config)
+	conn := newConnection(c, &fullConf.Config, &fullConf)
 
 	// can block on conn here, we need to get a close
 	// on conn in.
@@ -112,7 +112,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 func (c *connection) autoReconnectTimeoutCallback() {
 	pp("connection: autoReconnectTimeoutCallback happened.")
 	if c.reconnectNeededCallback != nil {
-		c.reconnectNeededCallback()
+		c.reconnectNeededCallback(c.clicfg.User, c.clicfg.HostPort)
 	}
 }
 
@@ -259,6 +259,9 @@ type ClientConfig struct {
 	// User contains the username to authenticate as.
 	User string
 
+	// HostPort has the IP:port in string form.
+	HostPort string
+
 	// Auth contains possible authentication methods to use with the
 	// server. Only the first instance of a particular RFC 4252 method will
 	// be used during authentication.
@@ -293,7 +296,7 @@ type ClientConfig struct {
 	AutoReconnectAfter time.Duration
 
 	// called we need to reconnect
-	ClientReconnectNeededCallback func()
+	ClientReconnectNeededCallback func(user, hostport string)
 }
 
 // InsecureIgnoreHostKey returns a function that can be used for
