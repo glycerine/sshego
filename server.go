@@ -446,15 +446,15 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 	p("server %s sees new SSH connection from %s (%s)", sshConn.LocalAddr(), sshConn.RemoteAddr(), sshConn.ClientVersion())
 
 	// The incoming Request channel must be serviced.
-	// Discard all global out-of-band Requests
-	go a.discardRequests(ctx, reqs)
+	// Discard all global out-of-band Requests, except for keepalives.
+	go a.discardRequestsExceptKeepalives(ctx, reqs)
 	// Accept all channels
 	go a.cfg.handleChannels(ctx, chans, sshConn, ca)
 
 	return nil
 }
 
-func (a *PerAttempt) discardRequests(ctx context.Context, in <-chan *ssh.Request) {
+func (a *PerAttempt) discardRequestsExceptKeepalives(ctx context.Context, in <-chan *ssh.Request) {
 	for {
 		select {
 		case req, stillOpen := <-in:
@@ -462,7 +462,25 @@ func (a *PerAttempt) discardRequests(ctx context.Context, in <-chan *ssh.Request
 				return
 			}
 			if req != nil && req.WantReply {
-				req.Reply(false, nil)
+				if req.Type != "keepalive@sshego.glycerine.github.com" || len(req.Payload) == 0 {
+					req.Reply(false, nil)
+					continue
+				}
+				// respond to keepalive pings
+				var ping KeepAlivePing
+				_, err := ping.UnmarshalMsg(req.Payload)
+				if err != nil {
+					req.Reply(false, nil)
+					continue
+				}
+
+				now := time.Now()
+				log.Printf("sshego server.go: discardRequestsExceptKeepalives sees keepalive! ping.Sent: '%v'. setting replied to now='%v'", ping.Sent, now)
+
+				ping.Replied = now
+				pingReplyBy, err := ping.MarshalMsg(nil)
+				panicOn(err)
+				req.Reply(true, pingReplyBy)
 			}
 		case <-a.cfg.Esshd.Halt.ReqStopChan():
 			return

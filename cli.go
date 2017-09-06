@@ -229,19 +229,36 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 		dur = time.Second
 	}
 
-	responseStatus, responsePayload, err := sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
+	var ping KeepAlivePing
+	ping.Sent = time.Now()
+	pingBy, err := ping.MarshalMsg(nil)
+	panicOn(err)
+
+	responseStatus, responsePayload, err := sshClientConn.SendRequest(ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 	if err != nil {
 		return err
 	}
-	log.Printf("startKeepalives: have responseStatus:"+
-		" '%v' and responsePayload: '%#v'",
-		responseStatus, responsePayload)
+	log.Printf("startKeepalives: have responseStatus: '%v'", responseStatus)
 
+	if responseStatus {
+		n := len(responsePayload)
+		if n > 0 {
+			var ping KeepAlivePing
+			_, err := ping.UnmarshalMsg(responsePayload)
+			if err == nil {
+				log.Printf("startKeepalives: have responsePayload.Replied: '%v'. at now='%v'", ping.Replied, time.Now())
+			}
+		}
+	}
 	go func() {
 		for {
 			select {
 			case <-time.After(dur):
-				sshClientConn.SendRequest(ctx, "keepalive@openssh.com", true, nil)
+				ping.Sent = time.Now()
+				pingBy, err := ping.MarshalMsg(nil)
+				panicOn(err)
+
+				sshClientConn.SendRequest(ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 			case <-sshClientConn.Halt.ReqStopChan():
 				return
 			}
@@ -297,7 +314,8 @@ func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incomin
 			if r == nil {
 				continue
 			}
-			if r.Type != "keepalive@openssh.com" || len(r.Payload) == 0 {
+			log.Printf("customHandleGlobalRequests sees request r='%#v'", r)
+			if r.Type != "keepalive@sshego.glycerine.github.com" || len(r.Payload) == 0 {
 				// This handles keepalive messages and matches
 				// the behaviour of OpenSSH.
 				r.Reply(false, nil)
