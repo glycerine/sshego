@@ -294,22 +294,31 @@ func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incomin
 	for {
 		select {
 		case r := <-incoming:
-			if r != nil {
-				if r.Type == "keepalive@openssh.com" {
-					var ping KeepAlivePing
-					_, err := ping.UnmarshalMsg(r.Payload)
-					panicOn(err)
-					ping.Replied = time.Now()
-					log.Printf("customHandleGlobalRequests sees keepalive! sent at '%v'", ping.Sent)
-					pingReplyBy, err := ping.MarshalMsg(nil)
-					panicOn(err)
-					r.Reply(true, pingReplyBy)
-				} else {
-					// This handles keepalive messages and matches
-					// the behaviour of OpenSSH.
-					r.Reply(false, nil)
-				}
+			if r == nil {
+				continue
 			}
+			if r.Type != "keepalive@openssh.com" || len(r.Payload) == 0 {
+				// This handles keepalive messages and matches
+				// the behaviour of OpenSSH.
+				r.Reply(false, nil)
+				continue
+			}
+
+			var ping KeepAlivePing
+			_, err := ping.UnmarshalMsg(r.Payload)
+			if err != nil {
+				r.Reply(false, nil)
+				continue
+			}
+
+			now := time.Now()
+			log.Printf("customHandleGlobalRequests sees keepalive! ping: '%#v'. setting replied to now='%v'", ping, now)
+
+			ping.Replied = now
+			pingReplyBy, err := ping.MarshalMsg(nil)
+			panicOn(err)
+			r.Reply(true, pingReplyBy)
+
 		case <-sshCli.Halt.ReqStopChan():
 			return
 		case <-sshCli.Conn.Done():
