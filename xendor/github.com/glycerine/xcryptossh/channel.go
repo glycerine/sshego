@@ -624,8 +624,8 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		idleR:            idleR,
 		idleW:            idleW,
 	}
-	idleR.addTimeoutCallback(ch.timeout)
-	idleW.addTimeoutCallback(ch.timeout)
+	idleR.AddTimeoutCallback(ch.timeout)
+	idleW.AddTimeoutCallback(ch.timeout)
 	ch.localId = m.chanList.add(ch)
 	return ch
 }

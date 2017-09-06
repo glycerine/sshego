@@ -22,7 +22,6 @@ type SshegoConfig struct {
 	Halt     *ssh.Halter
 
 	KeepAliveEvery time.Duration
-	PingOkCallback func(*KeepAlivePing)
 
 	ConfigPath string
 
@@ -112,6 +111,11 @@ type SshegoConfig struct {
 	// will set this, so that cfg becomes
 	// all self-contained.
 	SshClient *ssh.Client
+
+	// NoAutoReconnect if true, turns off
+	// our automatic reconnect attempts when the
+	// connection is lost.
+	NoAutoReconnect bool
 }
 
 func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {

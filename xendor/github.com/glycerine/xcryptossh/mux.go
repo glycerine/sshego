@@ -100,7 +100,8 @@ type mux struct {
 	errCond *sync.Cond
 	err     error
 
-	halt *Halter
+	halt         *Halter
+	cliIdleTimer *IdleTimer
 }
 
 // When debugging, each new chanList instantiation has a different
@@ -117,7 +118,8 @@ func (m *mux) Wait() error {
 }
 
 // newMux returns a mux that runs over the given connection.
-func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
+func newMux(ctx context.Context, p packetConn, halt *Halter, idle *IdleTimer) *mux {
+	// idle is nil on server
 	m := &mux{
 		conn:             p,
 		incomingChannels: make(chan NewChannel, chanSize),
@@ -125,6 +127,7 @@ func newMux(ctx context.Context, p packetConn, halt *Halter) *mux {
 		incomingRequests: make(chan *Request, chanSize),
 		errCond:          newCond(),
 		halt:             halt,
+		cliIdleTimer:     idle,
 	}
 
 	if debugMux {
@@ -143,9 +146,16 @@ func (m *mux) sendMessage(msg interface{}) error {
 	return m.conn.writePacket(p)
 }
 
+// SendRequest sends a global request, and returns the
+// reply. This is the ssh.Conn implimentation, described
+// in connection.go. If wantReply is true, it returns the
+// response status and payload. See also RFC4254, section 4.
 func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payload []byte) (bool, []byte, error) {
 	if wantReply {
 		m.globalSentMu.Lock()
+		if m.cliIdleTimer != nil {
+			m.cliIdleTimer.BeginAttempt()
+		}
 		defer m.globalSentMu.Unlock()
 	}
 
@@ -170,6 +180,9 @@ func (m *mux) SendRequest(ctx context.Context, name string, wantReply bool, payl
 		case *globalRequestFailureMsg:
 			return false, msg.Data, nil
 		case *globalRequestSuccessMsg:
+			if m.cliIdleTimer != nil {
+				m.cliIdleTimer.AttemptOK()
+			}
 			return true, msg.Data, nil
 		default:
 			return false, nil, fmt.Errorf("ssh: unexpected response to request: %#v", msg)

@@ -225,7 +225,7 @@ type KeepAlivePing struct {
 // that will send a keepalive on sshClientConn
 // every dur (default every second).
 //
-func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client, okCallback func(*KeepAlivePing)) error {
+func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
 	if dur <= 0 {
 		dur = time.Second
 	}
@@ -246,10 +246,10 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 	if responseStatus {
 		n := len(responsePayload)
 		if n > 0 {
-			var ping KeepAlivePing
-			_, err := ping.UnmarshalMsg(responsePayload)
+			var ping2 KeepAlivePing
+			_, err := ping2.UnmarshalMsg(responsePayload)
 			if err == nil {
-				log.Printf("startKeepalives: have responsePayload.Replied: '%v'/serial=%v. at now='%v'", ping.Replied, ping.Serial, time.Now())
+				log.Printf("startKeepalives: have responsePayload.Replied: '%v'/serial=%v. at now='%v'", ping2.Replied, ping2.Serial, time.Now())
 			}
 		}
 	}
@@ -274,15 +274,12 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 				if responseStatus {
 					n := len(responsePayload)
 					if n > 0 {
-						var ping KeepAlivePing
-						_, err := ping.UnmarshalMsg(responsePayload)
+						var ping3 KeepAlivePing
+						_, err := ping3.UnmarshalMsg(responsePayload)
 						if err == nil {
 							log.Printf("startKeepalives: have "+
 								"responsePayload.Replied: '%v'/serial=%v. at now='%v'",
-								ping.Replied, ping.Serial, time.Now())
-						}
-						if okCallback != nil {
-							okCallback(&ping)
+								ping3.Replied, ping3.Serial, time.Now())
 						}
 					}
 				}

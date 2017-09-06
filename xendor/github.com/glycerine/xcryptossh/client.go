@@ -91,8 +91,20 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		c.Close()
 		return nil, nil, nil, fmt.Errorf("ssh: handshake failed: %v", err)
 	}
-	conn.mux = newMux(ctx, conn.transport, conn.halt)
+
+	// default to 3 second AutoReconnectAfter
+	dur := config.AutoReconnectAfter
+	if dur <= 0 {
+		dur = 3 * time.Second
+	}
+	idle := NewIdleTimer(conn.unreachableTimeoutCallback, dur)
+	conn.halt.AddDownstream(idle.Halt)
+	conn.mux = newMux(ctx, conn.transport, conn.halt, idle)
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil
+}
+
+func (c *connection) unreachableTimeoutCallback() {
+
 }
 
 // clientHandshake performs the client side key exchange. See RFC 4253 Section
@@ -265,6 +277,11 @@ type ClientConfig struct {
 	//
 	// A Timeout of zero means no timeout.
 	Timeout time.Duration
+
+	// AutoReconnectAfter is how long we go without
+	// a ping before we try to auto reconnect.
+	// Defaults to 3 seconds if not otherwise > 0.
+	AutoReconnectAfter time.Duration
 }
 
 // InsecureIgnoreHostKey returns a function that can be used for

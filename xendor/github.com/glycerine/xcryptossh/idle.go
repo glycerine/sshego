@@ -95,7 +95,7 @@ func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
 // already registered. Unless that is what you want,
 // use addTimeoutCallback().
 //
-func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
+func (t *IdleTimer) SetTimeoutCallback(timeoutFunc func()) {
 	select {
 	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
 	case <-t.Halt.ReqStopChan():
@@ -103,7 +103,7 @@ func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
 }
 
 // add without removing exiting callbacks
-func (t *IdleTimer) addTimeoutCallback(timeoutFunc func()) {
+func (t *IdleTimer) AddTimeoutCallback(timeoutFunc func()) {
 	if timeoutFunc == nil {
 		panic("cannot call addTimeoutCallback with nil function!")
 	}
@@ -252,6 +252,7 @@ func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
 const factor = 10
 
 func (t *IdleTimer) backgroundStart(dur time.Duration) {
+	pp("IdleTimer.backgroundStart(dur=%v) called.", dur)
 	atomic.StoreInt64(&t.atomicdur, int64(dur))
 	go func() {
 		var heartbeat *time.Ticker
@@ -356,7 +357,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 				lastStart, lastOK, mnow, udur, isTimeout := t.IdleStatus()
 				since := mnow - lastStart
 				if isTimeout {
-					q("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. lastOK=%v, waking %v callbacks", time.Now(), t, since, udur, since-udur, lastOK, len(t.timeoutCallback))
+					pp("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. lastOK=%v, waking %v callbacks", time.Now(), t, since, udur, since-udur, lastOK, len(t.timeoutCallback))
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
@@ -380,6 +381,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 					// so unless we start timeoutCallback() on its
 					// own goroutine, we are likely to deadlock.
 					for _, f := range t.timeoutCallback {
+						pp("idle.go: timeoutCallback happening")
 						go f()
 					}
 				}

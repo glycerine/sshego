@@ -202,6 +202,7 @@ type Config struct {
 	// is used.
 	MACs []string
 
+	// Halt is for shutdown
 	Halt *Halter
 }
 

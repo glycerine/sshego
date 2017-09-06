@@ -115,17 +115,21 @@ type connection struct {
 
 	// The connection protocol.
 	*mux
+
+	connIdleTimer *IdleTimer
 }
 
-func newConnection(c net.Conn, cfg *Config) *connection {
+func newConnection(nc net.Conn, cfg *Config) *connection {
 	if cfg.Halt == nil {
 		panic("assert: cfg.Halt cannot be nil in newConnection()")
 	}
-	return &connection{
-		sshConn: sshConn{conn: c},
+	conn := &connection{
+		sshConn: sshConn{conn: nc},
 		halt:    cfg.Halt,
 		cfg:     cfg,
 	}
+
+	return conn
 }
 
 func (c *connection) Close() error {
