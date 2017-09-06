@@ -116,7 +116,11 @@ type connection struct {
 	// The connection protocol.
 	*mux
 
-	connIdleTimer *IdleTimer
+	// if reconnectNeededCallback is not nil;
+	// and if keepalives are sent;
+	// and if the keepalives timeout, then:
+	// we will call back to reconnectNeededCallback.
+	reconnectNeededCallback func()
 }
 
 func newConnection(nc net.Conn, cfg *Config) *connection {
