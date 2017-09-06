@@ -116,6 +116,8 @@ type SshegoConfig struct {
 	// our automatic reconnect attempts when the
 	// connection is lost.
 	NoAutoReconnect bool
+
+	ClientReconnectNeededCallback func()
 }
 
 func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {

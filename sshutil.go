@@ -515,6 +515,8 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 		return nil, nil, err
 	}
 
+	config.ClientReconnectNeededCallback = cfg.ClientReconnectNeededCallback
+
 	// Close conn when when get a shutdown request.
 	// This close on the underlying TCP connection
 	// is essential to unblock some reads deep in
