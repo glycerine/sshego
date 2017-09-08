@@ -92,29 +92,8 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		return nil, nil, nil, fmt.Errorf("ssh: handshake failed: %v", err)
 	}
 
-	var idle *IdleTimer
-	if fullConf.ClientReconnectNeededCallback != nil {
-		// setup autossh like reconnects
-		conn.reconnectNeededCallback = fullConf.ClientReconnectNeededCallback
-
-		// default to 3 second AutoReconnectAfter
-		dur := config.AutoReconnectAfter
-		if dur <= 0 {
-			dur = 3 * time.Second
-		}
-		idle = NewIdleTimer(conn.autoReconnectTimeoutCallback, dur)
-		conn.halt.AddDownstream(idle.Halt)
-		conn.clientIdleKeepaliveTimer = idle
-	}
-	conn.mux = newMux(ctx, conn.transport, conn.halt, idle)
+	conn.mux = newMux(ctx, conn.transport, conn.halt)
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil
-}
-
-func (c *connection) autoReconnectTimeoutCallback() {
-	pp("connection: autoReconnectTimeoutCallback happened.")
-	if c.reconnectNeededCallback != nil {
-		c.reconnectNeededCallback(&UHP{User: c.clicfg.User, HostPort: c.clicfg.HostPort})
-	}
 }
 
 // clientHandshake performs the client side key exchange. See RFC 4253 Section
@@ -290,14 +269,6 @@ type ClientConfig struct {
 	//
 	// A Timeout of zero means no timeout.
 	Timeout time.Duration
-
-	// AutoReconnectAfter is how long we go without
-	// a ping before we invoke ReconnecedNeededCallback
-	// below. Defaults to 3 seconds if not > 0.
-	AutoReconnectAfter time.Duration
-
-	// called we need to reconnect
-	ClientReconnectNeededCallback func(*UHP)
 }
 
 // InsecureIgnoreHostKey returns a function that can be used for

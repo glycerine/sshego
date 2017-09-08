@@ -248,7 +248,7 @@ func (s *connection) serverHandshake(ctx context.Context, config *ServerConfig) 
 	if err != nil {
 		return nil, err
 	}
-	s.mux = newMux(ctx, s.transport, config.Halt, nil)
+	s.mux = newMux(ctx, s.transport, config.Halt)
 	return perms, err
 }
 

@@ -252,7 +252,7 @@ func newSetTimeoutTicket(dur time.Duration) *setTimeoutTicket {
 const factor = 10
 
 func (t *IdleTimer) backgroundStart(dur time.Duration) {
-	pp("IdleTimer.backgroundStart(dur=%v) called.", dur)
+	//pp("IdleTimer.backgroundStart(dur=%v) called.", dur)
 	atomic.StoreInt64(&t.atomicdur, int64(dur))
 	go func() {
 		var heartbeat *time.Ticker
@@ -355,9 +355,10 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 					panic("should be impossible to get heartbeat.C on dur == 0")
 				}
 				lastStart, lastOK, mnow, udur, isTimeout := t.IdleStatus()
+				_ = lastOK
 				since := mnow - lastStart
 				if isTimeout {
-					pp("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. lastOK=%v, waking %v callbacks", time.Now(), t, since, udur, since-udur, lastOK, len(t.timeoutCallback))
+					//pp("timing out at %v, in %p! since=%v  dur=%v, exceed=%v. lastOK=%v, waking %v callbacks", time.Now(), t, since, udur, since-udur, lastOK, len(t.timeoutCallback))
 
 					/* change state */
 					t.timeOutRaised = fmt.Sprintf("timing out dur='%v' at %v, in %p! "+
