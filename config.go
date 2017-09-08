@@ -117,7 +117,7 @@ type SshegoConfig struct {
 	// connection is lost.
 	NoAutoReconnect bool
 
-	ClientReconnectNeededCallback func(user, hostport string)
+	ClientReconnectNeededTower *UHPTower
 }
 
 func (cfg *SshegoConfig) ChannelHandlerSummary() (s string) {
@@ -135,6 +135,7 @@ func NewSshegoConfig() *SshegoConfig {
 		BitLenRSAkeys: 4096,
 		Halt:          ssh.NewHalter(),
 	}
+	cfg.ClientReconnectNeededTower = NewUHPTower(cfg.Halt)
 	return cfg
 }
 

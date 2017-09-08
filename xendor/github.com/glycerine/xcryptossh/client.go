@@ -104,6 +104,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 		}
 		idle = NewIdleTimer(conn.autoReconnectTimeoutCallback, dur)
 		conn.halt.AddDownstream(idle.Halt)
+		conn.clientIdleKeepaliveTimer = idle
 	}
 	conn.mux = newMux(ctx, conn.transport, conn.halt, idle)
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil

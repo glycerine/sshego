@@ -124,6 +124,10 @@ type connection struct {
 	// and if the keepalives timeout, then:
 	// we will call back to reconnectNeededCallback.
 	reconnectNeededCallback func(*UHP)
+
+	// the timer for clients to bump when we get a pong
+	// back from sending a ping
+	clientIdleKeepaliveTimer *IdleTimer
 }
 
 func newConnection(nc net.Conn, cfg *Config, clicfg *ClientConfig) *connection {
