@@ -83,13 +83,6 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		reconnectNeededSub := cliCfg.ClientReconnectNeededTower.Subscribe()
 
-		// we should be able to login, but then the sshd should
-		// reject the port forwarding request.
-		//
-		// Anyway, forward request denies does indicate we
-		// logged in when all three (RSA, TOTP, passphrase)
-		// were given.
-		pp("err is %#v", err)
 		// should have succeeded in logging in
 		cv.So(err, cv.ShouldBeNil)
 
@@ -100,13 +93,13 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		dur := 2 * time.Second
 		select {
 		case <-time.After(dur):
-			panic(fmt.Sprintf("redial_test: bad, no reconnect in '%v'", dur))
+			panic(fmt.Sprintf("redial_test: bad, no reconnect needed sent in '%v'", dur))
 		case who := <-reconnectNeededSub:
 			log.Printf("redial_test: good; got signal on reconnectNeededSub who:'%#v'", who)
 			if ssh.UHPEqual(who, uhp1) {
 				log.Printf("redial_test: good, reconnected to '%#v'", who)
 			} else {
-				log.Printf("redial_test: bad, expected reconnect to uhp1='%#v', but got reconnected to '%#v'.", uhp1, who)
+				panic(fmt.Sprintf("redial_test: bad, expected reconnect to uhp1='%#v', but got reconnected to '%#v'.", uhp1, who))
 			}
 		}
 	})

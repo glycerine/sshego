@@ -510,18 +510,11 @@ func getCiphers() []string {
 	*/
 }
 
-func (cfg *SshegoConfig) clientReconnectNeededCallback(uhp *ssh.UHP) {
-	pp("SshegoConfig.clientReconnectNeededCallback(uhp='%#v') called.", uhp)
-	cfg.ClientReconnectNeededTower.Broadcast(uhp)
-}
-
 func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
 	netconn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	config.ClientReconnectNeededCallback = cfg.clientReconnectNeededCallback
 
 	// Close netconn when when get a shutdown request.
 	// This close on the underlying TCP connection
