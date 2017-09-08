@@ -225,9 +225,9 @@ type KeepAlivePing struct {
 // that will send a keepalive on sshClientConn
 // every dur (default every second).
 //
-func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client) error {
+func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client, uhp *ssh.UHP) error {
 	if dur <= 0 {
-		dur = time.Second
+		panic(fmt.Sprintf("cannot call startKeepalives with dur <= 0: dur=%v", dur))
 	}
 
 	serial := int64(0)
@@ -267,7 +267,10 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 					ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 				if err != nil {
 					log.Printf("startKeepalives: regular keepalive send error: '%v'", err)
-					continue
+					// notify here
+					cfg.ClientReconnectNeededTower.Broadcast(uhp)
+					pp("SshegoConfig.startKeepalives() goroutine exiting!")
+					return
 				}
 				log.Printf("startKeepalives: have responseStatus: '%v'", responseStatus)
 
@@ -282,6 +285,8 @@ func startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.
 								ping3.Replied, ping3.Serial, time.Now())
 						}
 					}
+				} else {
+					// !responseStatus
 				}
 
 			case <-sshClientConn.Halt.ReqStopChan():

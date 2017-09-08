@@ -49,8 +49,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		pp("qrPath = %v", qrPath)
 		pp("rsaPath = %v", rsaPath)
 
-		hostport := fmt.Sprintf("%v:%v", srvCfg.SSHdServer.Host, srvCfg.SSHdServer.Port)
-		uhp1 := &ssh.UHP{User: mylogin, HostPort: hostport}
+		uhp1 := &ssh.UHP{User: mylogin, HostPort: srvCfg.EmbeddedSSHd.Addr}
 
 		// try to login to esshd
 
@@ -69,6 +68,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		//cliCfg.LocalToRemote.Listen.Addr = ""
 		//rev := cliCfg.RemoteToLocal.Listen.Addr
 		cliCfg.RemoteToLocal.Listen.Addr = ""
+		cliCfg.KeepAliveEvery = time.Second
 
 		_, netconn, err := cliCfg.SSHConnect(
 			ctx,
@@ -81,7 +81,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 			totp,
 			halt)
 
-		reconnectSub := cliCfg.ClientReconnectNeededTower.Subscribe()
+		reconnectNeededSub := cliCfg.ClientReconnectNeededTower.Subscribe()
 
 		// we should be able to login, but then the sshd should
 		// reject the port forwarding request.
@@ -101,11 +101,12 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		select {
 		case <-time.After(dur):
 			panic(fmt.Sprintf("redial_test: bad, no reconnect in '%v'", dur))
-		case who := <-reconnectSub:
+		case who := <-reconnectNeededSub:
+			log.Printf("redial_test: good; got signal on reconnectNeededSub who:'%#v'", who)
 			if ssh.UHPEqual(who, uhp1) {
-				log.Printf("redial_test: good, reconnected to '%v'", who)
+				log.Printf("redial_test: good, reconnected to '%#v'", who)
 			} else {
-				log.Printf("redial_test: bad, expected reconnect to uhp1, but got reconnected to '%v'.", who)
+				log.Printf("redial_test: bad, expected reconnect to uhp1='%#v', but got reconnected to '%#v'.", uhp1, who)
 			}
 		}
 	})

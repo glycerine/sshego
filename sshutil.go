@@ -511,18 +511,19 @@ func getCiphers() []string {
 }
 
 func (cfg *SshegoConfig) clientReconnectNeededCallback(uhp *ssh.UHP) {
+	pp("SshegoConfig.clientReconnectNeededCallback(uhp='%#v') called.", uhp)
 	cfg.ClientReconnectNeededTower.Broadcast(uhp)
 }
 
 func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
-	conn, err := net.DialTimeout(network, addr, config.Timeout)
+	netconn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	config.ClientReconnectNeededCallback = cfg.clientReconnectNeededCallback
 
-	// Close conn when when get a shutdown request.
+	// Close netconn when when get a shutdown request.
 	// This close on the underlying TCP connection
 	// is essential to unblock some reads deep in
 	// the ssh codebash that otherwise won't timeout.
@@ -541,17 +542,18 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 			case <-h2:
 			case <-ctx.Done():
 			}
-			conn.Close()
+			netconn.Close()
 		}()
 	}
-	c, chans, reqs, err := ssh.NewClientConn(ctx, conn, addr, config)
+	c, chans, reqs, err := ssh.NewClientConn(ctx, netconn, addr, config)
 	if err != nil {
 		return nil, nil, err
 	}
 	cli := cfg.NewSSHClient(ctx, c, chans, reqs, halt)
 
 	if cfg.KeepAliveEvery > 0 {
-		err = startKeepalives(ctx, cfg.KeepAliveEvery, cli)
+		uhp := &ssh.UHP{User: config.User, HostPort: config.HostPort}
+		err = cfg.startKeepalives(ctx, cfg.KeepAliveEvery, cli, uhp)
 	}
-	return cli, conn, err
+	return cli, netconn, err
 }
