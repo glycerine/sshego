@@ -545,7 +545,7 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 	cli := cfg.NewSSHClient(ctx, c, chans, reqs, halt)
 
 	if cfg.KeepAliveEvery > 0 {
-		uhp := &ssh.UHP{User: config.User, HostPort: config.HostPort}
+		uhp := &UHP{User: config.User, HostPort: config.HostPort}
 		err = cfg.startKeepalives(ctx, cfg.KeepAliveEvery, cli, uhp)
 	}
 	return cli, netconn, err

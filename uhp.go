@@ -1,4 +1,4 @@
-package ssh
+package sshego
 
 // UHP provides User and HostPort strings
 // to identify a remote destination.

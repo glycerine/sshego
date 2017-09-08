@@ -16,7 +16,7 @@ import (
 // Sends don't block, as subscribers are given buffered channels.
 //
 type UHPTower struct {
-	subs   []chan *ssh.UHP
+	subs   []chan *UHP
 	mut    sync.Mutex
 	closed bool
 
@@ -36,15 +36,15 @@ func NewUHPTower(halt *ssh.Halter) *UHPTower {
 
 // Subscribe returns a new channel that will receive
 // all Broadcast values.
-func (b *UHPTower) Subscribe() chan *ssh.UHP {
+func (b *UHPTower) Subscribe() chan *UHP {
 	b.mut.Lock()
-	ch := make(chan *ssh.UHP, 1)
+	ch := make(chan *UHP, 1)
 	b.subs = append(b.subs, ch)
 	b.mut.Unlock()
 	return ch
 }
 
-func (b *UHPTower) Unsub(x chan *ssh.UHP) {
+func (b *UHPTower) Unsub(x chan *UHP) {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 
@@ -77,7 +77,7 @@ var ErrClosed = fmt.Errorf("channel closed")
 // receive the Broadcast value, as it is not
 // stored internally.
 //
-func (b *UHPTower) Broadcast(val *ssh.UHP) error {
+func (b *UHPTower) Broadcast(val *UHP) error {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	if b.closed {
@@ -100,7 +100,7 @@ func (b *UHPTower) Broadcast(val *ssh.UHP) error {
 	return nil
 }
 
-func (b *UHPTower) Signal(val *ssh.UHP) error {
+func (b *UHPTower) Signal(val *UHP) error {
 	b.mut.Lock()
 	defer b.mut.Unlock()
 	if b.closed {

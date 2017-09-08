@@ -206,10 +206,14 @@ func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 	pp("reply success! we got the expected srep reply '%s'", srep)
 }
 
-func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener) {
+func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener, pnc *net.Conn) {
 	go func() {
+
 		pp("startBackgroundTestTcpServer() about to call Accept().")
 		tcpServerConn, err := tcpSrvLsn.Accept()
+		if pnc != nil {
+			*pnc = tcpServerConn
+		}
 		panicOn(err)
 		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
 			tcpServerConn)

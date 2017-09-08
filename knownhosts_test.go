@@ -53,7 +53,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
-			tcpSrvLsn)
+			tcpSrvLsn, nil)
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -101,7 +101,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 		ctx := context.Background()
 
 		// first time we add the server key
-		channelToTcpServer, _, err := dc.Dial(ctx)
+		channelToTcpServer, _, _, err := dc.Dial(ctx)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		fmt.Printf("\n now host key B should be known.\n")
@@ -120,7 +120,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, err = dc.Dial(ctx)
+		channelToTcpServer, _, _, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
@@ -167,7 +167,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
-			tcpSrvLsn)
+			tcpSrvLsn, nil)
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -210,7 +210,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		ctx := context.Background()
 
 		// first time we add the server key
-		channelToTcpServer, _, err := dc.Dial(ctx)
+		channelToTcpServer, _, _, err := dc.Dial(ctx)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		fmt.Printf("\n now host key B should be known.\n")
@@ -222,7 +222,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, err = dc.Dial(ctx)
+		channelToTcpServer, _, _, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
@@ -245,7 +245,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
-			tcpSrvLsn)
+			tcpSrvLsn, nil)
 
 		// prior to contacting the 2nd B server, we should have
 		// only one SplitHostname
@@ -277,7 +277,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		}
 
 		// first time we add the server key
-		channelToTcpServer, _, err = dc2.Dial(ctx)
+		channelToTcpServer, _, _, err = dc2.Dial(ctx)
 		pp("dc2.Dial() -> err = %#v", err)
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 

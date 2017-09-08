@@ -34,7 +34,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
-			tcpSrvLsn)
+			tcpSrvLsn, nil)
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -67,7 +67,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 			for ; tries < 3; tries++ {
 				// first time we add the server key
-				channelToTcpServer, _, err = dc.Dial(ctx)
+				channelToTcpServer, _, _, err = dc.Dial(ctx)
 				fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
 				errs := err.Error()
 				case1 := strings.Contains(errs, "Re-run without -new")
@@ -84,7 +84,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 
 			// second time we connect based on that server key
 			dc.TofuAddIfNotKnown = false
-			channelToTcpServer, _, err = dc.Dial(ctx)
+			channelToTcpServer, _, _, err = dc.Dial(ctx)
 			cv.So(err, cv.ShouldBeNil)
 
 			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)

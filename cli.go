@@ -107,9 +107,9 @@ type DialConfig struct {
 // to which the sshd should forward our connection after successful
 // authentication.
 //
-func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error) {
+func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.Client, cfg *SshegoConfig, err error) {
 
-	cfg := NewSshegoConfig()
+	cfg = NewSshegoConfig()
 	cfg.BitLenRSAkeys = 4096
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
@@ -118,19 +118,17 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 	if !dc.SkipKeepAlive {
 		cfg.KeepAliveEvery = dc.KeepAliveEvery
 	}
-	var err error
 
 	p("DialConfig.Dial: dc= %#v\n", dc)
 	if dc.KnownHosts == nil {
 		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, KHSsh)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		p("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 
-	var sshClientConn *ssh.Client
 	p("about to SSHConnect to dc.Sshdhost='%s'", dc.Sshdhost)
 	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
 
@@ -146,7 +144,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 		// the 2nd argument is the underlying most-basic
 		// TCP net.Conn. We don't need to retrieve here since
 		// ctx or cfg.Halt will close it for us if need be.
-		sshClientConn, _, err = cfg.SSHConnect(ctx, dc.KnownHosts,
+		sshClient, _, err = cfg.SSHConnect(ctx, dc.KnownHosts,
 			dc.Mylogin, dc.RsaPath, dc.Sshdhost, dc.Sshdport,
 			dc.Pw, dc.TotpUrl, childHalt)
 		if err == nil {
@@ -167,7 +165,7 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 		}
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// enforce safe known-hosts hygene
 	//cfg.TestAllowOneshotConnect = false
@@ -199,20 +197,20 @@ func (dc *DialConfig) Dial(parCtx context.Context) (net.Conn, *ssh.Client, error
 		} else {
 			log.Printf("error from net.SplitHostPort on '%s': '%v'",
 				hp, err)
-			return nil, nil, fmt.Errorf("error from net.SplitHostPort "+
+			return nil, nil, nil, fmt.Errorf("error from net.SplitHostPort "+
 				"on '%s': '%v'", hp, err)
 		}
 	}
 	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
 		// a unix-domain socket request
-		nc, err := DialRemoteUnixDomain(okCtx, sshClientConn, host)
+		nc, err = DialRemoteUnixDomain(okCtx, sshClient, host)
 		p("DialRemoteUnixDomain had error '%v'", err)
-		return nc, sshClientConn, err
+		return nc, sshClient, cfg, err
 	}
-	sshClientConn.TmpCtx = okCtx
-	nc, err := sshClientConn.Dial("tcp", hp)
+	sshClient.TmpCtx = okCtx
+	nc, err = sshClient.Dial("tcp", hp)
 
-	return nc, sshClientConn, err
+	return nc, sshClient, cfg, err
 }
 
 type KeepAlivePing struct {
@@ -225,7 +223,7 @@ type KeepAlivePing struct {
 // that will send a keepalive on sshClientConn
 // every dur (default every second).
 //
-func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client, uhp *ssh.UHP) error {
+func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration, sshClientConn *ssh.Client, uhp *UHP) error {
 	if dur <= 0 {
 		panic(fmt.Sprintf("cannot call startKeepalives with dur <= 0: dur=%v", dur))
 	}
