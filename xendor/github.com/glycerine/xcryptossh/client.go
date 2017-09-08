@@ -112,7 +112,7 @@ func NewClientConn(ctx context.Context, c net.Conn, addr string, config *ClientC
 func (c *connection) autoReconnectTimeoutCallback() {
 	pp("connection: autoReconnectTimeoutCallback happened.")
 	if c.reconnectNeededCallback != nil {
-		c.reconnectNeededCallback(c.clicfg.User, c.clicfg.HostPort)
+		c.reconnectNeededCallback(&UHP{User: c.clicfg.User, HostPort: c.clicfg.HostPort})
 	}
 }
 
@@ -296,7 +296,7 @@ type ClientConfig struct {
 	AutoReconnectAfter time.Duration
 
 	// called we need to reconnect
-	ClientReconnectNeededCallback func(user, hostport string)
+	ClientReconnectNeededCallback func(*UHP)
 }
 
 // InsecureIgnoreHostKey returns a function that can be used for

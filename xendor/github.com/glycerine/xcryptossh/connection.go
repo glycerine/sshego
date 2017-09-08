@@ -123,7 +123,7 @@ type connection struct {
 	// and if keepalives are sent;
 	// and if the keepalives timeout, then:
 	// we will call back to reconnectNeededCallback.
-	reconnectNeededCallback func(user, hostport string)
+	reconnectNeededCallback func(*UHP)
 }
 
 func newConnection(nc net.Conn, cfg *Config, clicfg *ClientConfig) *connection {
