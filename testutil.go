@@ -194,9 +194,12 @@ func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 		panic("too short a write!")
 	}
 
+	// local and remote are 0.0.0.0
+	//pp("Verify wrote to RemoteAddr '%v', local '%v'", channelToTcpServer.RemoteAddr(), channelToTcpServer.LocalAddr())
+
 	// check reply
 	rep := make([]byte, payloadByteCount)
-	m, err = channelToTcpServer.Read(rep)
+	m, err = channelToTcpServer.Read(rep) // hung here
 	panicOn(err)
 	if m != payloadByteCount {
 		panic(fmt.Sprintf("too short a reply! m = %v, expected %v. rep = '%v'", m, payloadByteCount, string(rep)))
@@ -218,11 +221,11 @@ func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirm
 		}
 		panicOn(err)
 		mgr.MarkReady()
-		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
-			tcpServerConn)
+		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v. LocalAddr='%v'",
+			tcpServerConn, tcpServerConn.LocalAddr())
 
 		b := make([]byte, payloadByteCount)
-		n, err := tcpServerConn.Read(b)
+		n, err := tcpServerConn.Read(b) // hung here
 		panicOn(err)
 		if n != payloadByteCount {
 			panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))

@@ -3,6 +3,8 @@ package sshego
 import (
 	"io"
 	"os"
+
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 // Shovel shovels data from an io.ReadCloser to an io.WriteCloser
@@ -10,9 +12,7 @@ import (
 // You can request that the shovel stop by closing ReqStop,
 // and wait until Done is closed to know that it is finished.
 type shovel struct {
-	Done    chan bool
-	ReqStop chan bool
-	Ready   chan bool
+	Halt *ssh.Halter
 
 	// logging functionality, off by default
 	DoLog     bool
@@ -23,9 +23,7 @@ type shovel struct {
 // make a new Shovel
 func newShovel(doLog bool) *shovel {
 	return &shovel{
-		Done:      make(chan bool),
-		ReqStop:   make(chan bool),
-		Ready:     make(chan bool),
+		Halt:      ssh.NewHalter(),
 		DoLog:     doLog,
 		LogReads:  os.Stdout,
 		LogWrites: os.Stdout,
@@ -61,10 +59,10 @@ func (s *shovel) Start(w io.WriteCloser, r io.ReadCloser, label string) {
 		var err error
 		var n int64
 		defer func() {
-			close(s.Done)
+			s.Halt.MarkDone()
 			p("shovel %s copied %d bytes before shutting down", label, n)
 		}()
-		close(s.Ready)
+		s.Halt.MarkReady()
 		n, err = io.Copy(w, r)
 		if err != nil {
 			// don't freak out, the network connection got closed most likely.
@@ -74,7 +72,7 @@ func (s *shovel) Start(w io.WriteCloser, r io.ReadCloser, label string) {
 		}
 	}()
 	go func() {
-		<-s.ReqStop
+		<-s.Halt.ReqStopChan()
 		r.Close() // causes io.Copy to finish
 		w.Close()
 	}()
@@ -82,53 +80,47 @@ func (s *shovel) Start(w io.WriteCloser, r io.ReadCloser, label string) {
 
 // stop the shovel goroutine. returns only once the goroutine is done.
 func (s *shovel) Stop() {
-	// avoid double closing ReqStop here
-	select {
-	case <-s.ReqStop:
-	default:
-		close(s.ReqStop)
-	}
-	<-s.Done
+	s.Halt.RequestStop()
+	<-s.Halt.DoneChan()
 }
 
 // a shovelPair manages the forwarding of a bidirectional
 // channel, such as that in forwarding an ssh connection.
 type shovelPair struct {
-	AB      *shovel
-	BA      *shovel
-	Done    chan bool
-	ReqStop chan bool
-	Ready   chan bool
+	AB   *shovel
+	BA   *shovel
+	Halt *ssh.Halter
 
 	DoLog bool
 }
 
 // make a new shovelPair
 func newShovelPair(doLog bool) *shovelPair {
-	return &shovelPair{
-		AB:      newShovel(doLog),
-		BA:      newShovel(doLog),
-		Done:    make(chan bool),
-		ReqStop: make(chan bool),
-		Ready:   make(chan bool),
+	pair := &shovelPair{
+		AB:   newShovel(doLog),
+		BA:   newShovel(doLog),
+		Halt: ssh.NewHalter(),
 	}
+	pair.Halt.AddDownstream(pair.AB.Halt)
+	pair.Halt.AddDownstream(pair.BA.Halt)
+	return pair
 }
 
 // Start the pair of shovels. abLabel will label the a<-b shovel. baLabel will
 // label the b<-a shovel.
 func (s *shovelPair) Start(a io.ReadWriteCloser, b io.ReadWriteCloser, abLabel string, baLabel string) {
 	s.AB.Start(a, b, abLabel)
-	<-s.AB.Ready
+	<-s.AB.Halt.ReadyChan()
 	s.BA.Start(b, a, baLabel)
-	<-s.BA.Ready
-	close(s.Ready)
+	<-s.BA.Halt.ReadyChan()
+	s.Halt.MarkReady()
 
 	// if one stops, shut down the other
 	go func() {
 		select {
-		case <-s.AB.Done:
+		case <-s.AB.Halt.DoneChan():
 			s.BA.Stop()
-		case <-s.BA.Done:
+		case <-s.BA.Halt.DoneChan():
 			s.AB.Stop()
 		}
 	}()

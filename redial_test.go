@@ -114,7 +114,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		var uhp *UHP
 		select {
 		case uhp = <-needReconnectCh:
-			pp("good, got needReconnectCh to '%#v'", uhp)
+			pp("good, 050 got needReconnectCh to '%#v'", uhp)
 
 		case <-time.After(5 * time.Second):
 			panic("never received <-needReconnectCh: timeout after 5 seconds")
@@ -247,7 +247,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		<-tcpServerMgr.ReadyChan()
 		pp("060 1st time nc = '%#v'", nc)
-		pp("060 1st time nc.RemoteAddr='%v'", nc.RemoteAddr())
+		pp("060 1st time nc.LocalAddr='%v'", nc.LocalAddr())
 
 		checkReconNeeded := tri.cfg.ClientReconnectNeededTower.Subscribe(nil)
 
@@ -265,17 +265,22 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// after killing remote sshd
 
-		// shouldn't be needed, but replicate 050 for now.
+		var uhp2 *UHP
 		select {
-		case uhp2 := <-checkReconNeeded:
+		case uhp2 = <-checkReconNeeded:
 			pp("good, 060 got needReconnectCh to '%#v'", uhp2)
 
 		case <-time.After(5 * time.Second):
 			panic("never received <-checkReconNeeded: timeout after 5 seconds")
 		}
 
+		cv.So(uhp2.User, cv.ShouldEqual, dc.Mylogin)
+		destHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
+		cv.So(uhp2.HostPort, cv.ShouldEqual, destHostPort)
+
 		// so restart the sshd server
 
+		pp("waiting for destHostPort='%v' to be availble", destHostPort)
 		panicOn(s.SrvCfg.Esshd.Stop())
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd()
@@ -301,7 +306,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		panicOn(err)
 
 		<-serverDone2.ReadyChan()
-		pp("060 2nd time nc.RemoteAddr='%v'", nc.RemoteAddr())
+		pp("060 2nd time nc.LocalAddr='%v'", nc.LocalAddr())
 
 		// 060 hung here
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)

@@ -144,6 +144,10 @@ func (t *Tricorder) startReconnectLoop() {
 
 func (t *Tricorder) helperNewClientConnect() {
 
+	pp("Tricorder.helperNewClientConnect is pausing!!")
+	time.Sleep(time.Second * 5)
+	pp("Tricorder.helperNewClientConnect is done pausing!!")
+
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
 	panicOn(err)

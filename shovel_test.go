@@ -18,7 +18,7 @@ func TestShovelStops(t *testing.T) {
 		b := newMockRwc([]byte("hello_from_b"))
 
 		s.Start(b, a, "b<-a")
-		<-s.Ready
+		<-s.Halt.ReadyChan()
 		time.Sleep(100 * time.Millisecond)
 		s.Stop()
 		cv.So(b.sink.String(), cv.ShouldResemble, "hello_from_a")
@@ -33,7 +33,7 @@ func TestShovelStops(t *testing.T) {
 		b := newMockRwc([]byte("hello_from_b"))
 
 		s.Start(a, b, "a<-b", "b->a")
-		<-s.Ready
+		<-s.Halt.ReadyChan()
 		time.Sleep(1 * time.Millisecond)
 		s.Stop()
 		cv.So(b.sink.String(), cv.ShouldResemble, "hello_from_a")

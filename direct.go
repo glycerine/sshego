@@ -26,7 +26,7 @@ const minus10_uint32 uint32 = 0xFFFFFFF6
 
 // server side: handle channel type "direct-tcpip"  - RFC 4254 7.2
 // ca can be nil.
-func handleDirectTcp(ctx context.Context, newChannel ssh.NewChannel, ca *ConnectionAlert) {
+func handleDirectTcp(ctx context.Context, parentHalt *ssh.Halter, newChannel ssh.NewChannel, ca *ConnectionAlert) {
 	//pp("handleDirectTcp called!")
 
 	p := &channelOpenDirectMsg{}
@@ -71,6 +71,7 @@ func handleDirectTcp(ctx context.Context, newChannel ssh.NewChannel, ca *Connect
 		log.Printf("sshd direct.go forwarding direct connection to addr: '%s'", addr)
 
 		sp := newShovelPair(false)
+		parentHalt.AddDownstream(sp.Halt)
 		sp.Start(targetConn, ch, "targetBehindSshd<-fromDirectClient", "fromDirectClient<-targetBehindSshd")
 	}(channel, p.Rhost, p.Rport)
 }

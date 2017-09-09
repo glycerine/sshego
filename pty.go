@@ -100,7 +100,7 @@ func (cfg *SshegoConfig) handleChannel(ctx context.Context, newChannel ssh.NewCh
 	t := newChannel.ChannelType()
 
 	if t == "direct-tcpip" {
-		handleDirectTcp(ctx, newChannel, ca)
+		handleDirectTcp(ctx, cfg.Halt, newChannel, ca)
 	}
 
 	if t != "session" {
