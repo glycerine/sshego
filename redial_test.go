@@ -236,11 +236,14 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
 		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		// first call to subscribe is here.
 		channelToTcpServer, tri, err := dc.DialGetTricorder(ctx)
 		cv.So(err, cv.ShouldBeNil)
 		cv.So(tri, cv.ShouldNotBeNil)
 
 		pp("fine with DialGetTricorder.")
+
+		checkReconNeeded := tri.cfg.ClientReconnectNeededTower.Subscribe(nil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
@@ -255,6 +258,15 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		<-s.SrvCfg.Halt.DoneChan()
 
 		// after killing remote sshd
+
+		// shouldn't be needed, but replicate 050 for now.
+		select {
+		case uhp2 := <-checkReconNeeded:
+			pp("good, 060 got needReconnectCh to '%#v'", uhp2)
+
+		case <-time.After(5 * time.Second):
+			panic("never received <-checkReconNeeded: timeout after 5 seconds")
+		}
 
 		// so restart the sshd server
 

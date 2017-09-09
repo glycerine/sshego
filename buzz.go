@@ -54,6 +54,8 @@ func NewUHPTower(halt *ssh.Halter) *UHPTower {
 // cases, as above, you must arrange to
 // service the channel promptly.
 func (b *UHPTower) Subscribe(notify chan *UHP) (ch chan *UHP) {
+	pp("UHPTower %p sees Subscribe, notify=%p", b, notify)
+
 	b.mut.Lock()
 	if notify == nil {
 		ch = make(chan *UHP, 1)

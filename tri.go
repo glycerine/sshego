@@ -64,6 +64,7 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, dc *DialConfig, sshClien
 	if tri.ParentHalt != nil {
 		tri.ParentHalt.AddDownstream(tri.ChannelHalt)
 	}
+	// first call to Subscribe is here.
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
 	if sshClient != nil {
 		tri.cli = sshClient
@@ -165,9 +166,12 @@ func (t *Tricorder) helperNewClientConnect() {
 	}
 
 	for i := 0; i < tries; i++ {
+		pp("Tricorder.helperNewClientConnect() calilng t.dc.Dial(), i=%v", i)
 		sshChan, sshcli, _, err = t.dc.Dial(ctx)
 		//		sshcli, sshChan, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
-		if err != nil {
+		if err == nil {
+			break
+		} else {
 			if strings.Contains(err.Error(), "connection refused") {
 				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
 				time.Sleep(pause)
