@@ -132,6 +132,8 @@ func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.
 		p("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
+	cfg.KnownHosts = dc.KnownHosts
+	cfg.PrivateKeyPath = dc.RsaPath
 
 	p("about to SSHConnect to dc.Sshdhost='%s'", dc.Sshdhost)
 	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
@@ -383,6 +385,12 @@ func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (channelToTcpServ
 	sshChan, sshClient, cfg, err := dc.Dial(parCtx)
 	if err != nil {
 		return nil, nil, err
+	}
+	if dc.KnownHosts == nil {
+		pp("hmm... dc.KnownHosts is nil.")
+	}
+	if cfg.KnownHosts == nil {
+		panic("problemo! cfg.KnownHosts is nil")
 	}
 	return sshChan, cfg.NewTricorder(cfg.Halt, sshClient, sshChan), nil
 }

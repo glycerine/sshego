@@ -150,16 +150,22 @@ func (t *Tricorder) helperNewClientConnect() {
 	var nc net.Conn
 	tries := 3
 	pause := 1000 * time.Millisecond
+	if t.cfg.KnownHosts == nil {
+		panic("problem! t.cfg.KnownHosts is nil")
+	}
+	if t.cfg.PrivateKeyPath == "" {
+		panic("problem! t.cfg.PrivateKeyPath is empty")
+	}
+
 	for i := 0; i < tries; i++ {
 		sshcli, nc, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
 		if err != nil {
 			if strings.Contains(err.Error(), "connection refused") {
-				pp("ignoring 'connection refused' and retrying.")
+				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
 				time.Sleep(pause)
 				continue
 			}
-			// sshConnect() errored at dial to '127.0.0.1:52934': 'ssh: handshake failed: EOF'
-			// sshConnect() errored at dial to '127.0.0.1:52987': 'dial tcp 127.0.0.1:52987: getsockopt: connection reset by peer'
+			// panic: sshConnect() errored at dial to '127.0.0.1:53651': 'ssh: handshake failed: ssh: unable to authenticate, attempted methods [none], no supported methods remain'
 			panic(err)
 		}
 	}

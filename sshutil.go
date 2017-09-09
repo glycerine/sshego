@@ -182,7 +182,10 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 	var sshClientConn *ssh.Client
 	var nc net.Conn
 
-	p("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
+	pp("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
+	if h == nil {
+		panic("h cannot be nil!")
+	}
 
 	// the callback just after key-exchange to validate server is here
 	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
