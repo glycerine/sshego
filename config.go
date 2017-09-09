@@ -24,6 +24,8 @@ type SshegoConfig struct {
 	KeepAliveEvery time.Duration // default 1 second.
 	SkipKeepAlive  bool
 
+	IdleTimeoutDur time.Duration
+
 	ConfigPath string
 
 	SSHdServer    AddrHostPort // the sshd host we are logging into remotely.

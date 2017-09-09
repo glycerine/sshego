@@ -462,17 +462,18 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 
 	// The incoming Request channel must be serviced.
 	// Discard all global out-of-band Requests, except for keepalives.
-	go a.discardRequestsExceptKeepalives(ctx, reqs)
+	go DiscardRequestsExceptKeepalives(ctx, reqs, a.cfg.Esshd.Halt.ReqStopChan())
 	// Accept all channels
 	go a.cfg.handleChannels(ctx, chans, sshConn, ca)
 
 	return nil
 }
 
-func (a *PerAttempt) discardRequestsExceptKeepalives(ctx context.Context, in <-chan *ssh.Request) {
-
-	// avoid shutdown race by getting this early.
-	reqStop := a.cfg.Esshd.Halt.ReqStopChan()
+// DiscardRequestsExceptKeepalives accepts and responds
+// to requests of type "keepalive@sshego.glycerine.github.com"
+// that want reply; these are used as ping/pong messages
+// to detect ssh connection failure.
+func DiscardRequestsExceptKeepalives(ctx context.Context, in <-chan *ssh.Request, reqStop chan struct{}) {
 
 	for {
 		select {
