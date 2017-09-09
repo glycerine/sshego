@@ -128,6 +128,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
+		serverDone.RequestStop()
 		<-serverDone.DoneChan()
 
 		// done with testing, cleanup
@@ -230,6 +231,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
+		serverDone.RequestStop()
 		<-serverDone.DoneChan()
 
 		// now, the point of 303: connecting to a *2nd* sshd server with

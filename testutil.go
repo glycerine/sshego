@@ -194,9 +194,6 @@ func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 		panic("too short a write!")
 	}
 
-	// local and remote are 0.0.0.0
-	//pp("Verify wrote to RemoteAddr '%v', local '%v'", channelToTcpServer.RemoteAddr(), channelToTcpServer.LocalAddr())
-
 	// check reply
 	rep := make([]byte, payloadByteCount)
 	m, err = channelToTcpServer.Read(rep) // hung here

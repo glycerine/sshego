@@ -135,9 +135,6 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd()
 		s.SrvCfg.Esshd.Start(ctx)
-		//pp("********* waiting 5 seconds for new Esshd to start")
-		//time.Sleep(5 * time.Second)
-		//pp("********* done waiting 5 seconds for new Esshd to start")
 
 		serverDone2 := ssh.NewHalter()
 		confirmationPayload2 := RandomString(payloadByteCount)

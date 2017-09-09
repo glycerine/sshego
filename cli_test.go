@@ -93,6 +93,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 		}
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
+		serverDone.RequestStop()
 		<-serverDone.DoneChan()
 
 		// done with testing, cleanup
