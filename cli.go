@@ -243,7 +243,7 @@ func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration,
 	if err != nil {
 		return err
 	}
-	log.Printf("startKeepalives: have responseStatus: '%v'", responseStatus)
+	//pp("startKeepalives: have responseStatus: '%v'", responseStatus)
 
 	if responseStatus {
 		n := len(responsePayload)
@@ -251,7 +251,7 @@ func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration,
 			var ping2 KeepAlivePing
 			_, err := ping2.UnmarshalMsg(responsePayload)
 			if err == nil {
-				log.Printf("startKeepalives: have responsePayload.Replied: '%v'/serial=%v. at now='%v'", ping2.Replied, ping2.Serial, time.Now())
+				//pp("startKeepalives: have responsePayload.Replied: '%v'/serial=%v. at now='%v'", ping2.Replied, ping2.Serial, time.Now())
 			}
 		}
 	}
@@ -268,13 +268,13 @@ func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration,
 				responseStatus, responsePayload, err := sshClientConn.SendRequest(
 					ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 				if err != nil {
-					log.Printf("startKeepalives: regular keepalive send error: '%v'", err)
+					log.Printf("startKeepalives: keepalive send error: '%v', notifying reconnect needed.", err)
 					// notify here
 					cfg.ClientReconnectNeededTower.Broadcast(uhp)
-					pp("SshegoConfig.startKeepalives() goroutine exiting!")
+					//pp("SshegoConfig.startKeepalives() goroutine exiting!")
 					return
 				}
-				log.Printf("startKeepalives: have responseStatus: '%v'", responseStatus)
+				//pp("startKeepalives: have responseStatus: '%v'", responseStatus)
 
 				if responseStatus {
 					n := len(responsePayload)
@@ -282,9 +282,9 @@ func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration,
 						var ping3 KeepAlivePing
 						_, err := ping3.UnmarshalMsg(responsePayload)
 						if err == nil {
-							log.Printf("startKeepalives: have "+
-								"responsePayload.Replied: '%v'/serial=%v. at now='%v'",
-								ping3.Replied, ping3.Serial, time.Now())
+							//p("startKeepalives: have "+
+							//	"responsePayload.Replied: '%v'/serial=%v. at now='%v'",
+							//	ping3.Replied, ping3.Serial, time.Now())
 						}
 					}
 				} else {

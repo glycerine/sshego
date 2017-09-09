@@ -517,7 +517,7 @@ func getCiphers() []string {
 }
 
 func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, config *ssh.ClientConfig, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
-	pp("starting SshegoConfig.mySSHDial().")
+	//pp("starting SshegoConfig.mySSHDial().")
 	netconn, err := net.DialTimeout(network, addr, config.Timeout)
 	if err != nil {
 		return nil, nil, err
@@ -552,11 +552,11 @@ func (cfg *SshegoConfig) mySSHDial(ctx context.Context, network, addr string, co
 	cli := cfg.NewSSHClient(ctx, c, chans, reqs, halt)
 
 	if cfg.KeepAliveEvery > 0 {
-		pp("SshegoConfig.mySSHDial: calling cfg.startKeepalives(): cfg.KeepAliveEvery=%v", cfg.KeepAliveEvery)
+		//pp("SshegoConfig.mySSHDial: calling cfg.startKeepalives(): cfg.KeepAliveEvery=%v", cfg.KeepAliveEvery)
 		uhp := &UHP{User: config.User, HostPort: config.HostPort}
 		err = cfg.startKeepalives(ctx, cfg.KeepAliveEvery, cli, uhp)
 	} else {
-		pp("SshegoConfig.mySSHDial: *not* calling cfg.startKeepalives(): cfg.KeepAliveEvery=%v", cfg.KeepAliveEvery)
+		//pp("SshegoConfig.mySSHDial: *not* calling cfg.startKeepalives(): cfg.KeepAliveEvery=%v", cfg.KeepAliveEvery)
 	}
 	return cli, netconn, err
 }
