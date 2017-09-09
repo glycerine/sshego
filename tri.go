@@ -2,12 +2,19 @@ package sshego
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
+// Tricorder records (holds) three key objects:
+//   an ssh.Channel, an *ssh.Client, and the underlyign net.Conn.
+//
+// Tricorder supports auto reconnect when disconnected.
+//
 type Tricorder struct {
 	Halt *ssh.Halter // should only reflect close of the internal sshChannel, not cli nor nc.
 
@@ -60,11 +67,12 @@ func (t *Tricorder) startReconnectLoop() {
 			case <-t.Halt.ReqStopChan():
 				return
 			case uhp := <-t.reconnectNeededCh:
+				t.uhp = uhp
 				t.sshChannel = nil
 				t.cli = nil
 				t.nc = nil
 				// need to reconnect!
-				_ = uhp
+				t.helperNewClientConnect()
 
 				// provide current state
 			case t.getCliCh <- t.cli:
@@ -76,6 +84,46 @@ func (t *Tricorder) startReconnectLoop() {
 			}
 		}
 	}()
+}
+
+func (t *Tricorder) helperNewClientConnect() {
+
+	destHost, port, err := splitHostPort(t.uhp.HostPort)
+	panicOn(err)
+
+	ctx := context.Background()
+	pw := ""
+	toptUrl := ""
+	//t.cfg.AddIfNotKnown = false
+	sshcli, nc, err := t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.Halt)
+	if err != nil {
+		panic(err)
+	}
+	t.cli = sshcli
+	t.nc = nc
+}
+
+func splitHostPort(hostport string) (host string, port int, err error) {
+	sPort := ""
+	host, sPort, err = net.SplitHostPort(hostport)
+	if err != nil {
+		err = fmt.Errorf("bad addr '%s': net.SplitHostPort() gave: %s", hostport, err)
+		return
+	}
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if len(sPort) == 0 {
+		err = fmt.Errorf("no port found in '%s'", hostport)
+		return
+	}
+	var prt uint64
+	prt, err = strconv.ParseUint(sPort, 10, 16)
+	if err != nil {
+		return
+	}
+	port = int(prt)
+	return
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
