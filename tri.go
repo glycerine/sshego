@@ -3,8 +3,10 @@ package sshego
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
@@ -19,44 +21,53 @@ var ErrShutdown = fmt.Errorf("shutting down")
 // Tricorder supports auto reconnect when disconnected.
 //
 type Tricorder struct {
-	Halt *ssh.Halter // should only reflect close of the internal sshChannel, not cli nor nc.
+
+	// optional, parent can provide us
+	// a Halter, and we will AddDownstream.
+	ParentHalt *ssh.Halter
+
+	// should only reflect close of the internal sshChannel, not cli nor nc.
+	ChannelHalt *ssh.Halter
 
 	cfg *SshegoConfig
 
 	cli         *ssh.Client
-	nc          net.Conn
+	nc          io.Closer
 	uhp         *UHP
-	sshChannels map[ssh.Channel]context.CancelFunc
+	sshChannels map[net.Conn]context.CancelFunc
 
 	lastSshChannel ssh.Channel
 
 	getChannelCh      chan *getChannelTicket
 	getCliCh          chan *ssh.Client
-	getNcCh           chan net.Conn
+	getNcCh           chan io.Closer
 	reconnectNeededCh chan *UHP
 }
 
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, nc net.Conn) (tri *Tricorder) {
-	if halt == nil {
-		halt = ssh.NewHalter()
-	}
-	tri = &Tricorder{
-		cfg:  cfg,
-		Halt: halt,
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
 
-		sshChannels: make(map[ssh.Channel]context.CancelFunc),
+	tri = &Tricorder{
+		cfg:         cfg,
+		ParentHalt:  halt,
+		ChannelHalt: ssh.NewHalter(),
+
+		sshChannels: make(map[net.Conn]context.CancelFunc),
 
 		reconnectNeededCh: make(chan *UHP, 1),
 		getChannelCh:      make(chan *getChannelTicket),
 		getCliCh:          make(chan *ssh.Client),
-		getNcCh:           make(chan net.Conn),
+		getNcCh:           make(chan io.Closer),
+	}
+	if tri.ParentHalt != nil {
+		tri.ParentHalt.AddDownstream(tri.ChannelHalt)
 	}
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
 	if sshClient != nil {
 		tri.cli = sshClient
+		tri.nc = sshClient.NcCloser()
 	}
-	if nc != nil {
-		tri.nc = nc
+	if sshChan != nil {
+		tri.sshChannels[sshChan] = nil
 	}
 
 	tri.startReconnectLoop()
@@ -71,25 +82,44 @@ func (t *Tricorder) closeChannels() {
 	if len(t.sshChannels) > 0 {
 		for ch, cancel := range t.sshChannels {
 			ch.Close()
-			cancel()
+			if cancel != nil {
+				cancel()
+			}
 		}
 	}
-	t.sshChannels = make(map[ssh.Channel]context.CancelFunc)
+	t.sshChannels = make(map[net.Conn]context.CancelFunc)
 }
 
 func (t *Tricorder) startReconnectLoop() {
 	go func() {
 		defer func() {
+			t.ChannelHalt.RequestStop()
+			t.ChannelHalt.MarkDone()
+			if t.ParentHalt != nil {
+				t.ParentHalt.RemoveDownstream(t.ChannelHalt)
+			}
 			t.closeChannels()
-			t.Halt.MarkDone()
 		}()
 		for {
 			select {
-			case <-t.Halt.ReqStopChan():
+			case <-t.ChannelHalt.ReqStopChan():
 				return
 			case uhp := <-t.reconnectNeededCh:
+				pp("Tricorder sees reconnectNeeded!!")
 				t.uhp = uhp
 				t.closeChannels()
+
+				t.ChannelHalt.RequestStop()
+				t.ChannelHalt.MarkDone()
+
+				if t.ParentHalt != nil {
+					t.ParentHalt.RemoveDownstream(t.ChannelHalt)
+				}
+				t.ChannelHalt = ssh.NewHalter()
+				if t.ParentHalt != nil {
+					t.ParentHalt.AddDownstream(t.ChannelHalt)
+				}
+
 				t.cli = nil
 				t.nc = nil
 				// need to reconnect!
@@ -116,15 +146,32 @@ func (t *Tricorder) helperNewClientConnect() {
 	pw := ""
 	toptUrl := ""
 	//t.cfg.AddIfNotKnown = false
-	sshcli, nc, err := t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.Halt)
-	if err != nil {
-		panic(err)
+	var sshcli *ssh.Client
+	var nc net.Conn
+	tries := 3
+	pause := 1000 * time.Millisecond
+	for i := 0; i < tries; i++ {
+		sshcli, nc, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
+		if err != nil {
+			if strings.Contains(err.Error(), "connection refused") {
+				pp("ignoring 'connection refused' and retrying.")
+				time.Sleep(pause)
+				continue
+			}
+			// sshConnect() errored at dial to '127.0.0.1:52934': 'ssh: handshake failed: EOF'
+			// sshConnect() errored at dial to '127.0.0.1:52987': 'dial tcp 127.0.0.1:52987: getsockopt: connection reset by peer'
+			panic(err)
+		}
 	}
 	t.cli = sshcli
 	t.nc = nc
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
+
+	if t.cli == nil {
+		t.helperNewClientConnect()
+	}
 
 	bkg := context.Background()
 	ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
@@ -135,7 +182,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	if err == nil {
 		t.lastSshChannel = ch
 		discardCtx, discardCtxCancel := context.WithCancel(bkg)
-		go DiscardRequestsExceptKeepalives(discardCtx, in, t.Halt.ReqStopChan())
+		go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
 		t.sshChannels[ch] = discardCtxCancel
 
 		if ch != nil && t.cfg.IdleTimeoutDur > 0 {
@@ -170,16 +217,16 @@ func (t *Tricorder) SSHChannel() (ssh.Channel, error) {
 func (t *Tricorder) Cli() (cli *ssh.Client, err error) {
 	select {
 	case cli = <-t.getCliCh:
-	case <-t.Halt.ReqStopChan():
+	case <-t.ChannelHalt.ReqStopChan():
 		err = ErrShutdown
 	}
 	return
 }
 
-func (t *Tricorder) Nc() (nc net.Conn, err error) {
+func (t *Tricorder) Nc() (nc io.Closer, err error) {
 	select {
 	case nc = <-t.getNcCh:
-	case <-t.Halt.ReqStopChan():
+	case <-t.ChannelHalt.ReqStopChan():
 		err = ErrShutdown
 	}
 	return

@@ -379,10 +379,10 @@ func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incomin
 	}
 }
 
-func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (tri *Tricorder, err error) {
-	nc, sshClient, cfg, err := dc.Dial(parCtx)
+func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (channelToTcpServer net.Conn, tri *Tricorder, err error) {
+	sshChan, sshClient, cfg, err := dc.Dial(parCtx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return cfg.NewTricorder(cfg.Halt, sshClient, nc), nil
+	return sshChan, cfg.NewTricorder(cfg.Halt, sshClient, sshChan), nil
 }

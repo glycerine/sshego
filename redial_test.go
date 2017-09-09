@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime/debug"
 	//	"io/ioutil"
 	//	"log"
 	"strings"
@@ -13,6 +14,11 @@ import (
 	cv "github.com/glycerine/goconvey/convey"
 	//	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
+
+func init() {
+	// see all goroutines on panic for proper debugging of tests.
+	debug.SetTraceback("all")
+}
 
 func Test050RedialGraphMaintained(t *testing.T) {
 	cv.Convey("Unless cfg.SkipKeepAlive, if our client has done sub := clientSshegoCfg.ClientReconnectNeededTower.Subscribe() and is later disconnected from the ssh server, then: we receive a notification on sub that reconnect is needed.", t, func() {
@@ -206,9 +212,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		}
 
 		tries := 0
-		needReconnectCh := make(chan *UHP, 1)
 		var channelToTcpServer net.Conn
-		var clientSshegoCfg *SshegoConfig
 		var err error
 		ctx := context.Background()
 
@@ -231,10 +235,10 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		channelToTcpServer, tri, err := dc.DialGetTricorder(ctx)
 		cv.So(err, cv.ShouldBeNil)
-
-		clientSshegoCfg.ClientReconnectNeededTower.Subscribe(needReconnectCh)
+		cv.So(tri, cv.ShouldNotBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
@@ -249,26 +253,14 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		<-s.SrvCfg.Halt.DoneChan()
 
 		// after killing remote sshd
-		var uhp *UHP
-		select {
-		case uhp = <-needReconnectCh:
-			pp("good, got needReconnectCh to '%#v'", uhp)
-
-		case <-time.After(5 * time.Second):
-			panic("never received <-needReconnectCh: timeout after 5 seconds")
-		}
-
-		cv.So(uhp.User, cv.ShouldEqual, dc.Mylogin)
-		destHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
-		cv.So(uhp.HostPort, cv.ShouldEqual, destHostPort)
 
 		// so restart the sshd server
 
-		pp("waiting for destHostPort='%v' to be availble", destHostPort)
 		panicOn(s.SrvCfg.Esshd.Stop())
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd()
 		s.SrvCfg.Esshd.Start(ctx)
+		time.Sleep(time.Second)
 
 		serverDone2 := make(chan bool)
 		confirmationPayload2 := RandomString(payloadByteCount)
@@ -280,14 +272,13 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			confirmationPayload2,
 			confirmationReply2,
 			tcpSrvLsn, &nc)
+		time.Sleep(time.Second)
 
-		// can this Dial be made automatic re-Dial?
-		// the net.Conn and the sshClient need to
-		// be changed.
-		channelToTcpServer, _, _, err = dc.Dial(ctx)
-		cv.So(err, cv.ShouldBeNil)
+		// tri should automaticly re-Dial.
+		channelToTcpServer2, err := tri.SSHChannel()
+		panicOn(err)
 
-		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload2, confirmationReply2, payloadByteCount)
+		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
