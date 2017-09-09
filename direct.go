@@ -27,7 +27,7 @@ const minus10_uint32 uint32 = 0xFFFFFFF6
 // server side: handle channel type "direct-tcpip"  - RFC 4254 7.2
 // ca can be nil.
 func handleDirectTcp(ctx context.Context, parentHalt *ssh.Halter, newChannel ssh.NewChannel, ca *ConnectionAlert) {
-	//pp("handleDirectTcp called!")
+	pp("handleDirectTcp called!")
 
 	p := &channelOpenDirectMsg{}
 	ssh.Unmarshal(newChannel.ExtraData(), p)

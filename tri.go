@@ -142,11 +142,11 @@ func (t *Tricorder) startReconnectLoop() {
 	}()
 }
 
-func (t *Tricorder) helperNewClientConnect() {
+func (t *Tricorder) helperNewClientConnect() (sshChan net.Conn) {
 
-	pp("Tricorder.helperNewClientConnect is pausing!!")
-	time.Sleep(time.Second * 5)
-	pp("Tricorder.helperNewClientConnect is done pausing!!")
+	pp("Tricorder.helperNewClientConnect starting!")
+	//	time.Sleep(time.Second * 5)
+	//	pp("Tricorder.helperNewClientConnect is done pausing!!")
 
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
@@ -159,7 +159,6 @@ func (t *Tricorder) helperNewClientConnect() {
 	_ = toptUrl
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
-	var sshChan net.Conn
 	tries := 3
 	pause := 1000 * time.Millisecond
 	if t.cfg.KnownHosts == nil {
@@ -187,42 +186,54 @@ func (t *Tricorder) helperNewClientConnect() {
 			continue
 		}
 	}
-	panicOn(err) // panic: sshConnect() errored at dial to '127.0.0.1:56900': 'ssh: handshake failed: EOF'
+	panicOn(err)
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
 	t.nc = sshChan
+	if sshChan != nil {
+		t.sshChannels[sshChan] = nil
+	}
+
+	return sshChan
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
+	pp("Tricorder.helperGetChannel starting!")
+
+	var ch net.Conn
+	var err error
 	if t.cli == nil {
-		t.helperNewClientConnect()
-	}
+		ch = t.helperNewClientConnect()
+	} else {
 
-	// for now assume we are doing a "direct-tcpip" forward
-	hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")
-	pp("Tricorder.helperGetChannl dialing hp='%v'", hp)
-	ch, err := t.cli.Dial("tcp", hp)
-
-	/*
-
-		bkg := context.Background()
-		ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
-
-		defer cancelOpenChannelCtx() // TODO: is this right??
-
-		ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
-		if err == nil {
-			t.lastSshChannel = ch
-			discardCtx, discardCtxCancel := context.WithCancel(bkg)
-			go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
-			t.sshChannels[ch] = discardCtxCancel
-
-			if ch != nil && t.cfg.IdleTimeoutDur > 0 {
-				ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
-			}
+		// for now assume we are doing a "direct-tcpip" forward
+		hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")
+		pp("Tricorder.helperGetChannl dialing hp='%v'", hp)
+		ch, err = t.cli.Dial("tcp", hp)
+		if ch != nil {
+			t.sshChannels[ch] = nil
 		}
-	*/
+		/*
+
+			bkg := context.Background()
+			ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
+
+			defer cancelOpenChannelCtx() // TODO: is this right??
+
+			ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
+			if err == nil {
+				t.lastSshChannel = ch
+				discardCtx, discardCtxCancel := context.WithCancel(bkg)
+				go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
+				t.sshChannels[ch] = discardCtxCancel
+
+				if ch != nil && t.cfg.IdleTimeoutDur > 0 {
+					ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
+				}
+			}
+		*/
+	}
 	tk.sshChannel = ch
 	tk.err = err
 

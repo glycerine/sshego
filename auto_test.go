@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"runtime/debug"
-	//	"io/ioutil"
-	//	"log"
 	"strings"
 	"testing"
 	"time"
@@ -15,13 +12,8 @@ import (
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
-func init() {
-	// see all goroutines on panic for proper debugging of tests.
-	debug.SetTraceback("all")
-}
-
-func Test050RedialGraphMaintained(t *testing.T) {
-	cv.Convey("Unless cfg.SkipKeepAlive, if our client has done sub := clientSshegoCfg.ClientReconnectNeededTower.Subscribe() and is later disconnected from the ssh server, then: we receive a notification on sub that reconnect is needed.", t, func() {
+func Test060AutoRedialWithTricorder(t *testing.T) {
+	cv.Convey("sshego.Tricorder will have auto-redial on disconnect capability.", t, func() {
 
 		// start a simple TCP server  that is the target of the forward through the sshd,
 		// so we can confirm the client has made the connection.
@@ -31,12 +23,12 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		mgr := ssh.NewHalter()
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
 		var nc net.Conn
+		tcpServerMgr := ssh.NewHalter()
 		StartBackgroundTestTcpServer(
-			mgr,
+			tcpServerMgr,
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
@@ -47,6 +39,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
+		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
 
 		// below over SSH should be equivalent of the following
 		// non-encrypted ping/pong.
@@ -62,14 +55,13 @@ func Test050RedialGraphMaintained(t *testing.T) {
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
 
-			// essential for this test to work!
-			KeepAliveEvery: time.Second,
+			// this is the default now, should not
+			// be necessary to set it manually.
+			//KeepAliveEvery: time.Second,
 		}
 
 		tries := 0
-		needReconnectCh := make(chan *UHP, 1)
 		var channelToTcpServer net.Conn
-		var clientSshegoCfg *SshegoConfig
 		var err error
 		ctx := context.Background()
 
@@ -92,17 +84,24 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		// first call to subscribe is here.
+		channelToTcpServer, tri, err := dc.DialGetTricorder(ctx)
 		cv.So(err, cv.ShouldBeNil)
+		cv.So(tri, cv.ShouldNotBeNil)
 
-		clientSshegoCfg.ClientReconnectNeededTower.Subscribe(needReconnectCh)
+		pp("fine with DialGetTricorder.")
 
-		<-mgr.ReadyChan()
+		<-tcpServerMgr.ReadyChan()
+		pp("060 1st time nc = '%#v'", nc)
+		pp("060 1st time nc.LocalAddr='%v'", nc.LocalAddr())
+
+		checkReconNeeded := tri.cfg.ClientReconnectNeededTower.Subscribe(nil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
-		mgr.RequestStop()
-		<-mgr.DoneChan()
+		tcpServerMgr.RequestStop()
+		<-tcpServerMgr.DoneChan()
 
 		nc.Close()
 		nc = nil
@@ -114,18 +113,19 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		<-s.SrvCfg.Halt.DoneChan()
 
 		// after killing remote sshd
-		var uhp *UHP
+
+		var uhp2 *UHP
 		select {
-		case uhp = <-needReconnectCh:
-			pp("good, 050 got needReconnectCh to '%#v'", uhp)
+		case uhp2 = <-checkReconNeeded:
+			pp("good, 060 got needReconnectCh to '%#v'", uhp2)
 
 		case <-time.After(5 * time.Second):
-			panic("never received <-needReconnectCh: timeout after 5 seconds")
+			panic("never received <-checkReconNeeded: timeout after 5 seconds")
 		}
 
-		cv.So(uhp.User, cv.ShouldEqual, dc.Mylogin)
+		cv.So(uhp2.User, cv.ShouldEqual, dc.Mylogin)
 		destHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
-		cv.So(uhp.HostPort, cv.ShouldEqual, destHostPort)
+		cv.So(uhp2.HostPort, cv.ShouldEqual, destHostPort)
 
 		// so restart the sshd server
 
@@ -134,6 +134,9 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd()
 		s.SrvCfg.Esshd.Start(ctx)
+		//pp("********* waiting 5 seconds for new Esshd to start")
+		//time.Sleep(5 * time.Second)
+		//pp("********* done waiting 5 seconds for new Esshd to start")
 
 		serverDone2 := ssh.NewHalter()
 		confirmationPayload2 := RandomString(payloadByteCount)
@@ -145,14 +148,23 @@ func Test050RedialGraphMaintained(t *testing.T) {
 			confirmationPayload2,
 			confirmationReply2,
 			tcpSrvLsn, &nc)
+		time.Sleep(time.Second)
 
-		// can this Dial be made automatic re-Dial?
-		// the net.Conn and the sshClient need to
-		// be changed.
-		channelToTcpServer, _, _, err = dc.Dial(ctx)
-		cv.So(err, cv.ShouldBeNil)
+		// tri should automaticly re-Dial.
+		channelToTcpServer2, err := tri.SSHChannel()
+		panicOn(err)
 
-		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload2, confirmationReply2, payloadByteCount)
+		<-serverDone2.ReadyChan()
+		pp("060 2nd time nc.LocalAddr='%v'", nc.LocalAddr())
+
+		i := 0
+		for k, v := range tri.sshChannels {
+			pp("tri.sshChannels[%v]=%p -> %p", i, k, v)
+			i++
+		}
+
+		// 060 hung here
+		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
