@@ -151,8 +151,6 @@ func (t *Tricorder) startReconnectLoop() {
 func (t *Tricorder) helperNewClientConnect() {
 
 	pp("Tricorder.helperNewClientConnect starting!")
-	//	time.Sleep(time.Second * 5)
-	//	pp("Tricorder.helperNewClientConnect is done pausing!!")
 
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
@@ -179,6 +177,7 @@ func (t *Tricorder) helperNewClientConnect() {
 		pp("Tricorder.helperNewClientConnect() calilng t.dc.Dial(), i=%v", i)
 		_, sshcli, _, err = t.dc.Dial(ctx, skipDownstreamChannelCreation)
 		//		sshcli, sshChan, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
+
 		if err == nil {
 			break
 
