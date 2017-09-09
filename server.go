@@ -41,6 +41,18 @@ type Esshd struct {
 func (e *Esshd) Stop() error {
 	e.Halt.RequestStop()
 	<-e.Halt.DoneChan()
+
+	if -1 == WaitUntilAddrAvailable(e.cfg.EmbeddedSSHd.Addr, time.Second, 10) {
+		panic("esshd never stopped; after 10 one second waits")
+	}
+
+	// gotta wait for xport to unbind as well...
+	xport := fmt.Sprintf("127.0.0.1:%v",
+		e.cfg.SshegoSystemMutexPort)
+	if -1 == WaitUntilAddrAvailable(xport, time.Second, 10) {
+		panic("xport bound never stopped from old esshd; after 10 one second waits")
+	}
+
 	return nil
 }
 

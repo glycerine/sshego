@@ -124,16 +124,6 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		pp("waiting for destHostPort='%v' to be availble", destHostPort)
 		s.SrvCfg.Esshd.Stop()
-		if -1 == WaitUntilAddrAvailable(destHostPort, time.Second, 10) {
-			panic("old esshd never stopped")
-		}
-
-		// gotta wait for xport to unbind as well...
-		xport := fmt.Sprintf("127.0.0.1:%v",
-			s.SrvCfg.SshegoSystemMutexPort)
-		if -1 == WaitUntilAddrAvailable(xport, time.Second, 10) {
-			panic("xport bound never stopped from old esshd")
-		}
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd() // causes race
 		s.SrvCfg.Esshd.Start(ctx)
