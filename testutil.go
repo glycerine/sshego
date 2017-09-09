@@ -221,8 +221,8 @@ func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirm
 		}
 		panicOn(err)
 		mgr.MarkReady()
-		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v. LocalAddr='%v'",
-			tcpServerConn, tcpServerConn.LocalAddr())
+		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v. LocalAddr='%v'. RemoteAddr='%v'",
+			tcpServerConn, tcpServerConn.LocalAddr(), tcpServerConn.RemoteAddr())
 
 		b := make([]byte, payloadByteCount)
 		n, err := tcpServerConn.Read(b) // hung here

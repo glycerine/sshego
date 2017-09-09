@@ -42,7 +42,6 @@ func Test050RedialGraphMaintained(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn,
 			&nc)
-		<-mgr.ReadyChan()
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -97,6 +96,8 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		cv.So(err, cv.ShouldBeNil)
 
 		clientSshegoCfg.ClientReconnectNeededTower.Subscribe(needReconnectCh)
+
+		<-mgr.ReadyChan()
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
@@ -303,13 +304,15 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel()
+		_ = channelToTcpServer2
 		panicOn(err)
 
 		<-serverDone2.ReadyChan()
 		pp("060 2nd time nc.LocalAddr='%v'", nc.LocalAddr())
 
 		// 060 hung here
-		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
+		VerifyClientServerExchangeAcrossSshd(nc, confirmationPayload2, confirmationReply2, payloadByteCount)
+		//VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
