@@ -21,7 +21,8 @@ type SshegoConfig struct {
 	Nickname string
 	Halt     *ssh.Halter
 
-	KeepAliveEvery time.Duration
+	KeepAliveEvery time.Duration // default 1 second.
+	SkipKeepAlive  bool
 
 	ConfigPath string
 

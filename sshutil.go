@@ -168,6 +168,12 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
 
+	if !cfg.SkipKeepAlive {
+		if cfg.KeepAliveEvery <= 0 {
+			cfg.KeepAliveEvery = time.Second // default to 1 sec.
+		}
+	}
+
 	ctx, cancelctx := context.WithCancel(ctxPar)
 	if halt != nil {
 		go ssh.MAD(ctx, cancelctx, halt)

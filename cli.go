@@ -116,7 +116,11 @@ func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.
 	cfg.Debug = dc.Verbose
 	cfg.TestAllowOneshotConnect = dc.TestAllowOneshotConnect
 	if !dc.SkipKeepAlive {
-		cfg.KeepAliveEvery = dc.KeepAliveEvery
+		if dc.KeepAliveEvery <= 0 {
+			cfg.KeepAliveEvery = time.Second // default to 1 sec.
+		} else {
+			cfg.KeepAliveEvery = dc.KeepAliveEvery
+		}
 	}
 
 	p("DialConfig.Dial: dc= %#v\n", dc)
