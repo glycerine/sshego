@@ -44,7 +44,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		serverDone := make(chan bool)
+		serverDone := ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
@@ -128,7 +128,7 @@ func Test302ReadKnownHosts(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone
+		<-serverDone.DoneChan()
 
 		// done with testing, cleanup
 		s.SrvCfg.Esshd.Stop()
@@ -158,7 +158,7 @@ func Test303DedupKnownHosts(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		serverDone := make(chan bool)
+		serverDone := ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
@@ -230,13 +230,13 @@ func Test303DedupKnownHosts(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone
+		<-serverDone.DoneChan()
 
 		// now, the point of 303: connecting to a *2nd* sshd server with
 		// a different IP address but the same server key should
 		// result in de-duplication.
 
-		serverDone = make(chan bool)
+		serverDone = ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort = GetAvailPort()
 

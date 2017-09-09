@@ -132,7 +132,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		s.SrvCfg.NewEsshd()
 		s.SrvCfg.Esshd.Start(ctx)
 
-		serverDone2 := make(chan bool)
+		serverDone2 := ssh.NewHalter()
 		confirmationPayload2 := RandomString(payloadByteCount)
 		confirmationReply2 := RandomString(payloadByteCount)
 
@@ -153,7 +153,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone2
+		<-serverDone2.DoneChan()
 		nc.Close()
 
 		// done with testing, cleanup
@@ -174,7 +174,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		serverDone := make(chan bool)
+		serverDone := ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
@@ -187,9 +187,6 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			confirmationReply,
 			tcpSrvLsn,
 			&nc)
-		<-tcpServerMgr.ReadyChan()
-		pp("060 1st time nc = '%#v'", nc)
-		pp("060 1st time nc.RemoteAddr='%v'", nc.RemoteAddr())
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -248,6 +245,10 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		pp("fine with DialGetTricorder.")
 
+		<-tcpServerMgr.ReadyChan()
+		pp("060 1st time nc = '%#v'", nc)
+		pp("060 1st time nc.RemoteAddr='%v'", nc.RemoteAddr())
+
 		checkReconNeeded := tri.cfg.ClientReconnectNeededTower.Subscribe(nil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
@@ -293,20 +294,21 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			confirmationPayload2,
 			confirmationReply2,
 			tcpSrvLsn, &nc)
-		<-serverDone2.ReadyChan()
-		pp("060 2nd time nc.RemoteAddr='%v'", nc.RemoteAddr())
 		time.Sleep(time.Second)
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel()
 		panicOn(err)
 
+		<-serverDone2.ReadyChan()
+		pp("060 2nd time nc.RemoteAddr='%v'", nc.RemoteAddr())
+
 		// 060 hung here
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone2.DoneChan()
+		<-serverDone.DoneChan()
 		nc.Close()
 
 		// done with testing, cleanup

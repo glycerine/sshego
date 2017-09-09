@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	cv "github.com/glycerine/goconvey/convey"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 func Test201ClientDirectSSH(t *testing.T) {
@@ -25,7 +26,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		serverDone := make(chan bool)
+		serverDone := ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
@@ -92,7 +93,7 @@ func Test201ClientDirectSSH(t *testing.T) {
 		}
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone
+		<-serverDone.DoneChan()
 
 		// done with testing, cleanup
 		s.SrvCfg.Esshd.Stop()
