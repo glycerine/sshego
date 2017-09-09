@@ -79,7 +79,8 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, dc *DialConfig, sshClien
 
 // CustomInprocStreamChanName is how sshego/reptile specific
 // channels are named.
-const CustomInprocStreamChanName = "custom-inproc-stream"
+//const CustomInprocStreamChanName = "custom-inproc-stream"
+const CustomInprocStreamChanName = "direct-tcpip"
 
 func (t *Tricorder) closeChannels() {
 	if len(t.sshChannels) > 0 {
@@ -190,22 +191,28 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 		t.helperNewClientConnect()
 	}
 
-	bkg := context.Background()
-	ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
+	hp := strings.Trim(t.uhp.HostPort, "\n\r\t ")
+	ch, err := t.cli.Dial("tcp", hp)
 
-	defer cancelOpenChannelCtx() // TODO: is this right??
+	/*
 
-	ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
-	if err == nil {
-		t.lastSshChannel = ch
-		discardCtx, discardCtxCancel := context.WithCancel(bkg)
-		go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
-		t.sshChannels[ch] = discardCtxCancel
+		bkg := context.Background()
+		ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
 
-		if ch != nil && t.cfg.IdleTimeoutDur > 0 {
-			ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
+		defer cancelOpenChannelCtx() // TODO: is this right??
+
+		ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
+		if err == nil {
+			t.lastSshChannel = ch
+			discardCtx, discardCtxCancel := context.WithCancel(bkg)
+			go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
+			t.sshChannels[ch] = discardCtxCancel
+
+			if ch != nil && t.cfg.IdleTimeoutDur > 0 {
+				ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
+			}
 		}
-	}
+	*/
 	tk.sshChannel = ch
 	tk.err = err
 
@@ -214,7 +221,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 type getChannelTicket struct {
 	done       chan struct{}
-	sshChannel ssh.Channel
+	sshChannel net.Conn
 	err        error
 }
 
@@ -224,7 +231,7 @@ func newGetChannelTicket() *getChannelTicket {
 	}
 }
 
-func (t *Tricorder) SSHChannel() (ssh.Channel, error) {
+func (t *Tricorder) SSHChannel() (net.Conn, error) {
 	tk := newGetChannelTicket()
 	t.getChannelCh <- tk
 	<-tk.done
