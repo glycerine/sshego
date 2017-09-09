@@ -20,10 +20,10 @@ type Tricorder struct {
 
 	cfg *SshegoConfig
 
-	cli        *ssh.Client
-	nc         net.Conn
-	uhp        *UHP
-	sshChannel ssh.Channel
+	cli         *ssh.Client
+	nc          net.Conn
+	uhp         *UHP
+	sshChannels map[ssh.Channel]context.CancelFunc
 
 	getChannelCh      chan *getChannelTicket
 	getCliCh          chan *ssh.Client
@@ -38,6 +38,8 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
 	tri = &Tricorder{
 		cfg:  cfg,
 		Halt: halt,
+
+		sshChannels: make(map[ssh.Channel]context.CancelFunc),
 
 		reconnectNeededCh: make(chan *UHP, 1),
 		getChannelCh:      make(chan *getChannelTicket),
@@ -54,12 +56,20 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
 // channels are named.
 const CustomInprocStreamChanName = "custom-inproc-stream"
 
+func (t *Tricorder) closeChannels() {
+	if len(t.sshChannels) > 0 {
+		for ch, cancel := range t.sshChannels {
+			ch.Close()
+			cancel()
+		}
+	}
+	t.sshChannels = make(map[ssh.Channel]context.CancelFunc)
+}
+
 func (t *Tricorder) startReconnectLoop() {
 	go func() {
 		defer func() {
-			if t.sshChannel != nil {
-				t.sshChannel.Close()
-			}
+			t.closeChannels()
 			t.Halt.MarkDone()
 		}()
 		for {
@@ -68,7 +78,7 @@ func (t *Tricorder) startReconnectLoop() {
 				return
 			case uhp := <-t.reconnectNeededCh:
 				t.uhp = uhp
-				t.sshChannel = nil
+				t.closeChannels()
 				t.cli = nil
 				t.nc = nil
 				// need to reconnect!
@@ -78,7 +88,7 @@ func (t *Tricorder) startReconnectLoop() {
 			case t.getCliCh <- t.cli:
 			case t.getNcCh <- t.nc:
 
-				// lazily bring up a new channel if need be.
+				// bring up a new channel
 			case tk := <-t.getChannelCh:
 				t.helperGetChannel(tk)
 			}
@@ -103,47 +113,27 @@ func (t *Tricorder) helperNewClientConnect() {
 	t.nc = nc
 }
 
-func splitHostPort(hostport string) (host string, port int, err error) {
-	sPort := ""
-	host, sPort, err = net.SplitHostPort(hostport)
-	if err != nil {
-		err = fmt.Errorf("bad addr '%s': net.SplitHostPort() gave: %s", hostport, err)
-		return
-	}
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	if len(sPort) == 0 {
-		err = fmt.Errorf("no port found in '%s'", hostport)
-		return
-	}
-	var prt uint64
-	prt, err = strconv.ParseUint(sPort, 10, 16)
-	if err != nil {
-		return
-	}
-	port = int(prt)
-	return
-}
-
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
-	if t.sshChannel != nil {
-		tk.sshChannel = t.sshChannel
-	} else {
-		bkg := context.Background()
-		ctx, cancelctx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
-		defer cancelctx()
-		ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
-		if err == nil {
-			go DiscardRequestsExceptKeepalives(bkg, in, t.Halt.ReqStopChan())
 
-			if ch != nil && t.cfg.IdleTimeoutDur > 0 {
-				ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
-			}
+	bkg := context.Background()
+	ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
+
+	defer cancelOpenChannelCtx() // TODO: is this right??
+
+	ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
+	if err == nil {
+
+		discardCtx, discardCtxCancel := context.WithCancel(bkg)
+		go DiscardRequestsExceptKeepalives(discardCtx, in, t.Halt.ReqStopChan())
+		t.sshChannels[ch] = discardCtxCancel
+
+		if ch != nil && t.cfg.IdleTimeoutDur > 0 {
+			ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
 		}
-		tk.sshChannel = ch
-		tk.err = err
 	}
+	tk.sshChannel = ch
+	tk.err = err
+
 	close(tk.done)
 }
 
@@ -173,5 +163,28 @@ func (t *Tricorder) Cli() (cli *ssh.Client) {
 
 func (t *Tricorder) Nc() (nc net.Conn) {
 	nc = <-t.getNcCh
+	return
+}
+
+func splitHostPort(hostport string) (host string, port int, err error) {
+	sPort := ""
+	host, sPort, err = net.SplitHostPort(hostport)
+	if err != nil {
+		err = fmt.Errorf("bad addr '%s': net.SplitHostPort() gave: %s", hostport, err)
+		return
+	}
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if len(sPort) == 0 {
+		err = fmt.Errorf("no port found in '%s'", hostport)
+		return
+	}
+	var prt uint64
+	prt, err = strconv.ParseUint(sPort, 10, 16)
+	if err != nil {
+		return
+	}
+	port = int(prt)
 	return
 }
