@@ -109,7 +109,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		time.Sleep(time.Second)
 		var uhp *UHP
 		select {
-		case uhp = <-needReconnectCh: // hung here
+		case uhp = <-needReconnectCh:
 			pp("good, got needReconnectCh to '%#v'", uhp)
 
 		case <-time.After(5 * time.Second):
@@ -123,7 +123,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		// so restart the sshd server
 
 		pp("waiting for destHostPort='%v' to be availble", destHostPort)
-		s.SrvCfg.Esshd.Stop()
+		panicOn(s.SrvCfg.Esshd.Stop())
 		s.SrvCfg.Reset()
 		s.SrvCfg.NewEsshd() // causes race
 		s.SrvCfg.Esshd.Start(ctx)

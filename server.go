@@ -43,14 +43,14 @@ func (e *Esshd) Stop() error {
 	<-e.Halt.DoneChan()
 
 	if -1 == WaitUntilAddrAvailable(e.cfg.EmbeddedSSHd.Addr, 100*time.Millisecond, 100) {
-		panic("esshd never stopped; after 10 seconds of waits")
+		return fmt.Errorf("esshd never stopped; after 10 seconds of waits")
 	}
 
 	// gotta wait for xport to unbind as well...
 	xport := fmt.Sprintf("127.0.0.1:%v",
 		e.cfg.SshegoSystemMutexPort)
 	if -1 == WaitUntilAddrAvailable(xport, 100*time.Millisecond, 100) {
-		panic("xport bound never stopped from old esshd; after 10 seconds of waits")
+		return fmt.Errorf("xport bound never stopped from old esshd; after 10 seconds of waits")
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 		err := srv.cfg.NewHostDb()
 		panicOn(err)
 	}
-	cfg.Esshd = srv // race here
+	cfg.Esshd = srv
 	return srv
 }
 
@@ -193,7 +193,7 @@ func (cr *CommandRecv) Start(ctx context.Context) error {
 			timeoutMillisec := 500
 			err = tcpLsn.SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
 			panicOn(err)
-			nConn, err = tcpLsn.Accept() // hung here
+			nConn, err = tcpLsn.Accept()
 			if err != nil {
 				// simple timeout, check if stop requested
 				// 'accept tcp 127.0.0.1:54796: i/o timeout'
