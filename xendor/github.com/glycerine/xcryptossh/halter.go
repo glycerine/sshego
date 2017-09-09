@@ -198,7 +198,11 @@ func (h *Halter) RequestStop() {
 func (h *Halter) waitForDownstreamDone() {
 	h.mut.Lock()
 	for d := range h.downstream {
-		<-d.DoneChan()
+		select {
+		case <-d.DoneChan():
+			//case <-time.After(10 * time.Second):
+			//	panic(fmt.Sprintf("Halter.waitForDownsreamDone waited over 10 seconds. len=%v", len(h.downstream)))
+		}
 	}
 	h.mut.Unlock()
 }

@@ -37,7 +37,7 @@ func handleDirectTcp(ctx context.Context, parentHalt *ssh.Halter, newChannel ssh
 
 	channel, req, err := newChannel.Accept() // (Channel, <-chan *Request, error)
 	panicOn(err)
-	go ssh.DiscardRequests(ctx, req, nil)
+	go ssh.DiscardRequests(ctx, req, parentHalt)
 
 	go func(ch ssh.Channel, host string, port uint32) {
 

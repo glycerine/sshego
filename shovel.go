@@ -75,6 +75,7 @@ func (s *shovel) Start(w io.WriteCloser, r io.ReadCloser, label string) {
 		<-s.Halt.ReqStopChan()
 		r.Close() // causes io.Copy to finish
 		w.Close()
+		s.Halt.MarkDone()
 	}()
 }
 
@@ -118,15 +119,22 @@ func (s *shovelPair) Start(a io.ReadWriteCloser, b io.ReadWriteCloser, abLabel s
 	// if one stops, shut down the other
 	go func() {
 		select {
+		case <-s.Halt.ReqStopChan():
+		case <-s.Halt.DoneChan():
+		case <-s.AB.Halt.ReqStopChan():
 		case <-s.AB.Halt.DoneChan():
-			s.BA.Stop()
+		case <-s.BA.Halt.ReqStopChan():
 		case <-s.BA.Halt.DoneChan():
-			s.AB.Stop()
 		}
+		s.AB.Stop()
+		s.BA.Stop()
+		s.Halt.RequestStop()
+		s.Halt.MarkDone()
 	}()
 }
 
 func (s *shovelPair) Stop() {
+	s.Halt.RequestStop()
 	s.AB.Stop()
 	s.BA.Stop()
 }

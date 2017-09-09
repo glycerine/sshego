@@ -187,7 +187,7 @@ func (t *Tricorder) helperNewClientConnect() {
 			continue
 		}
 	}
-	panicOn(err)
+	panicOn(err) // panic: sshConnect() errored at dial to '127.0.0.1:56900': 'ssh: handshake failed: EOF'
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
 	t.nc = sshChan
