@@ -350,6 +350,9 @@ func (e *Esshd) Start(ctx context.Context) {
 			if e.cr != nil {
 				close(e.cr.reqStop)
 			}
+			if listener != nil {
+				listener.Close()
+			}
 			e.Halt.MarkDone()
 		}()
 

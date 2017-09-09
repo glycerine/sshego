@@ -8,7 +8,7 @@ import (
 	//	"log"
 	"strings"
 	"testing"
-	//	"time"
+	"time"
 
 	cv "github.com/glycerine/goconvey/convey"
 	//	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
@@ -56,12 +56,15 @@ func Test050RedialGraphMaintained(t *testing.T) {
 			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    true,
+
+			// essential for this test to work!
+			KeepAliveEvery: time.Second,
 		}
 
 		tries := 0
 		var needReconnectCh chan *UHP
 		var channelToTcpServer net.Conn
-		var sshegoCfg *SshegoConfig
+		var clientSshegoCfg *SshegoConfig
 		var err error
 		ctx := context.Background()
 
@@ -84,11 +87,11 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, sshegoCfg, err = dc.Dial(ctx)
+		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
-		needReconnectCh = sshegoCfg.ClientReconnectNeededTower.Subscribe()
-		_ = needReconnectCh
+		needReconnectCh = clientSshegoCfg.ClientReconnectNeededTower.Subscribe()
+		pp("needReconnectCh = %p", needReconnectCh)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
@@ -99,13 +102,35 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		pp("starting on 2nd confirmation")
 
-		/* // comment back in for real test, after killing remote sshd
-		uhp := <-needReconnectCh
-		pp("good, got needReconnect to '%#v'", uhp)
+		s.SrvCfg.Halt.RequestStop()
+		<-s.SrvCfg.Halt.DoneChan()
+
+		// after killing remote sshd
+		time.Sleep(time.Second)
+		var uhp *UHP
+		select {
+		case uhp = <-needReconnectCh: // hung here
+			pp("good, got needReconnectCh to '%#v'", uhp)
+
+		case <-time.After(5 * time.Second):
+			panic("never received <-needReconnectCh: timeout after 5 seconds")
+		}
 
 		cv.So(uhp.User, cv.ShouldEqual, dc.Mylogin)
-		cv.So(uhp.HostPort, cv.ShouldEqual, fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport))
-		*/
+		destHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
+		cv.So(uhp.HostPort, cv.ShouldEqual, destHostPort)
+
+		// so restart the sshd server
+
+		pp("waiting for destHostPort='%v' to be availble", destHostPort)
+		s.SrvCfg.Esshd.Stop()
+		if -1 == WaitUntilAddrAvailable(destHostPort, time.Second, 10) {
+			panic("old esshd never stopped")
+		}
+		s.SrvCfg.Reset()
+		s.SrvCfg.NewEsshd()
+		s.SrvCfg.Esshd.Start(ctx) // -xport error: could not acquire our -xport before the deadline, for -xport 127.0.0.1:54516
+
 		serverDone2 := make(chan bool)
 		confirmationPayload2 := RandomString(payloadByteCount)
 		confirmationReply2 := RandomString(payloadByteCount)

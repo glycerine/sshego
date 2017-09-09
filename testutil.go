@@ -157,7 +157,7 @@ func GetAvailPort() (net.Listener, int) {
 }
 
 // waitUntilAddrAvailable returns -1 if the addr was
-// alays unavailable after tries sleeps of dur time.
+// always unavailable after tries sleeps of dur time.
 // Otherwise it returns the number of tries it took.
 // Between attempts we wait 'dur' time before trying
 // again.
@@ -284,6 +284,7 @@ func UnencPingPong(dest, confirmationPayload, confirmationReply string, payloadB
 func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 	srvCfg, r1 := GenTestConfig()
 	cliCfg, r2 := GenTestConfig()
+	cliCfg.KeepAliveEvery = time.Second
 	ctx := context.Background()
 
 	// now that we have all different ports, we

@@ -133,10 +133,14 @@ func NewSshegoConfig() *SshegoConfig {
 
 	cfg := &SshegoConfig{
 		BitLenRSAkeys: 4096,
-		Halt:          ssh.NewHalter(),
 	}
 	cfg.ClientReconnectNeededTower = NewUHPTower(cfg.Halt)
+	cfg.Reset()
 	return cfg
+}
+
+func (cfg *SshegoConfig) Reset() {
+	cfg.Halt = ssh.NewHalter()
 }
 
 // AddrHostPort is used to specify tunnel endpoints.
