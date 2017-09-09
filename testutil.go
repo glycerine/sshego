@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 type TestSetup struct {
@@ -206,7 +208,7 @@ func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 	pp("reply success! we got the expected srep reply '%s'", srep)
 }
 
-func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener, pnc *net.Conn) {
+func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirmationPayload string, confirmationReply string, tcpSrvLsn net.Listener, pnc *net.Conn) {
 	go func() {
 
 		pp("startBackgroundTestTcpServer() about to call Accept().")
@@ -215,6 +217,7 @@ func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, co
 			*pnc = tcpServerConn
 		}
 		panicOn(err)
+		mgr.MarkReady()
 		pp("startBackgroundTestTcpServer() progress: got Accept() back: %v",
 			tcpServerConn)
 
@@ -239,7 +242,7 @@ func StartBackgroundTestTcpServer(serverDone chan bool, payloadByteCount int, co
 			panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
 		}
 		//tcpServerConn.Close()
-		close(serverDone)
+		mgr.MarkDone()
 	}()
 }
 

@@ -195,7 +195,9 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 		t.helperNewClientConnect()
 	}
 
-	hp := strings.Trim(t.uhp.HostPort, "\n\r\t ")
+	// for now assume we are doing a "direct-tcpip" forward
+	hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")
+	pp("Tricorder.helperGetChannl dialing hp='%v'", hp)
 	ch, err := t.cli.Dial("tcp", hp)
 
 	/*
@@ -224,9 +226,10 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 }
 
 type getChannelTicket struct {
-	done       chan struct{}
-	sshChannel net.Conn
-	err        error
+	done         chan struct{}
+	sshChannel   net.Conn
+	destHostPort string
+	err          error
 }
 
 func newGetChannelTicket() *getChannelTicket {

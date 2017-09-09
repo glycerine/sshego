@@ -12,7 +12,7 @@ import (
 	"time"
 
 	cv "github.com/glycerine/goconvey/convey"
-	//	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
+	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
 func init() {
@@ -31,18 +31,18 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
 
-		serverDone := make(chan bool)
-
+		mgr := ssh.NewHalter()
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
 		var nc net.Conn
 		StartBackgroundTestTcpServer(
-			serverDone,
+			mgr,
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
 			tcpSrvLsn,
 			&nc)
+		<-mgr.ReadyChan()
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
@@ -100,7 +100,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
-		<-serverDone
+		<-mgr.DoneChan()
 		nc.Close()
 		nc = nil
 		channelToTcpServer.Close()
@@ -179,18 +179,23 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
 		var nc net.Conn
+		tcpServerMgr := ssh.NewHalter()
 		StartBackgroundTestTcpServer(
-			serverDone,
+			tcpServerMgr,
 			payloadByteCount,
 			confirmationPayload,
 			confirmationReply,
 			tcpSrvLsn,
 			&nc)
+		<-tcpServerMgr.ReadyChan()
+		pp("060 1st time nc = '%#v'", nc)
+		pp("060 1st time nc.RemoteAddr='%v'", nc.RemoteAddr())
 
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
+		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
 
 		// below over SSH should be equivalent of the following
 		// non-encrypted ping/pong.
@@ -247,7 +252,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
-		<-serverDone
+		<-tcpServerMgr.DoneChan()
 		nc.Close()
 		nc = nil
 		channelToTcpServer.Close()
@@ -278,7 +283,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		time.Sleep(5 * time.Second)
 		pp("********* done waiting 5 seconds for new Esshd to start")
 
-		serverDone2 := make(chan bool)
+		serverDone2 := ssh.NewHalter()
 		confirmationPayload2 := RandomString(payloadByteCount)
 		confirmationReply2 := RandomString(payloadByteCount)
 
@@ -288,19 +293,20 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			confirmationPayload2,
 			confirmationReply2,
 			tcpSrvLsn, &nc)
+		<-serverDone2.ReadyChan()
+		pp("060 2nd time nc.RemoteAddr='%v'", nc.RemoteAddr())
 		time.Sleep(time.Second)
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel()
-		// ssh: rejected: unknown channel type (unknown channel type: custom-inproc-stream)
-		// ssh: rejected: unknown channel type (unknown channel type: forwarded-tcpip)
 		panicOn(err)
 
+		// 060 hung here
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone2
+		<-serverDone2.DoneChan()
 		nc.Close()
 
 		// done with testing, cleanup

@@ -182,9 +182,11 @@ func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.
 	// This produces direct-tcpip forwarding -- in other
 	// words we talk to the server at dest via the sshd,
 	// but no other port is opened and so we have
-	// exclusive access. This prevents other users and
+	// exclusive access. This locally prevents other users and
 	// their processes on this localhost from also
 	// using the ssh connection (i.e. without authenticating).
+	// The local end of a simple tunnel is vulnerable to
+	// such issues.
 
 	hp := strings.Trim(dc.DownstreamHostPort, "\n\r\t ")
 	tryUnixDomain := false
