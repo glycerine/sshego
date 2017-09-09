@@ -46,6 +46,11 @@ type Tricorder struct {
 	dc *DialConfig
 }
 
+/*
+NewTricorder has got to wait to allocate
+ssh.Channel until requested. Otherwise we
+make too many, and get them mixed up.
+*/
 func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, dc *DialConfig, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
 
 	tri = &Tricorder{
@@ -168,12 +173,14 @@ func (t *Tricorder) helperNewClientConnect() (sshChan net.Conn) {
 		panic("problem! t.cfg.PrivateKeyPath is empty")
 	}
 
+	const skipDownstreamChannelCreation = true
 	for i := 0; i < tries; i++ {
 		pp("Tricorder.helperNewClientConnect() calilng t.dc.Dial(), i=%v", i)
-		sshChan, sshcli, _, err = t.dc.Dial(ctx)
+		sshChan, sshcli, _, err = t.dc.Dial(ctx, skipDownstreamChannelCreation)
 		//		sshcli, sshChan, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
 		if err == nil {
 			break
+
 		} else {
 			if strings.Contains(err.Error(), "connection refused") {
 				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
@@ -189,10 +196,7 @@ func (t *Tricorder) helperNewClientConnect() (sshChan net.Conn) {
 	panicOn(err)
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
-	t.nc = sshChan
-	if sshChan != nil {
-		t.sshChannels[sshChan] = nil
-	}
+	t.nc = t.cli.NcCloser()
 
 	return sshChan
 }
@@ -204,8 +208,11 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	var ch net.Conn
 	var err error
 	if t.cli == nil {
+		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
 		ch = t.helperNewClientConnect()
 	} else {
+
+		pp("Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()")
 
 		// for now assume we are doing a "direct-tcpip" forward
 		hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")

@@ -107,7 +107,7 @@ type DialConfig struct {
 // to which the sshd should forward our connection after successful
 // authentication.
 //
-func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.Client, cfg *SshegoConfig, err error) {
+func (dc *DialConfig) Dial(parCtx context.Context, skipDownstream bool) (nc net.Conn, sshClient *ssh.Client, cfg *SshegoConfig, err error) {
 
 	cfg = NewSshegoConfig()
 	cfg.BitLenRSAkeys = 4096
@@ -177,6 +177,10 @@ func (dc *DialConfig) Dial(parCtx context.Context) (nc net.Conn, sshClient *ssh.
 	//cfg.TestAllowOneshotConnect = false
 	//cfg.AddIfNotKnown = false
 	//dc.TofuAddIfNotKnown = false
+
+	if skipDownstream {
+		return nil, sshClient, cfg, err
+	}
 
 	// Here is how to dial over an encrypted ssh channel.
 	// This produces direct-tcpip forwarding -- in other
@@ -384,7 +388,7 @@ func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incomin
 }
 
 func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (channelToTcpServer net.Conn, tri *Tricorder, err error) {
-	sshChan, sshClient, cfg, err := dc.Dial(parCtx)
+	sshChan, sshClient, cfg, err := dc.Dial(parCtx, false)
 	if err != nil {
 		return nil, nil, err
 	}

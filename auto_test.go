@@ -63,11 +63,12 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		tries := 0
 		var channelToTcpServer net.Conn
 		var err error
+		const skipDownstreamFalse = false
 		ctx := context.Background()
 
 		for ; tries < 3; tries++ {
 			// first time we add the server key
-			channelToTcpServer, _, _, err = dc.Dial(ctx)
+			channelToTcpServer, _, _, err = dc.Dial(ctx, skipDownstreamFalse)
 			fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
 			errs := err.Error()
 			case1 := strings.Contains(errs, "Re-run without -new")

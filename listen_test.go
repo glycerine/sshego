@@ -180,13 +180,13 @@ func Test504BasicServerListenAndAcceptConnection(t *testing.T) {
 		}
 
 		// first time we add the server key
-		channelToTcpServer, _, _, err := dc.Dial(ctx)
+		channelToTcpServer, _, _, err := dc.Dial(ctx, false)
 		pp("here!!")
 		cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, _, err = dc.Dial(ctx)
+		channelToTcpServer, _, _, err = dc.Dial(ctx, false)
 		cv.So(err, cv.ShouldBeNil)
 
 		verifyExchange2(

@@ -75,7 +75,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		for ; tries < 3; tries++ {
 			// first time we add the server key
-			channelToTcpServer, _, _, err = dc.Dial(ctx)
+			channelToTcpServer, _, _, err = dc.Dial(ctx, false)
 			fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
 			errs := err.Error()
 			case1 := strings.Contains(errs, "Re-run without -new")
@@ -92,7 +92,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		// second time we connect based on that server key
 		dc.TofuAddIfNotKnown = false
-		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
+		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx, false)
 		cv.So(err, cv.ShouldBeNil)
 
 		clientSshegoCfg.ClientReconnectNeededTower.Subscribe(needReconnectCh)
@@ -149,7 +149,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		// can this Dial be made automatic re-Dial?
 		// the net.Conn and the sshClient need to
 		// be changed.
-		channelToTcpServer, _, _, err = dc.Dial(ctx)
+		channelToTcpServer, _, _, err = dc.Dial(ctx, false)
 		cv.So(err, cv.ShouldBeNil)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload2, confirmationReply2, payloadByteCount)
