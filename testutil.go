@@ -244,7 +244,8 @@ func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirm
 		if n != payloadByteCount {
 			panic(fmt.Errorf("write too short! got %v but expected %v", n, payloadByteCount))
 		}
-		//tcpServerConn.Close()
+		<-mgr.ReqStopChan()
+		tcpServerConn.Close()
 		mgr.MarkDone()
 	}()
 }

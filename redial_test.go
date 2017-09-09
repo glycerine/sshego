@@ -101,7 +101,9 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
+		mgr.RequestStop()
 		<-mgr.DoneChan()
+
 		nc.Close()
 		nc = nil
 		channelToTcpServer.Close()
@@ -154,6 +156,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
+		serverDone2.RequestStop()
 		<-serverDone2.DoneChan()
 		nc.Close()
 
@@ -174,8 +177,6 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		payloadByteCount := 50
 		confirmationPayload := RandomString(payloadByteCount)
 		confirmationReply := RandomString(payloadByteCount)
-
-		serverDone := ssh.NewHalter()
 
 		tcpSrvLsn, tcpSrvPort := GetAvailPort()
 
@@ -254,7 +255,9 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
 
+		tcpServerMgr.RequestStop()
 		<-tcpServerMgr.DoneChan()
+
 		nc.Close()
 		nc = nil
 		channelToTcpServer.Close()
@@ -316,7 +319,8 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// tcp-server should have exited because it got the expected
 		// message and replied with the agreed upon reply and then exited.
-		<-serverDone.DoneChan()
+		serverDone2.RequestStop()
+		<-serverDone2.DoneChan()
 		nc.Close()
 
 		// done with testing, cleanup
