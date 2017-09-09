@@ -93,7 +93,7 @@ func (s HostState) String() string {
 func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.PublicKey, pubBytes []byte, addIfNotKnown bool, allowOneshotConnect bool) (HostState, *ServerPubKey, error) {
 	strPubBytes := string(pubBytes)
 
-	pp("in HostAlreadyKnown... starting. h=%p, looking up by strPubBytes = '%s'", h, strPubBytes)
+	//pp("in HostAlreadyKnown... starting. h=%p, looking up by strPubBytes = '%s'", h, strPubBytes)
 
 	h.Mut.Lock()
 	record, ok := h.Hosts[strPubBytes]

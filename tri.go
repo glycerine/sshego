@@ -188,7 +188,6 @@ func (t *Tricorder) helperNewClientConnect() {
 				time.Sleep(pause)
 				continue
 			}
-			// panic: sshConnect() errored at dial to '127.0.0.1:54630': 'ssh: handshake failed: read tcp 127.0.0.1:54661->127.0.0.1:54630: read: connection reset by peer'
 			pp("err = '%v'. retrying", err)
 			time.Sleep(pause)
 			continue
