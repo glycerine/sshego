@@ -127,9 +127,16 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		if -1 == WaitUntilAddrAvailable(destHostPort, time.Second, 10) {
 			panic("old esshd never stopped")
 		}
+
+		// gotta wait for xport to unbind as well...
+		xport := fmt.Sprintf("127.0.0.1:%v",
+			s.SrvCfg.SshegoSystemMutexPort)
+		if -1 == WaitUntilAddrAvailable(xport, time.Second, 10) {
+			panic("xport bound never stopped from old esshd")
+		}
 		s.SrvCfg.Reset()
-		s.SrvCfg.NewEsshd()
-		s.SrvCfg.Esshd.Start(ctx) // -xport error: could not acquire our -xport before the deadline, for -xport 127.0.0.1:54516
+		s.SrvCfg.NewEsshd() // causes race
+		s.SrvCfg.Esshd.Start(ctx)
 
 		serverDone2 := make(chan bool)
 		confirmationPayload2 := RandomString(payloadByteCount)
@@ -156,101 +163,5 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		s.SrvCfg.Esshd.Stop()
 		<-s.SrvCfg.Esshd.Halt.DoneChan()
 		cv.So(true, cv.ShouldEqual, true) // we should get here.
-
-		/*
-			srvCfg, r1 := GenTestConfig()
-			cliCfg, r2 := GenTestConfig()
-
-			// now that we have all different ports, we
-			// must release them for use below.
-			r1()
-			r2()
-			defer TempDirCleanup(srvCfg.Origdir, srvCfg.Tempdir)
-			srvCfg.NewEsshd()
-			ctx := context.Background()
-			halt := ssh.NewHalter()
-
-			srvCfg.Esshd.Start(ctx)
-			// create a new acct
-			mylogin := "bob"
-			myemail := "bob@example.com"
-			fullname := "Bob Fakey McFakester"
-			pw := fmt.Sprintf("%x", string(CryptoRandBytes(30)))
-
-			p("srvCfg.HostDb = %#v", srvCfg.HostDb)
-			toptPath, qrPath, rsaPath, err := srvCfg.HostDb.AddUser(
-				mylogin, myemail, pw, "gosshtun", fullname, "")
-
-			cv.So(err, cv.ShouldBeNil)
-
-			cv.So(strings.HasPrefix(toptPath, srvCfg.Tempdir), cv.ShouldBeTrue)
-			cv.So(strings.HasPrefix(qrPath, srvCfg.Tempdir), cv.ShouldBeTrue)
-			cv.So(strings.HasPrefix(rsaPath, srvCfg.Tempdir), cv.ShouldBeTrue)
-
-			pp("toptPath = %v", toptPath)
-			pp("qrPath = %v", qrPath)
-			pp("rsaPath = %v", rsaPath)
-
-			uhp1 := &UHP{User: mylogin, HostPort: srvCfg.EmbeddedSSHd.Addr}
-
-			// try to login to esshd
-
-			// need an ssh client
-
-			// allow server to be discovered
-			cliCfg.AddIfNotKnown = true
-			cliCfg.TestAllowOneshotConnect = true
-
-			totpUrl, err := ioutil.ReadFile(toptPath)
-			panicOn(err)
-			totp := string(totpUrl)
-
-			// tell the client not to run an esshd
-			cliCfg.EmbeddedSSHd.Addr = ""
-			//cliCfg.LocalToRemote.Listen.Addr = ""
-			//rev := cliCfg.RemoteToLocal.Listen.Addr
-			cliCfg.RemoteToLocal.Listen.Addr = ""
-			cliCfg.KeepAliveEvery = time.Second
-
-			_, netconn, err := cliCfg.SSHConnect(
-				ctx,
-				cliCfg.KnownHosts,
-				mylogin,
-				rsaPath,
-				srvCfg.EmbeddedSSHd.Host,
-				srvCfg.EmbeddedSSHd.Port,
-				pw,
-				totp,
-				halt)
-
-			reconnectNeededSub := cliCfg.ClientReconnectNeededTower.Subscribe()
-
-			// should have succeeded in logging in
-			cv.So(err, cv.ShouldBeNil)
-
-			netconn.Close()
-			time.Sleep(5 * time.Second)
-			log.Printf("redial test: just after Blinking the connection...")
-
-			dur := 2 * time.Second
-			select {
-			case <-time.After(dur):
-				panic(fmt.Sprintf("redial_test: bad, no reconnect needed sent in '%v'", dur))
-			case who := <-reconnectNeededSub:
-				log.Printf("redial_test: good; got signal on reconnectNeededSub who:'%#v'", who)
-				if UHPEqual(who, uhp1) {
-					log.Printf("redial_test: good, reconnected to '%#v'", who)
-				} else {
-					panic(fmt.Sprintf("redial_test: bad, expected reconnect to uhp1='%#v', but got reconnected to '%#v'.", uhp1, who))
-				}
-			}
-
-			// done with testing, cleanup
-			halt.RequestStop()
-			halt.MarkDone()
-			srvCfg.Esshd.Stop()
-			<-srvCfg.Esshd.Halt.DoneChan()
-			cv.So(true, cv.ShouldEqual, true) // we should get here.
-		*/
 	})
 }

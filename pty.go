@@ -68,6 +68,8 @@ func (cfg *SshegoConfig) handleChannels(ctx context.Context, chans <-chan ssh.Ne
 	if ca != nil {
 		shut = ca.ShutDown
 	}
+	// avoid shutdown race by getting this early.
+	reqStop := cfg.Esshd.Halt.ReqStopChan()
 	for {
 		select {
 		case newChannel, stillOpen := <-chans:
@@ -75,7 +77,7 @@ func (cfg *SshegoConfig) handleChannels(ctx context.Context, chans <-chan ssh.Ne
 				return
 			}
 			go cfg.handleChannel(ctx, newChannel, sshconn, ca)
-		case <-cfg.Esshd.Halt.ReqStopChan():
+		case <-reqStop:
 			return
 		case <-shut:
 			return

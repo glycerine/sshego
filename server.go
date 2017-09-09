@@ -62,7 +62,7 @@ func (cfg *SshegoConfig) NewEsshd() *Esshd {
 		err := srv.cfg.NewHostDb()
 		panicOn(err)
 	}
-	cfg.Esshd = srv
+	cfg.Esshd = srv // race here
 	return srv
 }
 
@@ -309,7 +309,7 @@ func (e *Esshd) Start(ctx context.Context) {
 		e.cr = e.NewCommandRecv()
 		err := e.cr.Start(ctx)
 		if err != nil {
-			panic(err)
+			panic(err) // -xport error: could not acquire our -xport before the deadline, for -xport 127.0.0.1:55418
 		}
 	}
 
@@ -458,6 +458,10 @@ func (a *PerAttempt) PerConnection(ctx context.Context, nConn net.Conn, ca *Conn
 }
 
 func (a *PerAttempt) discardRequestsExceptKeepalives(ctx context.Context, in <-chan *ssh.Request) {
+
+	// avoid shutdown race by getting this early.
+	reqStop := a.cfg.Esshd.Halt.ReqStopChan()
+
 	for {
 		select {
 		case req, stillOpen := <-in:
@@ -485,7 +489,7 @@ func (a *PerAttempt) discardRequestsExceptKeepalives(ctx context.Context, in <-c
 				panicOn(err)
 				req.Reply(true, pingReplyBy)
 			}
-		case <-a.cfg.Esshd.Halt.ReqStopChan():
+		case <-reqStop:
 			return
 		case <-ctx.Done():
 			return
