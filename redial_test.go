@@ -157,8 +157,8 @@ func Test050RedialGraphMaintained(t *testing.T) {
 	})
 }
 
-func Test060AutoRedial(t *testing.T) {
-	cv.Convey("sshego.Client will have auto-redial on disconnect capability.", t, func() {
+func Test060AutoRedialWithTricorder(t *testing.T) {
+	cv.Convey("sshego.Tricorder will have auto-redial on disconnect capability.", t, func() {
 
 		// start a simple TCP server  that is the target of the forward through the sshd,
 		// so we can confirm the client has made the connection.

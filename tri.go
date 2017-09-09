@@ -10,8 +10,11 @@ import (
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
+var ErrShutdown = fmt.Errorf("shutting down")
+
 // Tricorder records (holds) three key objects:
-//   an ssh.Channel, an *ssh.Client, and the underlyign net.Conn.
+//   an *ssh.Client, the underlyign net.Conn, and a
+//   set of ssh.Channel
 //
 // Tricorder supports auto reconnect when disconnected.
 //
@@ -25,13 +28,15 @@ type Tricorder struct {
 	uhp         *UHP
 	sshChannels map[ssh.Channel]context.CancelFunc
 
+	lastSshChannel ssh.Channel
+
 	getChannelCh      chan *getChannelTicket
 	getCliCh          chan *ssh.Client
 	getNcCh           chan net.Conn
 	reconnectNeededCh chan *UHP
 }
 
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, nc net.Conn) (tri *Tricorder) {
 	if halt == nil {
 		halt = ssh.NewHalter()
 	}
@@ -47,6 +52,12 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
 		getNcCh:           make(chan net.Conn),
 	}
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
+	if sshClient != nil {
+		tri.cli = sshClient
+	}
+	if nc != nil {
+		tri.nc = nc
+	}
 
 	tri.startReconnectLoop()
 	return tri
@@ -122,7 +133,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 	ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
 	if err == nil {
-
+		t.lastSshChannel = ch
 		discardCtx, discardCtxCancel := context.WithCancel(bkg)
 		go DiscardRequestsExceptKeepalives(discardCtx, in, t.Halt.ReqStopChan())
 		t.sshChannels[ch] = discardCtxCancel
@@ -156,13 +167,21 @@ func (t *Tricorder) SSHChannel() (ssh.Channel, error) {
 	return tk.sshChannel, tk.err
 }
 
-func (t *Tricorder) Cli() (cli *ssh.Client) {
-	cli = <-t.getCliCh
+func (t *Tricorder) Cli() (cli *ssh.Client, err error) {
+	select {
+	case cli = <-t.getCliCh:
+	case <-t.Halt.ReqStopChan():
+		err = ErrShutdown
+	}
 	return
 }
 
-func (t *Tricorder) Nc() (nc net.Conn) {
-	nc = <-t.getNcCh
+func (t *Tricorder) Nc() (nc net.Conn, err error) {
+	select {
+	case nc = <-t.getNcCh:
+	case <-t.Halt.ReqStopChan():
+		err = ErrShutdown
+	}
 	return
 }
 
@@ -188,3 +207,13 @@ func splitHostPort(hostport string) (host string, port int, err error) {
 	port = int(prt)
 	return
 }
+
+/*
+func (t *Tricorder) Write(p []byte) (n int, err error) {
+	return t.lastSshChannel.Write(p)
+}
+
+func (t *Tricorder) Read(p []byte) (n int, err error) {
+	return t.lastSshChannel.Read(p)
+}
+*/
