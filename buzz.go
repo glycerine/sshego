@@ -39,16 +39,25 @@ func NewUHPTower(halt *ssh.Halter) *UHPTower {
 // will return notify and notify will receive
 // all Broadcast values. If notify is nil, Subscribe
 // will allocate a new channel and return that.
-// When provided, notify must be a size 1 buffered
-// or an unbuffered chan, or we panic.
+// When provided, notify should typically be a size 1 buffered
+// chan. If other sizes of chan are used, be sure
+// to service reads in a timely manner, or we
+// will panic since Subscribe is meant to be
+// non-blocking or minimally blocking for a very
+// short time. Note that buffer size 1 channels
+// are intended for lossy status: where if new
+// status arrives before the old is read, it
+// is desirable to discard the old and update
+// to the new status value. To get non-lossy
+// behavior, use an unbuffered notify or
+// a buffer with size > 1. In both those
+// cases, as above, you must arrange to
+// service the channel promptly.
 func (b *UHPTower) Subscribe(notify chan *UHP) (ch chan *UHP) {
 	b.mut.Lock()
 	if notify == nil {
 		ch = make(chan *UHP, 1)
 	} else {
-		if cap(notify) > 1 {
-			panic("UHPTower.Subscribe error: notify must be a size 0 or 1 buffered channel")
-		}
 		ch = notify
 	}
 	b.subs = append(b.subs, ch)
@@ -96,10 +105,13 @@ func (b *UHPTower) Broadcast(val *UHP) error {
 		return ErrClosed
 	}
 	for i := range b.subs {
-		// clear any old
-		select {
-		case <-b.subs[i]:
-		default:
+		if cap(b.subs[i]) == 1 {
+			// clear any old, so there is
+			// space for the new without blocking.
+			select {
+			case <-b.subs[i]:
+			default:
+			}
 		}
 
 		// apply the new
