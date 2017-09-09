@@ -95,14 +95,15 @@ func NewIdleTimer(callback func(), dur time.Duration) *IdleTimer {
 // already registered. Unless that is what you want,
 // use addTimeoutCallback().
 //
-func (t *IdleTimer) SetTimeoutCallback(timeoutFunc func()) {
+func (t *IdleTimer) setTimeoutCallback(timeoutFunc func()) {
 	select {
 	case t.setCallback <- &callbacks{onTimeout: timeoutFunc}:
 	case <-t.Halt.ReqStopChan():
 	}
 }
 
-// add without removing exiting callbacks
+// AddTimeoutCallback adds another callback,
+// without removing exiting callbacks
 func (t *IdleTimer) AddTimeoutCallback(timeoutFunc func()) {
 	if timeoutFunc == nil {
 		panic("cannot call addTimeoutCallback with nil function!")
@@ -382,7 +383,7 @@ func (t *IdleTimer) backgroundStart(dur time.Duration) {
 					// so unless we start timeoutCallback() on its
 					// own goroutine, we are likely to deadlock.
 					for _, f := range t.timeoutCallback {
-						pp("idle.go: timeoutCallback happening")
+						//p("idle.go: timeoutCallback happening")
 						go f()
 					}
 				}
