@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	ssh "github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
@@ -34,11 +35,22 @@ func NewUHPTower(halt *ssh.Halter) *UHPTower {
 	return tower
 }
 
-// Subscribe returns a new channel that will receive
-// all Broadcast values.
-func (b *UHPTower) Subscribe() chan *UHP {
+// Subscribe if given notify (notify is optional)
+// will return notify and notify will receive
+// all Broadcast values. If notify is nil, Subscribe
+// will allocate a new channel and return that.
+// When provided, notify must be a size 1 buffered
+// or an unbuffered chan, or we panic.
+func (b *UHPTower) Subscribe(notify chan *UHP) (ch chan *UHP) {
 	b.mut.Lock()
-	ch := make(chan *UHP, 1)
+	if notify == nil {
+		ch = make(chan *UHP, 1)
+	} else {
+		if cap(notify) > 1 {
+			panic("UHPTower.Subscribe error: notify must be a size 0 or 1 buffered channel")
+		}
+		ch = notify
+	}
 	b.subs = append(b.subs, ch)
 	b.mut.Unlock()
 	return ch
@@ -95,6 +107,10 @@ func (b *UHPTower) Broadcast(val *UHP) error {
 		case b.subs[i] <- val:
 		case <-b.halt.ReqStopChan():
 			return b.internalClose()
+		case <-time.After(10 * time.Second):
+			pp("UHPTower.Broadcast() blocked: could not send for 10 seconds.")
+			// return or panic?
+			panic("big problem: Broadcast blocked for 10 seconds! Prefer buffered channel of size 1 for Tower subscribe channels.")
 		}
 	}
 	return nil

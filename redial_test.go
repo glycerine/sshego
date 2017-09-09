@@ -15,7 +15,7 @@ import (
 )
 
 func Test050RedialGraphMaintained(t *testing.T) {
-	cv.Convey("With AutoReconnect true, our ssh client automatically redials the ssh server if disconnected", t, func() {
+	cv.Convey("Unless cfg.SkipKeepAlive, if our client has done sub := clientSshegoCfg.ClientReconnectNeededTower.Subscribe() and is later disconnected from the ssh server, then: we receive a notification on sub that reconnect is needed.", t, func() {
 
 		// start a simple TCP server  that is the target of the forward through the sshd,
 		// so we can confirm the client has made the connection.
@@ -62,7 +62,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		}
 
 		tries := 0
-		var needReconnectCh chan *UHP
+		needReconnectCh := make(chan *UHP, 1)
 		var channelToTcpServer net.Conn
 		var clientSshegoCfg *SshegoConfig
 		var err error
@@ -90,7 +90,7 @@ func Test050RedialGraphMaintained(t *testing.T) {
 		channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
 		cv.So(err, cv.ShouldBeNil)
 
-		needReconnectCh = clientSshegoCfg.ClientReconnectNeededTower.Subscribe()
+		clientSshegoCfg.ClientReconnectNeededTower.Subscribe(needReconnectCh)
 		pp("needReconnectCh = %p", needReconnectCh)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)
