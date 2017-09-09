@@ -392,5 +392,5 @@ func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (channelToTcpServ
 	if cfg.KnownHosts == nil {
 		panic("problemo! cfg.KnownHosts is nil")
 	}
-	return sshChan, cfg.NewTricorder(cfg.Halt, sshClient, sshChan), nil
+	return sshChan, cfg.NewTricorder(cfg.Halt, dc, sshClient, sshChan), nil
 }

@@ -280,7 +280,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel()
-		panicOn(err)
+		panicOn(err) // ssh: rejected: unknown channel type (unknown channel type: custom-inproc-stream)
 
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 

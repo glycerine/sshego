@@ -42,11 +42,14 @@ type Tricorder struct {
 	getCliCh          chan *ssh.Client
 	getNcCh           chan io.Closer
 	reconnectNeededCh chan *UHP
+
+	dc *DialConfig
 }
 
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, dc *DialConfig, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
 
 	tri = &Tricorder{
+		dc:          dc,
 		cfg:         cfg,
 		ParentHalt:  halt,
 		ChannelHalt: ssh.NewHalter(),
@@ -140,14 +143,17 @@ func (t *Tricorder) startReconnectLoop() {
 func (t *Tricorder) helperNewClientConnect() {
 
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
+	_, _ = destHost, port
 	panicOn(err)
 
 	ctx := context.Background()
 	pw := ""
+	_ = pw
 	toptUrl := ""
+	_ = toptUrl
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
-	var nc net.Conn
+	var sshChan net.Conn
 	tries := 3
 	pause := 1000 * time.Millisecond
 	if t.cfg.KnownHosts == nil {
@@ -158,19 +164,24 @@ func (t *Tricorder) helperNewClientConnect() {
 	}
 
 	for i := 0; i < tries; i++ {
-		sshcli, nc, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
+		sshChan, sshcli, _, err = t.dc.Dial(ctx)
+		//		sshcli, sshChan, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
 		if err != nil {
 			if strings.Contains(err.Error(), "connection refused") {
 				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
 				time.Sleep(pause)
 				continue
 			}
-			// panic: sshConnect() errored at dial to '127.0.0.1:53651': 'ssh: handshake failed: ssh: unable to authenticate, attempted methods [none], no supported methods remain'
-			panic(err)
+			// panic: sshConnect() errored at dial to '127.0.0.1:54630': 'ssh: handshake failed: read tcp 127.0.0.1:54661->127.0.0.1:54630: read: connection reset by peer'
+			pp("err = '%v'. retrying", err)
+			time.Sleep(pause)
+			continue
 		}
 	}
+	panicOn(err)
+	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
-	t.nc = nc
+	t.nc = sshChan
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
