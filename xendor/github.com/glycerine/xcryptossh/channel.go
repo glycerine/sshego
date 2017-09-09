@@ -163,6 +163,9 @@ type Channel interface {
 	// Status lets clients query this Channel's lifecycle
 	// progress.
 	Status() *RunStatus
+
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
 }
 
 // Request is a request sent outside of the normal stream of

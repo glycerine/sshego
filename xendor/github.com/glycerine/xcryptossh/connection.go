@@ -7,6 +7,7 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -74,6 +75,10 @@ type Conn interface {
 	// returned channel will be closed when the Conn is
 	// shutting down.
 	Done() <-chan struct{}
+
+	// NcCloser retreives the underlying net.Conn so
+	// that it can be closed.
+	NcCloser() io.Closer
 
 	// TODO(hanwen): consider exposing:
 	//   RequestKeyChange
@@ -160,6 +165,10 @@ func dup(src []byte) []byte {
 	dst := make([]byte, len(src))
 	copy(dst, src)
 	return dst
+}
+
+func (c *sshConn) NcCloser() io.Closer {
+	return c.conn
 }
 
 func (c *sshConn) User() string {
