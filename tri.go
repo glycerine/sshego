@@ -157,7 +157,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 	_, _ = destHost, port
 	panicOn(err)
 
-	pw := ""
+	pw := t.dc.Pw
 	_ = pw
 	toptUrl := ""
 	_ = toptUrl
@@ -172,16 +172,111 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 		panic("problem! t.cfg.PrivateKeyPath is empty")
 	}
 
+	/*
+		// emulate cli.go dc.Dial() to try and get cfg working...
+		t.cfg.BitLenRSAkeys = 4096
+		t.cfg.DirectTcp = true
+		t.cfg.AddIfNotKnown = t.dc.TofuAddIfNotKnown
+		t.cfg.Debug = t.dc.Verbose
+		t.cfg.TestAllowOneshotConnect = t.dc.TestAllowOneshotConnect
+		t.cfg.IdleTimeoutDur = 5 * time.Second
+		if !t.dc.SkipKeepAlive {
+			if t.dc.KeepAliveEvery <= 0 {
+				t.cfg.KeepAliveEvery = time.Second // default to 1 sec.
+			} else {
+				t.cfg.KeepAliveEvery = t.dc.KeepAliveEvery
+			}
+		}
+
+		p("DialConfig.Dial: dc= %#v\n", t.dc)
+		if t.dc.KnownHosts == nil {
+			t.dc.KnownHosts, err = NewKnownHosts(t.dc.ClientKnownHostsPath, KHSsh)
+			if err != nil {
+				panic(err)
+			}
+			p("after NewKnownHosts: DialConfig.Dial: t.dc.KnownHosts = %#v\n", t.dc.KnownHosts)
+			t.dc.KnownHosts.NoSave = t.dc.DoNotUpdateSshKnownHosts
+		}
+		t.cfg.KnownHosts = t.dc.KnownHosts
+		t.cfg.PrivateKeyPath = t.dc.RsaPath
+
+		// end emulate dc.Dial()
+	*/
+
+	cfg := NewSshegoConfig()
+	cfg.BitLenRSAkeys = 4096
+	cfg.DirectTcp = true
+	cfg.AddIfNotKnown = t.dc.TofuAddIfNotKnown
+	cfg.Debug = t.dc.Verbose
+	cfg.TestAllowOneshotConnect = t.dc.TestAllowOneshotConnect
+	cfg.IdleTimeoutDur = 5 * time.Second
+	if !t.dc.SkipKeepAlive {
+		if t.dc.KeepAliveEvery <= 0 {
+			cfg.KeepAliveEvery = time.Second // default to 1 sec.
+		} else {
+			cfg.KeepAliveEvery = t.dc.KeepAliveEvery
+		}
+	}
+
+	p("DialConfig.Dial: dc= %#v\n", t.dc)
+	if t.dc.KnownHosts == nil {
+		t.dc.KnownHosts, err = NewKnownHosts(t.dc.ClientKnownHostsPath, KHSsh)
+		if err != nil {
+			panic(err)
+		}
+		p("after NewKnownHosts: DialConfig.Dial: t.dc.KnownHosts = %#v\n", t.dc.KnownHosts)
+		t.dc.KnownHosts.NoSave = t.dc.DoNotUpdateSshKnownHosts
+	}
+	cfg.KnownHosts = t.dc.KnownHosts
+	cfg.PrivateKeyPath = t.dc.RsaPath
+
+	p("about to SSHConnect to t.dc.Sshdhost='%s'", t.dc.Sshdhost)
+	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
+
+	var okCtx context.Context
 	const skipDownstreamChannelCreation = true
 	for i := 0; i < tries; i++ {
 		pp("Tricorder.helperNewClientConnect() calilng t.dc.Dial(), i=%v", i)
-		_, sshcli, _, err = t.dc.Dial(ctx, skipDownstreamChannelCreation)
-		//		sshcli, sshChan, err = t.cfg.SSHConnect(ctx, t.cfg.KnownHosts, t.uhp.User, t.cfg.PrivateKeyPath, destHost, int64(port), pw, toptUrl, t.ChannelHalt)
+
+		ctxChild, cancelChildCtx := context.WithCancel(ctx)
+		childHalt := ssh.NewHalter()
+
+		// works, but try to avoid dc
+		//_, sshcli, _, err = t.dc.Dial(ctxChild, skipDownstreamChannelCreation)
+
+		// the 2nd argument is the underlying most-basic
+		// TCP net.Conn. We don't need to retrieve here since
+		// ctx or cfg.Halt will close it for us if need be.
+		//sshcli, _, err = t.cfg.SSHConnect(
+		sshcli, _, err = cfg.SSHConnect(
+			ctxChild,
+			//t.cfg.KnownHosts,
+			t.dc.KnownHosts,
+			//t.uhp.User,
+			t.dc.Mylogin,
+			//t.cfg.PrivateKeyPath,
+			t.dc.RsaPath,
+			//destHost,
+			t.dc.Sshdhost,
+			//int64(port),
+			t.dc.Sshdport,
+			//pw,
+			t.dc.Pw,
+			//toptUrl,
+			t.dc.TotpUrl,
+			childHalt)
+		pp("t.dc.Pw = '%v' vs pw = '%v'", t.dc.Pw, pw)
 
 		if err == nil {
+			// tie ctx and childHalt together
+			go ssh.MAD(ctxChild, cancelChildCtx, childHalt)
+			okCtx = ctxChild
 			break
-
 		} else {
+			cancelChildCtx()
+			childHalt.RequestStop()
+			childHalt.MarkDone()
+
 			if strings.Contains(err.Error(), "connection refused") {
 				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
 				time.Sleep(pause)
@@ -191,6 +286,10 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			time.Sleep(pause)
 			continue
 		}
+	} // end i over tries
+
+	if sshcli != nil && okCtx != nil {
+		sshcli.TmpCtx = okCtx
 	}
 	panicOn(err)
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
@@ -212,7 +311,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	pp("Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()")
 
 	// for now assume we are doing a "direct-tcpip" forward
-	hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")
+	hp := strings.Trim(tk.destHostPort, "\n\r\t ")
 	pp("Tricorder.helperGetChannel dialing hp='%v'", hp)
 	ch, err = t.cli.DialWithContext(tk.ctx, "tcp", hp)
 	if ch != nil {
@@ -246,7 +345,8 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 type getChannelTicket struct {
 	done         chan struct{}
 	sshChannel   net.Conn
-	destHostPort string
+	destHostPort string // leave empty for "custom-inproc-stream"
+	typ          string // "direct-tcpip" or "custom-inproc-stream"
 	err          error
 	ctx          context.Context
 }
@@ -258,8 +358,12 @@ func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 	}
 }
 
-func (t *Tricorder) SSHChannel(ctx context.Context) (net.Conn, error) {
+// typ can be "direct-tcpip" (specify destHostPort), or "custom-inproc-stream"
+// in which case leave destHostPort as the empty string.
+func (t *Tricorder) SSHChannel(ctx context.Context, typ, destHostPort string) (net.Conn, error) {
 	tk := newGetChannelTicket(ctx)
+	tk.typ = typ
+	tk.destHostPort = destHostPort
 	t.getChannelCh <- tk
 	<-tk.done
 	return tk.sshChannel, tk.err
@@ -305,13 +409,3 @@ func splitHostPort(hostport string) (host string, port int, err error) {
 	port = int(prt)
 	return
 }
-
-/*
-func (t *Tricorder) Write(p []byte) (n int, err error) {
-	return t.lastSshChannel.Write(p)
-}
-
-func (t *Tricorder) Read(p []byte) (n int, err error) {
-	return t.lastSshChannel.Read(p)
-}
-*/

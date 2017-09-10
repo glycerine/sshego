@@ -149,7 +149,9 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		time.Sleep(time.Second)
 
 		// tri should automaticly re-Dial.
-		channelToTcpServer2, err := tri.SSHChannel(ctx)
+		channelToTcpServer2, err := tri.SSHChannel(
+			ctx, "direct-tcpip", dc.DownstreamHostPort)
+
 		panicOn(err)
 
 		<-serverDone2.ReadyChan()
