@@ -258,7 +258,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 	pp("Tricorder.helperGetChannel starting!")
 
-	var ch net.Conn
+	var ch ssh.Channel
 	var in <-chan *ssh.Request
 	var err error
 	if t.cli == nil {
@@ -306,7 +306,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 type getChannelTicket struct {
 	done           chan struct{}
-	sshChannel     net.Conn
+	sshChannel     ssh.Channel
 	targetHostPort string // leave empty for "custom-inproc-stream", else downstream addr
 	typ            string // "direct-tcpip" or "custom-inproc-stream"
 	err            error
@@ -322,7 +322,7 @@ func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 
 // typ can be "direct-tcpip" (specify destHostPort), or "custom-inproc-stream"
 // in which case leave destHostPort as the empty string.
-func (t *Tricorder) SSHChannel(ctx context.Context, typ, targetHostPort string) (net.Conn, error) {
+func (t *Tricorder) SSHChannel(ctx context.Context, typ, targetHostPort string) (ssh.Channel, error) {
 	tk := newGetChannelTicket(ctx)
 	tk.typ = typ
 	tk.targetHostPort = targetHostPort
