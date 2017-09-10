@@ -104,28 +104,37 @@ func (h *Halter) SetErr(err error) {
 	h.errmut.Unlock()
 }
 
-func (h *Halter) AddUpstream(u *Halter) {
+func (h *Halter) addUpstream(u *Halter) {
 	h.mut.Lock()
 	h.upstream[u] = nil
 	h.mut.Unlock()
 }
 
-func (h *Halter) RemoveUpstream(u *Halter) {
+func (h *Halter) removeUpstream(u *Halter) {
 	h.mut.Lock()
 	delete(h.upstream, u)
 	h.mut.Unlock()
 }
 
+// AddDownstream is the public API. To
+// prevent infinite loops, always use
+// AddDownstream: it will automatically
+// inform the d that h is now upstream.
+// There is no need to call d.addUpstream(h),
+// as AddDownstream will do that automatically.
+//
 func (h *Halter) AddDownstream(d *Halter) {
 	h.mut.Lock()
 	h.downstream[d] = nil
 	h.mut.Unlock()
+	d.addUpstream(h)
 }
 
 func (h *Halter) RemoveDownstream(d *Halter) {
 	h.mut.Lock()
 	delete(h.downstream, d)
 	h.mut.Unlock()
+	d.removeUpstream(h)
 }
 
 // RunStatus provides lifecycle snapshots.
@@ -200,6 +209,7 @@ func (h *Halter) waitForDownstreamDone() {
 	for d := range h.downstream {
 		select {
 		case <-d.DoneChan():
+			d.removeUpstream(h)
 			//case <-time.After(10 * time.Second):
 			//	panic(fmt.Sprintf("Halter.waitForDownsreamDone waited over 10 seconds. len=%v", len(h.downstream)))
 		}
