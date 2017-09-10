@@ -81,7 +81,7 @@ type Halter struct {
 	// function launched in the goroutine.
 	// To avoid races, it should be read only
 	// after Done has been closed. Goroutine
-	// functions should set Err (if non nil)
+	// functions should SetErr() (if non nil)
 	// prior to calling MarkDone().
 	err    error
 	errmut sync.Mutex
