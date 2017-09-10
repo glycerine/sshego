@@ -42,6 +42,10 @@ type Tricorder struct {
 	reconnectNeededCh chan *UHP
 
 	tofu bool
+
+	retries             int           // := 10
+	pauseBetweenRetries time.Duration // := 1000 * time.Millisecond
+
 }
 
 /*
@@ -58,11 +62,13 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, tofu bool) (tri *Tricord
 
 		sshChannels: make(map[net.Conn]context.CancelFunc),
 
-		reconnectNeededCh: make(chan *UHP, 1),
-		getChannelCh:      make(chan *getChannelTicket),
-		getCliCh:          make(chan *ssh.Client),
-		getNcCh:           make(chan io.Closer),
-		tofu:              tofu,
+		reconnectNeededCh:   make(chan *UHP, 1),
+		getChannelCh:        make(chan *getChannelTicket),
+		getCliCh:            make(chan *ssh.Client),
+		getNcCh:             make(chan io.Closer),
+		tofu:                tofu,
+		retries:             10,
+		pauseBetweenRetries: 1000 * time.Millisecond,
 	}
 	if tri.ParentHalt != nil {
 		tri.ParentHalt.AddDownstream(tri.ChannelHalt)
@@ -124,7 +130,8 @@ func (t *Tricorder) startReconnectLoop() {
 				t.nc = nil
 				// need to reconnect!
 				ctx := context.Background()
-				t.helperNewClientConnect(ctx)
+				err := t.helperNewClientConnect(ctx)
+				panicOn(err)
 
 				// provide current state
 			case t.getCliCh <- t.cli:
@@ -139,13 +146,15 @@ func (t *Tricorder) startReconnectLoop() {
 }
 
 // only reconnect, don't open any new channels!
-func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
+func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 
 	pp("Tricorder.helperNewClientConnect starting! t.uhp='%#v'", t.uhp)
 
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
-	panicOn(err)
+	if err != nil {
+		return err
+	}
 
 	// pw & totpUrl currently required in the test... change this.
 	pw := t.cfg.Pw
@@ -153,8 +162,8 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
-	tries := 10
-	pause := 1000 * time.Millisecond
+	tries := t.retries
+	pause := t.pauseBetweenRetries
 	if t.cfg.KnownHosts == nil {
 		panic("problem! t.cfg.KnownHosts is nil")
 	}
@@ -202,7 +211,11 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			childHalt.RequestStop()
 			childHalt.MarkDone()
 
-			if strings.Contains(err.Error(), "connection refused") {
+			errs := err.Error()
+			if strings.Contains(errs, "Re-run without -new") {
+				return err
+			}
+			if strings.Contains(errs, "getsockopt: connection refused") {
 				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying after %v.", pause)
 				time.Sleep(pause)
 				continue
@@ -222,6 +235,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 	if t.cli != nil {
 		t.nc = t.cli.NcCloser()
 	}
+	return nil
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
@@ -237,7 +251,12 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	}
 	if t.cli == nil {
 		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
-		t.helperNewClientConnect(tk.ctx)
+		err = t.helperNewClientConnect(tk.ctx)
+		if err != nil {
+			tk.err = err
+			close(tk.done)
+			return
+		}
 	}
 
 	pp("Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()")
