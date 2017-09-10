@@ -341,8 +341,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 // be listened for.
 func (cfg *SshegoConfig) StartupForwardListener(ctx context.Context, sshClientConn *ssh.Client) error {
 
-	pp("sshego: StartupForwardListener: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
-	panic("where?")
+	p("sshego: StartupForwardListener: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
 	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(cfg.LocalToRemote.Listen.Host), Port: int(cfg.LocalToRemote.Listen.Port)})
 	if err != nil {
 		return fmt.Errorf("could not -listen on %s: %s", cfg.LocalToRemote.Listen.Addr, err)
@@ -353,7 +352,7 @@ func (cfg *SshegoConfig) StartupForwardListener(ctx context.Context, sshClientCo
 			p("sshego: about to accept on local port %s\n", cfg.LocalToRemote.Listen.Addr)
 			timeoutMillisec := 10000
 			err = ln.SetDeadline(time.Now().Add(time.Duration(timeoutMillisec) * time.Millisecond))
-			panicOn(err) // todo handle error
+			panicOn(err) // TODO handle error
 			fromBrowser, err := ln.Accept()
 			if err != nil {
 				if _, ok := err.(*net.OpError); ok {
@@ -445,7 +444,7 @@ func (cfg *SshegoConfig) StartupReverseListener(ctx context.Context, sshClientCo
 					//break
 				}
 				p("rev.Lsn.Accept err = '%s'  aka '%#v'\n", err, err)
-				panic(err) // todo handle error
+				panic(err) // TODO handle error
 			}
 			if !cfg.Quiet {
 				log.Printf("sshego: accepted reverse connection from remote on  %s, forwarding to --> to %s\n",
