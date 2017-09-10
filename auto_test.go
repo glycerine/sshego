@@ -38,16 +38,8 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
-		/*
-			s.CliCfg.Pw = s.Pw
-			s.CliCfg.TotpUrl = s.Totp
-			s.CliCfg.LocalToRemote.Listen.Addr = ""
-			s.CliCfg.RemoteToLocal.Listen.Addr = ""
-			s.CliCfg.DirectTcp = true
-			s.CliCfg.AddIfNotKnown = true
-		*/
-
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
+		tofu := true
 		dc := &DialConfig{
 			ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
 			Mylogin:              s.Mylogin,
@@ -57,7 +49,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
 			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
-			TofuAddIfNotKnown:    true,
+			TofuAddIfNotKnown:    tofu,
 		}
 
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
@@ -69,8 +61,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		pp("making tri: s.CliCfg.LocalToRemote.Listen.Addr='%v'",
 			s.CliCfg.LocalToRemote.Listen.Addr)
 
-		tofu := true
-		tri, err := NewTricorder(dc, s.CliCfg.Halt, tofu)
+		tri, err := NewTricorder(dc, s.CliCfg.Halt)
 		panicOn(err)
 		bkg := context.Background()
 		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dest, s.Mylogin)

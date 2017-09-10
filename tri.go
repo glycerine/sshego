@@ -54,7 +54,7 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func NewTricorder(dc *DialConfig, halt *ssh.Halter, tofu bool) (tri *Tricorder, err error) {
+func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) {
 
 	cfg, err := dc.DeriveNewConfig()
 	if err != nil {
@@ -72,7 +72,7 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter, tofu bool) (tri *Tricorder, 
 		getChannelCh:        make(chan *getChannelTicket),
 		getCliCh:            make(chan *ssh.Client),
 		getNcCh:             make(chan io.Closer),
-		tofu:                tofu,
+		tofu:                dc.TofuAddIfNotKnown,
 		retries:             10,
 		pauseBetweenRetries: 1000 * time.Millisecond,
 	}
@@ -184,8 +184,8 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 
 		ctxChild, cancelChildCtx := context.WithCancel(ctx)
 
-		t.cfg.AddIfNotKnown = t.tofu
-		t.dc.TofuAddIfNotKnown = t.tofu
+		//t.cfg.AddIfNotKnown = t.tofu
+		//t.dc.TofuAddIfNotKnown = t.tofu
 
 		_, sshcli, _, err = t.dc.Dial(ctxChild, t.cfg, true)
 		if err == nil {
@@ -202,6 +202,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 			errs := err.Error()
 			if strings.Contains(errs, "Re-run without -new") {
 				if t.tofu {
+					p("auto-handling tofu b/c t.tofu is true")
 					t.tofu = false
 					t.dc.TofuAddIfNotKnown = false
 					t.cfg.AddIfNotKnown = false
