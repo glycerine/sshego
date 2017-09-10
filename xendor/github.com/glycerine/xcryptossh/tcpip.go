@@ -362,12 +362,20 @@ func (l *tcpListener) Addr() net.Addr {
 }
 
 // Dial initiates a connection to the addr from the remote host.
+// The n argument is the network: "tcp", "tcp4", "tcp6", "unix".
 // The resulting connection has a zero LocalAddr() and RemoteAddr().
 func (c *Client) Dial(n, addr string) (net.Conn, error) {
 	ctx := c.TmpCtx
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	return c.DialWithContext(ctx, n, addr)
+}
+
+// DialWithContext is the same as Dial, but with ctx.
+// The resulting connection has a zero LocalAddr() and RemoteAddr().
+func (c *Client) DialWithContext(ctx context.Context, n, addr string) (net.Conn, error) {
+
 	var ch Channel
 	switch n {
 	case "tcp", "tcp4", "tcp6":

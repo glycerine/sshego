@@ -133,7 +133,8 @@ func (t *Tricorder) startReconnectLoop() {
 				t.cli = nil
 				t.nc = nil
 				// need to reconnect!
-				t.helperNewClientConnect()
+				ctx := context.Background()
+				t.helperNewClientConnect(ctx)
 
 				// provide current state
 			case t.getCliCh <- t.cli:
@@ -148,7 +149,7 @@ func (t *Tricorder) startReconnectLoop() {
 }
 
 // only reconnect, don't open any new channels!
-func (t *Tricorder) helperNewClientConnect() {
+func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 
 	pp("Tricorder.helperNewClientConnect starting!")
 
@@ -156,7 +157,6 @@ func (t *Tricorder) helperNewClientConnect() {
 	_, _ = destHost, port
 	panicOn(err)
 
-	ctx := context.Background()
 	pw := ""
 	_ = pw
 	toptUrl := ""
@@ -206,7 +206,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	var err error
 	if t.cli == nil {
 		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
-		t.helperNewClientConnect()
+		t.helperNewClientConnect(tk.ctx)
 	}
 
 	pp("Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()")
@@ -214,7 +214,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	// for now assume we are doing a "direct-tcpip" forward
 	hp := strings.Trim(t.dc.DownstreamHostPort, "\n\r\t ")
 	pp("Tricorder.helperGetChannel dialing hp='%v'", hp)
-	ch, err = t.cli.Dial("tcp", hp)
+	ch, err = t.cli.DialWithContext(tk.ctx, "tcp", hp)
 	if ch != nil {
 		t.sshChannels[ch] = nil
 	}
@@ -249,16 +249,18 @@ type getChannelTicket struct {
 	sshChannel   net.Conn
 	destHostPort string
 	err          error
+	ctx          context.Context
 }
 
-func newGetChannelTicket() *getChannelTicket {
+func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 	return &getChannelTicket{
 		done: make(chan struct{}),
+		ctx:  ctx,
 	}
 }
 
-func (t *Tricorder) SSHChannel() (net.Conn, error) {
-	tk := newGetChannelTicket()
+func (t *Tricorder) SSHChannel(ctx context.Context) (net.Conn, error) {
+	tk := newGetChannelTicket(ctx)
 	t.getChannelCh <- tk
 	<-tk.done
 	return tk.sshChannel, tk.err
