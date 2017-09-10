@@ -711,7 +711,7 @@ func (t *handshakeTransport) client(ctx context.Context, kex kexAlgorithm, algs 
 		return nil, err
 	}
 
-	pp("t=%p about to do t.hostKeyCallback().", t)
+	//p("t=%p about to do t.hostKeyCallback().", t)
 	err = t.hostKeyCallback(t.dialAddress, t.remoteAddr, hostKey)
 	if err != nil {
 		return nil, err

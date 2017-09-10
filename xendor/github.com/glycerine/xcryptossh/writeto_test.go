@@ -1,6 +1,9 @@
 package ssh
 
-// write timeouts don't actually work
+// Write timeouts don't actually work.
+// This is because the underlying ssh
+// returns err==nil when the write has
+// only been buffered locally.
 /*
 import (
 	"fmt"
