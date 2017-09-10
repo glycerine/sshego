@@ -203,35 +203,37 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 		// end emulate dc.Dial()
 	*/
 
-	cfg := NewSshegoConfig()
-	cfg.BitLenRSAkeys = 4096
-	cfg.DirectTcp = true
-	cfg.AddIfNotKnown = t.dc.TofuAddIfNotKnown
-	cfg.Debug = t.dc.Verbose
-	cfg.TestAllowOneshotConnect = t.dc.TestAllowOneshotConnect
-	cfg.IdleTimeoutDur = 5 * time.Second
-	if !t.dc.SkipKeepAlive {
-		if t.dc.KeepAliveEvery <= 0 {
-			cfg.KeepAliveEvery = time.Second // default to 1 sec.
-		} else {
-			cfg.KeepAliveEvery = t.dc.KeepAliveEvery
+	/*
+		cfg := NewSshegoConfig()
+		cfg.BitLenRSAkeys = 4096
+		cfg.DirectTcp = true
+		cfg.AddIfNotKnown = t.dc.TofuAddIfNotKnown
+		cfg.Debug = t.dc.Verbose
+		cfg.TestAllowOneshotConnect = t.dc.TestAllowOneshotConnect
+		cfg.IdleTimeoutDur = 5 * time.Second
+		if !t.dc.SkipKeepAlive {
+			if t.dc.KeepAliveEvery <= 0 {
+				cfg.KeepAliveEvery = time.Second // default to 1 sec.
+			} else {
+				cfg.KeepAliveEvery = t.dc.KeepAliveEvery
+			}
 		}
-	}
 
-	p("DialConfig.Dial: dc= %#v\n", t.dc)
-	if t.dc.KnownHosts == nil {
-		t.dc.KnownHosts, err = NewKnownHosts(t.dc.ClientKnownHostsPath, KHSsh)
-		if err != nil {
-			panic(err)
+		p("DialConfig.Dial: dc= %#v\n", t.dc)
+		if t.dc.KnownHosts == nil {
+			t.dc.KnownHosts, err = NewKnownHosts(t.dc.ClientKnownHostsPath, KHSsh)
+			if err != nil {
+				panic(err)
+			}
+			p("after NewKnownHosts: DialConfig.Dial: t.dc.KnownHosts = %#v\n", t.dc.KnownHosts)
+			t.dc.KnownHosts.NoSave = t.dc.DoNotUpdateSshKnownHosts
 		}
-		p("after NewKnownHosts: DialConfig.Dial: t.dc.KnownHosts = %#v\n", t.dc.KnownHosts)
-		t.dc.KnownHosts.NoSave = t.dc.DoNotUpdateSshKnownHosts
-	}
-	cfg.KnownHosts = t.dc.KnownHosts
-	cfg.PrivateKeyPath = t.dc.RsaPath
+		cfg.KnownHosts = t.dc.KnownHosts
+		cfg.PrivateKeyPath = t.dc.RsaPath
 
-	p("about to SSHConnect to t.dc.Sshdhost='%s'", t.dc.Sshdhost)
-	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
+		p("about to SSHConnect to t.dc.Sshdhost='%s'", t.dc.Sshdhost)
+		p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
+	*/
 
 	var okCtx context.Context
 	const skipDownstreamChannelCreation = true
@@ -247,8 +249,8 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 		// the 2nd argument is the underlying most-basic
 		// TCP net.Conn. We don't need to retrieve here since
 		// ctx or cfg.Halt will close it for us if need be.
-		//sshcli, _, err = t.cfg.SSHConnect(
-		sshcli, _, err = cfg.SSHConnect(
+		sshcli, _, err = t.cfg.SSHConnect(
+			//sshcli, _, err = cfg.SSHConnect(
 			ctxChild,
 			//t.cfg.KnownHosts,
 			t.dc.KnownHosts,
