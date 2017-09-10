@@ -64,7 +64,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		tri, err := NewTricorder(dc, s.CliCfg.Halt)
 		panicOn(err)
 		bkg := context.Background()
-		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", dest, s.Mylogin)
+		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", dest)
 
 		cv.So(err, cv.ShouldBeNil)
 		cv.So(tri, cv.ShouldNotBeNil)
@@ -127,8 +127,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		time.Sleep(time.Second)
 
 		// tri should automaticly re-Dial.
-		channelToTcpServer2, err := tri.SSHChannel(
-			ctx, "direct-tcpip", dest, s.Mylogin)
+		channelToTcpServer2, err := tri.SSHChannel(ctx, "direct-tcpip", dest)
 
 		panicOn(err)
 

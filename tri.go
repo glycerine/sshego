@@ -87,6 +87,11 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) 
 		retries:             10,
 		pauseBetweenRetries: 1000 * time.Millisecond,
 	}
+	tri.uhp = &UHP{
+		User:     tri.dc.Mylogin,
+		HostPort: tri.sshdHostPort,
+	}
+
 	if tri.parentHalt != nil {
 		tri.parentHalt.AddDownstream(tri.Halt)
 	}
@@ -132,6 +137,12 @@ func (t *Tricorder) startReconnectLoop() {
 				return
 			case uhp := <-t.reconnectNeededCh:
 				pp("Tricorder sees reconnectNeeded!!")
+				if uhp.User != t.uhp.User {
+					panic(fmt.Sprintf("yikes, bad! uhp from reconnectNeededChan asks for change of user: '%v' != '%v' previous", uhp.User, t.uhp.User))
+				}
+				if uhp.HostPort != t.uhp.HostPort {
+					panic(fmt.Sprintf("yikes, bad! uhp from reconnectNeededChan asks for change of hostport: '%v' != '%v' previous", uhp.HostPort, t.uhp.HostPort))
+				}
 				t.uhp = uhp
 				t.closeChannels()
 
@@ -250,10 +261,6 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	var ch net.Conn
 	var in <-chan *ssh.Request
 	var err error
-	t.uhp = &UHP{
-		User:     tk.username,
-		HostPort: t.sshdHostPort,
-	}
 	if t.cli == nil {
 		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
 		err = t.helperNewClientConnect(tk.ctx)
@@ -300,7 +307,6 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 type getChannelTicket struct {
 	done           chan struct{}
 	sshChannel     net.Conn
-	username       string
 	targetHostPort string // leave empty for "custom-inproc-stream", else downstream addr
 	typ            string // "direct-tcpip" or "custom-inproc-stream"
 	err            error
@@ -316,10 +322,9 @@ func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 
 // typ can be "direct-tcpip" (specify destHostPort), or "custom-inproc-stream"
 // in which case leave destHostPort as the empty string.
-func (t *Tricorder) SSHChannel(ctx context.Context, typ, targetHostPort, user string) (net.Conn, error) {
+func (t *Tricorder) SSHChannel(ctx context.Context, typ, targetHostPort string) (net.Conn, error) {
 	tk := newGetChannelTicket(ctx)
 	tk.typ = typ
-	tk.username = user
 	tk.targetHostPort = targetHostPort
 	t.getChannelCh <- tk
 	<-tk.done
