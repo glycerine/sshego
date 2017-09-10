@@ -153,7 +153,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
-	tries := 3
+	tries := 10
 	pause := 1000 * time.Millisecond
 	if t.cfg.KnownHosts == nil {
 		panic("problem! t.cfg.KnownHosts is nil")
@@ -203,11 +203,11 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			childHalt.MarkDone()
 
 			if strings.Contains(err.Error(), "connection refused") {
-				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying.")
+				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying after %v.", pause)
 				time.Sleep(pause)
 				continue
 			}
-			pp("err = '%v'. retrying", err)
+			pp("err = '%v'. retrying after %v", err, pause)
 			time.Sleep(pause)
 			continue
 		}

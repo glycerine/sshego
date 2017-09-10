@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
+	//"strings"
 	"testing"
 	"time"
 
@@ -13,7 +13,7 @@ import (
 )
 
 func Test060AutoRedialWithTricorder(t *testing.T) {
-	cv.Convey("sshego.Tricorder will have auto-redial on disconnect capability.", t, func() {
+	cv.Convey("sshego.Tricorder has auto-redial on disconnect capability.", t, func() {
 
 		// start a simple TCP server  that is the target of the forward through the sshd,
 		// so we can confirm the client has made the connection.
@@ -50,54 +50,9 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
 
-		// below over SSH should be equivalent of the following
-		// non-encrypted ping/pong.
-
-		dc := DialConfig{
-			ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
-			Mylogin:              s.Mylogin,
-			RsaPath:              s.RsaPath,
-			TotpUrl:              s.Totp,
-			Pw:                   s.Pw,
-			Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
-			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
-			DownstreamHostPort:   dest,
-			TofuAddIfNotKnown:    true,
-
-			// this is the default now, should not
-			// be necessary to set it manually.
-			//KeepAliveEvery: time.Second,
-		}
-
-		tries := 0
 		var channelToTcpServer net.Conn
 		var err error
-		const skipDownstreamFalse = false
 		ctx := context.Background()
-
-		for ; tries < 3; tries++ {
-			// first time we add the server key
-			channelToTcpServer, _, _, err = dc.Dial(ctx, skipDownstreamFalse)
-			fmt.Printf("after dc.Dial() in cli_test.go: err = '%v'", err)
-			errs := err.Error()
-			case1 := strings.Contains(errs, "Re-run without -new")
-			case2 := strings.Contains(errs, "getsockopt: connection refused")
-			ok := case1 || case2
-			cv.So(ok, cv.ShouldBeTrue)
-			if case1 {
-				break
-			}
-		}
-		if tries == 3 {
-			panic("could not get 'Re-run without -new' after 3 tries")
-		}
-
-		// second time we connect based on that server key
-		dc.TofuAddIfNotKnown = false
-		//s.CliCfg.AddIfNotKnown = false
-
-		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
-		// first call to subscribe is here.
 
 		pp("making tri: s.CliCfg.LocalToRemote.Listen.Addr='%v'",
 			s.CliCfg.LocalToRemote.Listen.Addr)
@@ -143,8 +98,8 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			panic("never received <-checkReconNeeded: timeout after 5 seconds")
 		}
 
-		cv.So(uhp2.User, cv.ShouldEqual, dc.Mylogin)
-		destHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
+		cv.So(uhp2.User, cv.ShouldEqual, s.Mylogin)
+		destHostPort := fmt.Sprintf("%v:%v", s.SrvCfg.EmbeddedSSHd.Host, s.SrvCfg.EmbeddedSSHd.Port)
 		cv.So(uhp2.HostPort, cv.ShouldEqual, destHostPort)
 
 		// so restart the sshd server
@@ -169,7 +124,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel(
-			ctx, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dc.DownstreamHostPort, s.Mylogin)
+			ctx, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dest, s.Mylogin)
 
 		panicOn(err)
 
