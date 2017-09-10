@@ -188,22 +188,6 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 		t.dc.TofuAddIfNotKnown = t.tofu
 
 		_, sshcli, _, err = t.dc.Dial(ctxChild, t.cfg, true)
-
-		/*
-			// the 2nd argument is the underlying most-basic
-			// TCP net.Conn. We don't need to retrieve here since
-			// ctx or cfg.Halt will close it for us if need be.
-			sshcli, _, err = t.cfg.SSHConnect(
-				ctxChild,
-				t.cfg.KnownHosts,
-				t.uhp.User,
-				t.cfg.PrivateKeyPath,
-				destHost,
-				int64(port),
-				pw,
-				totpUrl,
-				childHalt)
-		*/
 		if err == nil {
 			t.tofu = false
 			t.cfg.AddIfNotKnown = false
