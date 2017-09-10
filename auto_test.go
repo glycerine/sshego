@@ -38,16 +38,28 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
-		s.CliCfg.Pw = s.Pw
-		s.CliCfg.TotpUrl = s.Totp
-		pp("s.CliCfg.Pw='%v'", s.CliCfg.Pw)
-		pp("s.CliCfg.TotpUrl='%v'", s.CliCfg.TotpUrl)
-		s.CliCfg.LocalToRemote.Listen.Addr = ""
-		s.CliCfg.RemoteToLocal.Listen.Addr = ""
-		s.CliCfg.DirectTcp = true
-		s.CliCfg.AddIfNotKnown = true
+		/*
+			s.CliCfg.Pw = s.Pw
+			s.CliCfg.TotpUrl = s.Totp
+			s.CliCfg.LocalToRemote.Listen.Addr = ""
+			s.CliCfg.RemoteToLocal.Listen.Addr = ""
+			s.CliCfg.DirectTcp = true
+			s.CliCfg.AddIfNotKnown = true
+		*/
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
+		dc := &DialConfig{
+			ClientKnownHostsPath: s.CliCfg.ClientKnownHostsPath,
+			Mylogin:              s.Mylogin,
+			RsaPath:              s.RsaPath,
+			TotpUrl:              s.Totp,
+			Pw:                   s.Pw,
+			Sshdhost:             s.SrvCfg.EmbeddedSSHd.Host,
+			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
+			DownstreamHostPort:   dest,
+			TofuAddIfNotKnown:    true,
+		}
+
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
 
 		var channelToTcpServer net.Conn
@@ -58,7 +70,8 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			s.CliCfg.LocalToRemote.Listen.Addr)
 
 		tofu := true
-		tri := s.CliCfg.NewTricorder(s.CliCfg.Halt, tofu)
+		tri, err := NewTricorder(dc, s.CliCfg.Halt, tofu)
+		panicOn(err)
 		bkg := context.Background()
 		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dest, s.Mylogin)
 

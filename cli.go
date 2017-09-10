@@ -83,7 +83,7 @@ type DialConfig struct {
 	TestAllowOneshotConnect bool
 
 	// SkipKeepAlive default to false and we send
-	// a keepalive every minute.
+	// a keepalive every so often.
 	SkipKeepAlive bool
 
 	KeepAliveEvery time.Duration // default 30 seconds
@@ -107,7 +107,8 @@ type DialConfig struct {
 // to which the sshd should forward our connection after successful
 // authentication.
 //
-func (dc *DialConfig) Dial(parCtx context.Context, skipDownstream bool) (nc net.Conn, sshClient *ssh.Client, cfg *SshegoConfig, err error) {
+
+func (dc *DialConfig) DeriveNewConfig() (cfg *SshegoConfig, err error) {
 
 	cfg = NewSshegoConfig()
 	cfg.BitLenRSAkeys = 4096
@@ -128,14 +129,30 @@ func (dc *DialConfig) Dial(parCtx context.Context, skipDownstream bool) (nc net.
 	if dc.KnownHosts == nil {
 		dc.KnownHosts, err = NewKnownHosts(dc.ClientKnownHostsPath, KHSsh)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 		p("after NewKnownHosts: DialConfig.Dial: dc.KnownHosts = %#v\n", dc.KnownHosts)
 		dc.KnownHosts.NoSave = dc.DoNotUpdateSshKnownHosts
 	}
 	cfg.KnownHosts = dc.KnownHosts
 	cfg.PrivateKeyPath = dc.RsaPath
+	return cfg, nil
+}
 
+// cfg0 can be nil, in which case we will make
+// a new SshegoConfig and return it in cfg. If
+// cfg0 is not nil, then we use it and return
+// it in cfg.
+func (dc *DialConfig) Dial(parCtx context.Context, cfg0 *SshegoConfig, skipDownstream bool) (nc net.Conn, sshClient *ssh.Client, cfg *SshegoConfig, err error) {
+
+	if cfg0 == nil {
+		cfg, err = dc.DeriveNewConfig()
+		if err != nil {
+			return
+		}
+	} else {
+		cfg = cfg0
+	}
 	p("about to SSHConnect to dc.Sshdhost='%s'", dc.Sshdhost)
 	p("  ...and SSHConnect called on cfg = '%#v'\n", cfg)
 

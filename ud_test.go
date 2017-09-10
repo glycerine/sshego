@@ -56,12 +56,12 @@ func Test401UnixDomainSocketListening(t *testing.T) {
 			ctx := context.Background()
 
 			// first time we add the server key
-			channelToTcpServer, _, _, err := dc.Dial(ctx, false)
+			channelToTcpServer, _, _, err := dc.Dial(ctx, nil, false)
 			cv.So(err.Error(), cv.ShouldContainSubstring, "Re-run without -new")
 
 			// second time we connect based on that server key
 			dc.TofuAddIfNotKnown = false
-			channelToTcpServer, _, _, err = dc.Dial(ctx, false)
+			channelToTcpServer, _, _, err = dc.Dial(ctx, nil, false)
 			cv.So(err, cv.ShouldBeNil)
 
 			VerifyClientServerExchangeAcrossSshd(channelToTcpServer, confirmationPayload, confirmationReply, payloadByteCount)

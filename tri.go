@@ -29,6 +29,7 @@ type Tricorder struct {
 	// should only reflect close of the internal sshChannel, not cli nor nc.
 	ChannelHalt *ssh.Halter
 
+	dc  *DialConfig
 	cfg *SshegoConfig
 
 	cli         *ssh.Client
@@ -53,9 +54,14 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, tofu bool) (tri *Tricorder) {
+func NewTricorder(dc *DialConfig, halt *ssh.Halter, tofu bool) (tri *Tricorder, err error) {
 
+	cfg, err := dc.DeriveNewConfig()
+	if err != nil {
+		return nil, err
+	}
 	tri = &Tricorder{
+		dc:          dc,
 		cfg:         cfg,
 		ParentHalt:  halt,
 		ChannelHalt: ssh.NewHalter(),
@@ -76,7 +82,7 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, tofu bool) (tri *Tricord
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
 
 	tri.startReconnectLoop()
-	return tri
+	return tri, nil
 }
 
 // CustomInprocStreamChanName is how sshego/reptile specific
@@ -156,9 +162,9 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 		return err
 	}
 
-	// pw & totpUrl currently required in the test... change this.
-	pw := t.cfg.Pw
-	totpUrl := t.cfg.TotpUrl
+	// TODO: pw & totpUrl currently required in the test... change this.
+	//pw := t.dc.Pw
+	//totpUrl := t.dc.TotpUrl
 
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
@@ -172,47 +178,51 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 	}
 
 	var okCtx context.Context
-	const skipDownstreamChannelCreation = true
+
 	for i := 0; i < tries; i++ {
-		pp("Tricorder.helperNewClientConnect() calilng t.dc.Dial(), i=%v", i)
+		pp("Tricorder.helperNewClientConnect() calling t.dc.Dial(), i=%v", i)
 
 		ctxChild, cancelChildCtx := context.WithCancel(ctx)
-		childHalt := ssh.NewHalter()
 
 		t.cfg.AddIfNotKnown = t.tofu
+		t.dc.TofuAddIfNotKnown = t.tofu
 
-		// the 2nd argument is the underlying most-basic
-		// TCP net.Conn. We don't need to retrieve here since
-		// ctx or cfg.Halt will close it for us if need be.
-		sshcli, _, err = t.cfg.SSHConnect(
-			ctxChild,
-			t.cfg.KnownHosts,
-			t.uhp.User,
-			t.cfg.PrivateKeyPath,
-			destHost,
-			int64(port),
-			pw,
-			totpUrl,
-			childHalt)
+		_, sshcli, _, err = t.dc.Dial(ctxChild, t.cfg, true)
 
+		/*
+			// the 2nd argument is the underlying most-basic
+			// TCP net.Conn. We don't need to retrieve here since
+			// ctx or cfg.Halt will close it for us if need be.
+			sshcli, _, err = t.cfg.SSHConnect(
+				ctxChild,
+				t.cfg.KnownHosts,
+				t.uhp.User,
+				t.cfg.PrivateKeyPath,
+				destHost,
+				int64(port),
+				pw,
+				totpUrl,
+				childHalt)
+		*/
 		if err == nil {
 			t.tofu = false
 			t.cfg.AddIfNotKnown = false
+			okCtx = ctxChild
 
 			if sshcli == nil {
 				panic("err must not be nil if sshcli is nil, back from cfg.SSHConnect")
 			}
-			// tie ctx and childHalt together
-			go ssh.MAD(ctxChild, cancelChildCtx, childHalt)
-			okCtx = ctxChild
 			break
 		} else {
 			cancelChildCtx()
-			childHalt.RequestStop()
-			childHalt.MarkDone()
-
 			errs := err.Error()
 			if strings.Contains(errs, "Re-run without -new") {
+				if t.tofu {
+					t.tofu = false
+					t.dc.TofuAddIfNotKnown = false
+					t.cfg.AddIfNotKnown = false
+					continue
+				}
 				return err
 			}
 			if strings.Contains(errs, "getsockopt: connection refused") {
