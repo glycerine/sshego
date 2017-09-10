@@ -115,6 +115,7 @@ func (dc *DialConfig) Dial(parCtx context.Context, skipDownstream bool) (nc net.
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
 	cfg.Debug = dc.Verbose
 	cfg.TestAllowOneshotConnect = dc.TestAllowOneshotConnect
+	cfg.IdleTimeoutDur = 5 * time.Second
 	if !dc.SkipKeepAlive {
 		if dc.KeepAliveEvery <= 0 {
 			cfg.KeepAliveEvery = time.Second // default to 1 sec.

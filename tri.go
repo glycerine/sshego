@@ -220,11 +220,6 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	}
 	/*
 
-		bkg := context.Background()
-		ctx, cancelOpenChannelCtx := context.WithDeadline(bkg, time.Now().Add(5*time.Second))
-
-		defer cancelOpenChannelCtx() // TODO: is this right??
-
 		ch, in, err := t.cli.OpenChannel(ctx, CustomInprocStreamChanName, nil)
 		if err == nil {
 			t.lastSshChannel = ch
@@ -232,11 +227,15 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 			go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
 			t.sshChannels[ch] = discardCtxCancel
 
-			if ch != nil && t.cfg.IdleTimeoutDur > 0 {
-				ch.SetIdleTimeout(t.cfg.IdleTimeoutDur)
-			}
 		}
 	*/
+
+	if ch != nil && t.cfg.IdleTimeoutDur > 0 {
+		sshChan, ok := ch.(ssh.Channel)
+		if ok {
+			sshChan.SetIdleTimeout(t.cfg.IdleTimeoutDur)
+		}
+	}
 
 	tk.sshChannel = ch
 	tk.err = err
