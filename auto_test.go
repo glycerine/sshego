@@ -102,7 +102,8 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		pp("making tri: s.CliCfg.LocalToRemote.Listen.Addr='%v'",
 			s.CliCfg.LocalToRemote.Listen.Addr)
 
-		tri := s.CliCfg.NewTricorder(s.CliCfg.Halt)
+		tofu := true
+		tri := s.CliCfg.NewTricorder(s.CliCfg.Halt, tofu)
 		bkg := context.Background()
 		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dest, s.Mylogin)
 

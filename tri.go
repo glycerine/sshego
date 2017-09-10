@@ -40,6 +40,8 @@ type Tricorder struct {
 	getCliCh          chan *ssh.Client
 	getNcCh           chan io.Closer
 	reconnectNeededCh chan *UHP
+
+	tofu bool
 }
 
 /*
@@ -47,7 +49,7 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, tofu bool) (tri *Tricorder) {
 
 	tri = &Tricorder{
 		cfg:         cfg,
@@ -60,11 +62,11 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
 		getChannelCh:      make(chan *getChannelTicket),
 		getCliCh:          make(chan *ssh.Client),
 		getNcCh:           make(chan io.Closer),
+		tofu:              tofu,
 	}
 	if tri.ParentHalt != nil {
 		tri.ParentHalt.AddDownstream(tri.ChannelHalt)
 	}
-	// first call to Subscribe is here.
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
 
 	tri.startReconnectLoop()
@@ -168,6 +170,8 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 		ctxChild, cancelChildCtx := context.WithCancel(ctx)
 		childHalt := ssh.NewHalter()
 
+		t.cfg.AddIfNotKnown = t.tofu
+
 		// the 2nd argument is the underlying most-basic
 		// TCP net.Conn. We don't need to retrieve here since
 		// ctx or cfg.Halt will close it for us if need be.
@@ -183,6 +187,9 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			childHalt)
 
 		if err == nil {
+			t.tofu = false
+			t.cfg.AddIfNotKnown = false
+
 			if sshcli == nil {
 				panic("err must not be nil if sshcli is nil, back from cfg.SSHConnect")
 			}
