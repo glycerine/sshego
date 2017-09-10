@@ -42,6 +42,9 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		s.CliCfg.TotpUrl = s.Totp
 		pp("s.CliCfg.Pw='%v'", s.CliCfg.Pw)
 		pp("s.CliCfg.TotpUrl='%v'", s.CliCfg.TotpUrl)
+		s.CliCfg.LocalToRemote.Listen.Addr = ""
+		s.CliCfg.RemoteToLocal.Listen.Addr = ""
+		s.CliCfg.DirectTcp = true
 
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
@@ -92,6 +95,9 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		dc.TofuAddIfNotKnown = false
 		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
 		// first call to subscribe is here.
+
+		pp("making tri: s.CliCfg.LocalToRemote.Listen.Addr='%v'",
+			s.CliCfg.LocalToRemote.Listen.Addr)
 
 		tri := s.CliCfg.NewTricorder(s.CliCfg.Halt, nil, nil)
 		bkg := context.Background()

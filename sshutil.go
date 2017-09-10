@@ -163,8 +163,14 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
 //
-func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, halt *ssh.Halter) (*ssh.Client, net.Conn, error) {
-
+func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, halt *ssh.Halter) (sshClient *ssh.Client, nc net.Conn, err error) {
+	pp("top of SSHConnect")
+	defer func() {
+		if err == nil && sshClient == nil {
+			panic("internal error: can't have both nil!")
+		}
+		pp("returning cleanly from SSHConnect")
+	}()
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
 
@@ -178,9 +184,6 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 	if halt != nil {
 		go ssh.MAD(ctx, cancelctx, halt)
 	}
-
-	var sshClientConn *ssh.Client
-	var nc net.Conn
 
 	pp("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
 	if h == nil {
@@ -245,9 +248,18 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		}
 	}
 
+	pp("got to direct test. cfg.DirectTcp=%v", cfg.DirectTcp)
+	if !cfg.DirectTcp &&
+		cfg.RemoteToLocal.Listen.Addr == "" &&
+		cfg.LocalToRemote.Listen.Addr == "" {
+		panic("nothing to do?!")
+	}
+
 	if cfg.DirectTcp ||
 		cfg.RemoteToLocal.Listen.Addr != "" ||
 		cfg.LocalToRemote.Listen.Addr != "" {
+
+		pp("inside direct test")
 
 		useRSA := true
 		var privkey ssh.Signer
@@ -294,35 +306,43 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			},
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
-		p("about to ssh.Dial hostport='%s'", hostport)
-		sshClientConn, nc, err = cfg.mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
+		pp("about to ssh.Dial hostport='%s'", hostport)
+		sshClient, nc, err = cfg.mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
+		pp("sshClient back from mySSHDial() = %p, err=%v", sshClient, err)
+
 		if err != nil {
+			pp("returning early on %v", err)
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
+		if sshClient == nil {
+			panic("mySSHDial must give us sshClient if err == nil")
+		}
+		pp("sshClient good = %p", sshClient)
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
-			err = cfg.StartupReverseListener(ctx, sshClientConn)
+			err = cfg.StartupReverseListener(ctx, sshClient)
 			if err != nil {
 				return nil, nil, fmt.Errorf("StartupReverseListener failed: %s", err)
 			}
 		}
 		if cfg.LocalToRemote.Listen.Addr != "" {
-			err = cfg.StartupForwardListener(ctx, sshClientConn)
+			err = cfg.StartupForwardListener(ctx, sshClient)
 			if err != nil {
 				return nil, nil, fmt.Errorf("StartupFowardListener failed: %s", err)
 			}
 		}
 	}
 	cfg.Underlying = nc
-	cfg.SshClient = sshClientConn
-	return sshClientConn, nc, nil
+	cfg.SshClient = sshClient
+	return sshClient, nc, nil
 }
 
-// StartupForwardListener is called when a forward tunnel is the
+// StartupForwardListener is called when a forward tunnel is to
 // be listened for.
 func (cfg *SshegoConfig) StartupForwardListener(ctx context.Context, sshClientConn *ssh.Client) error {
 
-	p("sshego: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
+	pp("sshego: StartupForwardListener: about to listen on %s\n", cfg.LocalToRemote.Listen.Addr)
+	panic("where?")
 	ln, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP(cfg.LocalToRemote.Listen.Host), Port: int(cfg.LocalToRemote.Listen.Port)})
 	if err != nil {
 		return fmt.Errorf("could not -listen on %s: %s", cfg.LocalToRemote.Listen.Addr, err)

@@ -190,6 +190,9 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			childHalt)
 
 		if err == nil {
+			if sshcli == nil {
+				panic("err must not be nil if sshcli is nil, back from cfg.SSHConnect")
+			}
 			// tie ctx and childHalt together
 			go ssh.MAD(ctxChild, cancelChildCtx, childHalt)
 			okCtx = ctxChild
@@ -216,7 +219,9 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 	panicOn(err)
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
-	t.nc = t.cli.NcCloser()
+	if t.cli != nil {
+		t.nc = t.cli.NcCloser()
+	}
 }
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
