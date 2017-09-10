@@ -38,6 +38,11 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		s := MakeTestSshClientAndServer(true)
 		defer TempDirCleanup(s.SrvCfg.Origdir, s.SrvCfg.Tempdir)
 
+		s.CliCfg.Pw = s.Pw
+		s.CliCfg.TotpUrl = s.Totp
+		pp("s.CliCfg.Pw='%v'", s.CliCfg.Pw)
+		pp("s.CliCfg.TotpUrl='%v'", s.CliCfg.TotpUrl)
+
 		dest := fmt.Sprintf("127.0.0.1:%v", tcpSrvPort)
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
 
@@ -87,7 +92,11 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		dc.TofuAddIfNotKnown = false
 		//channelToTcpServer, _, clientSshegoCfg, err = dc.Dial(ctx)
 		// first call to subscribe is here.
-		channelToTcpServer, tri, err := dc.DialGetTricorder(ctx)
+
+		tri := s.CliCfg.NewTricorder(s.CliCfg.Halt, nil, nil)
+		bkg := context.Background()
+		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dest, s.Mylogin)
+
 		cv.So(err, cv.ShouldBeNil)
 		cv.So(tri, cv.ShouldNotBeNil)
 
@@ -150,7 +159,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 
 		// tri should automaticly re-Dial.
 		channelToTcpServer2, err := tri.SSHChannel(
-			ctx, "direct-tcpip", dc.DownstreamHostPort)
+			ctx, "direct-tcpip", s.SrvCfg.EmbeddedSSHd.Addr, dc.DownstreamHostPort, s.Mylogin)
 
 		panicOn(err)
 
@@ -163,7 +172,6 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			i++
 		}
 
-		// 060 hung here
 		VerifyClientServerExchangeAcrossSshd(channelToTcpServer2, confirmationPayload2, confirmationReply2, payloadByteCount)
 
 		// tcp-server should have exited because it got the expected

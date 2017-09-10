@@ -196,7 +196,7 @@ func VerifyClientServerExchangeAcrossSshd(channelToTcpServer net.Conn, confirmat
 
 	// check reply
 	rep := make([]byte, payloadByteCount)
-	m, err = channelToTcpServer.Read(rep) // hung here
+	m, err = channelToTcpServer.Read(rep)
 	panicOn(err)
 	if m != payloadByteCount {
 		panic(fmt.Sprintf("too short a reply! m = %v, expected %v. rep = '%v'", m, payloadByteCount, string(rep)))
@@ -222,10 +222,10 @@ func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirm
 			tcpServerConn, tcpServerConn.LocalAddr(), tcpServerConn.RemoteAddr())
 
 		b := make([]byte, payloadByteCount)
-		n, err := tcpServerConn.Read(b) // hung here
+		n, err := tcpServerConn.Read(b)
 		panicOn(err)
 		if n != payloadByteCount {
-			panic(fmt.Errorf("read too short! got %v but expected %v", n, payloadByteCount))
+			panic(fmt.Errorf("read too short! got %v but expected %v: '%s'", n, payloadByteCount, string(b)))
 		}
 		saw := string(b)
 
@@ -247,7 +247,7 @@ func StartBackgroundTestTcpServer(mgr *ssh.Halter, payloadByteCount int, confirm
 	}()
 }
 
-func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw string, err error) {
+func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, totpPath, rsaPath, pw string, err error) {
 	srvCfg.Mut.Lock()
 	defer srvCfg.Mut.Unlock()
 	mylogin = "bob"
@@ -256,7 +256,7 @@ func TestCreateNewAccount(srvCfg *SshegoConfig) (mylogin, toptPath, rsaPath, pw 
 	pw = fmt.Sprintf("%x", string(CryptoRandBytes(30)))
 
 	pp("srvCfg.HostDb = %#v", srvCfg.HostDb)
-	toptPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
+	totpPath, _, rsaPath, err = srvCfg.HostDb.AddUser(
 		mylogin, myemail, pw, "gosshtun", fullname, "")
 	return
 }
@@ -300,14 +300,18 @@ func MakeTestSshClientAndServer(startEsshd bool) *TestSetup {
 		srvCfg.Esshd.Start(ctx)
 	}
 	// create a new acct
-	mylogin, toptPath, rsaPath, pw, err := TestCreateNewAccount(srvCfg)
+	mylogin, totpPath, rsaPath, pw, err := TestCreateNewAccount(srvCfg)
 	panicOn(err)
 
 	// allow server to be discovered
 	cliCfg.AddIfNotKnown = true
 	cliCfg.TestAllowOneshotConnect = true
+	cliCfg.Username = mylogin
+	cliCfg.PrivateKeyPath = rsaPath
+	//	cliCfg.TotpUrl = totpPath
+	//	cliCfg.Pw = pw
 
-	totpUrl, err := ioutil.ReadFile(toptPath)
+	totpUrl, err := ioutil.ReadFile(totpPath)
 	panicOn(err)
 	totp := strings.TrimSpace(string(totpUrl))
 

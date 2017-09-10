@@ -387,17 +387,3 @@ func customHandleGlobalRequests(ctx context.Context, sshCli *ssh.Client, incomin
 		}
 	}
 }
-
-func (dc *DialConfig) DialGetTricorder(parCtx context.Context) (channelToTcpServer net.Conn, tri *Tricorder, err error) {
-	sshChan, sshClient, cfg, err := dc.Dial(parCtx, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	if dc.KnownHosts == nil {
-		pp("hmm... dc.KnownHosts is nil.")
-	}
-	if cfg.KnownHosts == nil {
-		panic("problemo! cfg.KnownHosts is nil")
-	}
-	return sshChan, cfg.NewTricorder(cfg.Halt, dc, sshClient, sshChan), nil
-}

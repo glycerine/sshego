@@ -40,8 +40,6 @@ type Tricorder struct {
 	getCliCh          chan *ssh.Client
 	getNcCh           chan io.Closer
 	reconnectNeededCh chan *UHP
-
-	dc *DialConfig
 }
 
 /*
@@ -49,10 +47,9 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, dc *DialConfig, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
 
 	tri = &Tricorder{
-		dc:          dc,
 		cfg:         cfg,
 		ParentHalt:  halt,
 		ChannelHalt: ssh.NewHalter(),
@@ -149,15 +146,16 @@ func (t *Tricorder) startReconnectLoop() {
 // only reconnect, don't open any new channels!
 func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 
-	pp("Tricorder.helperNewClientConnect starting!")
+	pp("Tricorder.helperNewClientConnect starting! t.uhp='%#v'", t.uhp)
 
 	destHost, port, err := splitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
 	panicOn(err)
 
 	// pw & totpUrl currently required in the test... change this.
-	pw := t.dc.Pw
-	toptUrl := t.dc.TotpUrl
+	pw := t.cfg.Pw
+	totpUrl := t.cfg.TotpUrl
+
 	//t.cfg.AddIfNotKnown = false
 	var sshcli *ssh.Client
 	tries := 3
@@ -188,7 +186,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) {
 			destHost,
 			int64(port),
 			pw,
-			toptUrl,
+			totpUrl,
 			childHalt)
 
 		if err == nil {
@@ -228,6 +226,10 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	var ch net.Conn
 	var in <-chan *ssh.Request
 	var err error
+	t.uhp = &UHP{
+		User:     tk.username,
+		HostPort: tk.sshdHostPort,
+	}
 	if t.cli == nil {
 		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
 		t.helperNewClientConnect(tk.ctx)
@@ -237,7 +239,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	discardCtx, discardCtxCancel := context.WithCancel(tk.ctx)
 
 	if tk.typ == "direct-tcpip" {
-		hp := strings.Trim(tk.destHostPort, "\n\r\t ")
+		hp := strings.Trim(tk.targetHostPort, "\n\r\t ")
 
 		pp("Tricorder.helperGetChannel dialing hp='%v'", hp)
 		ch, err = t.cli.DialWithContext(discardCtx, "tcp", hp)
@@ -267,12 +269,14 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 }
 
 type getChannelTicket struct {
-	done         chan struct{}
-	sshChannel   net.Conn
-	destHostPort string // leave empty for "custom-inproc-stream"
-	typ          string // "direct-tcpip" or "custom-inproc-stream"
-	err          error
-	ctx          context.Context
+	done           chan struct{}
+	sshChannel     net.Conn
+	username       string
+	sshdHostPort   string
+	targetHostPort string // leave empty for "custom-inproc-stream"
+	typ            string // "direct-tcpip" or "custom-inproc-stream"
+	err            error
+	ctx            context.Context
 }
 
 func newGetChannelTicket(ctx context.Context) *getChannelTicket {
@@ -284,10 +288,12 @@ func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 
 // typ can be "direct-tcpip" (specify destHostPort), or "custom-inproc-stream"
 // in which case leave destHostPort as the empty string.
-func (t *Tricorder) SSHChannel(ctx context.Context, typ, destHostPort string) (net.Conn, error) {
+func (t *Tricorder) SSHChannel(ctx context.Context, typ, sshdHostPort, targetHostPort, user string) (net.Conn, error) {
 	tk := newGetChannelTicket(ctx)
 	tk.typ = typ
-	tk.destHostPort = destHostPort
+	tk.username = user
+	tk.sshdHostPort = sshdHostPort
+	tk.targetHostPort = targetHostPort
 	t.getChannelCh <- tk
 	<-tk.done
 	return tk.sshChannel, tk.err

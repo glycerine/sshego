@@ -41,6 +41,9 @@ type SshegoConfig struct {
 	PrivateKeyPath       string // path to user's RSA private key
 	ClientKnownHostsPath string // path to user's/client's known hosts
 
+	TotpUrl string
+	Pw      string
+
 	KnownHosts *KnownHosts
 
 	WriteConfigOut string
