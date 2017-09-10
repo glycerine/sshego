@@ -47,7 +47,7 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, sshChan net.Conn) (tri *Tricorder) {
+func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter) (tri *Tricorder) {
 
 	tri = &Tricorder{
 		cfg:         cfg,
@@ -66,13 +66,6 @@ func (cfg *SshegoConfig) NewTricorder(halt *ssh.Halter, sshClient *ssh.Client, s
 	}
 	// first call to Subscribe is here.
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
-	if sshClient != nil {
-		tri.cli = sshClient
-		tri.nc = sshClient.NcCloser()
-	}
-	if sshChan != nil {
-		tri.sshChannels[sshChan] = nil
-	}
 
 	tri.startReconnectLoop()
 	return tri
