@@ -1,8 +1,10 @@
 package sshego
 
 import (
+	"fmt"
 	"net"
 	"regexp"
+	"strconv"
 )
 
 var validIPv4addr = regexp.MustCompile(`^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$`)
@@ -57,4 +59,27 @@ func GetExternalIP() string {
 		// give up, just return the first.
 		return valid[0]
 	}
+}
+
+func SplitHostPort(hostport string) (host string, port int64, err error) {
+	sPort := ""
+	host, sPort, err = net.SplitHostPort(hostport)
+	if err != nil {
+		err = fmt.Errorf("bad addr '%s': net.SplitHostPort() gave: %s", hostport, err)
+		return
+	}
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if len(sPort) == 0 {
+		err = fmt.Errorf("no port found in '%s'", hostport)
+		return
+	}
+	var prt uint64
+	prt, err = strconv.ParseUint(sPort, 10, 64)
+	if err != nil {
+		return
+	}
+	port = int64(prt)
+	return
 }

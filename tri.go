@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -156,7 +155,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 
 	pp("Tricorder.helperNewClientConnect starting! t.uhp='%#v'", t.uhp)
 
-	destHost, port, err := splitHostPort(t.uhp.HostPort)
+	destHost, port, err := SplitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
 	if err != nil {
 		return err
@@ -333,28 +332,5 @@ func (t *Tricorder) Nc() (nc io.Closer, err error) {
 	case <-t.ChannelHalt.ReqStopChan():
 		err = ErrShutdown
 	}
-	return
-}
-
-func splitHostPort(hostport string) (host string, port int, err error) {
-	sPort := ""
-	host, sPort, err = net.SplitHostPort(hostport)
-	if err != nil {
-		err = fmt.Errorf("bad addr '%s': net.SplitHostPort() gave: %s", hostport, err)
-		return
-	}
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	if len(sPort) == 0 {
-		err = fmt.Errorf("no port found in '%s'", hostport)
-		return
-	}
-	var prt uint64
-	prt, err = strconv.ParseUint(sPort, 10, 16)
-	if err != nil {
-		return
-	}
-	port = int(prt)
 	return
 }
