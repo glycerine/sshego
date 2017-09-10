@@ -164,13 +164,6 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 // are optional, but will be offered to the server if set.
 //
 func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, halt *ssh.Halter) (sshClient *ssh.Client, nc net.Conn, err error) {
-	pp("top of SSHConnect")
-	defer func() {
-		if err == nil && sshClient == nil {
-			panic("internal error: can't have both nil!")
-		}
-		pp("returning cleanly from SSHConnect")
-	}()
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
 
@@ -185,7 +178,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		go ssh.MAD(ctx, cancelctx, halt)
 	}
 
-	pp("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
+	p("SSHConnect sees sshdHost:port = %s:%v. cfg=%#v", sshdHost, sshdPort, cfg)
 	if h == nil {
 		panic("h cannot be nil!")
 	}
@@ -248,7 +241,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		}
 	}
 
-	pp("got to direct test. cfg.DirectTcp=%v", cfg.DirectTcp)
+	p("got to direct test. cfg.DirectTcp=%v", cfg.DirectTcp)
 	if !cfg.DirectTcp &&
 		cfg.RemoteToLocal.Listen.Addr == "" &&
 		cfg.LocalToRemote.Listen.Addr == "" {
@@ -259,7 +252,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 		cfg.RemoteToLocal.Listen.Addr != "" ||
 		cfg.LocalToRemote.Listen.Addr != "" {
 
-		pp("inside direct test")
+		p("inside direct test")
 
 		useRSA := true
 		var privkey ssh.Signer
@@ -306,18 +299,18 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			},
 		}
 		hostport := fmt.Sprintf("%s:%d", sshdHost, sshdPort)
-		pp("about to ssh.Dial hostport='%s'", hostport)
+		p("about to ssh.Dial hostport='%s'", hostport)
 		sshClient, nc, err = cfg.mySSHDial(ctx, "tcp", hostport, cliCfg, halt)
-		pp("sshClient back from mySSHDial() = %p, err=%v", sshClient, err)
+		p("sshClient back from mySSHDial() = %p, err=%v", sshClient, err)
 
 		if err != nil {
-			pp("returning early on %v", err)
+			p("returning early on %v", err)
 			return nil, nil, fmt.Errorf("sshConnect() errored at dial to '%s': '%s' ", hostport, err.Error())
 		}
 		if sshClient == nil {
 			panic("mySSHDial must give us sshClient if err == nil")
 		}
-		pp("sshClient good = %p", sshClient)
+		p("sshClient good = %p", sshClient)
 
 		if cfg.RemoteToLocal.Listen.Addr != "" {
 			err = cfg.StartupReverseListener(ctx, sshClient)
