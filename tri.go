@@ -15,21 +15,29 @@ var ErrShutdown = fmt.Errorf("shutting down")
 
 // Tricorder records (holds) three key objects:
 //   an *ssh.Client, the underlyign net.Conn, and a
-//   set of ssh.Channel
+//   set of ssh.Channel(s).
 //
 // Tricorder supports auto reconnect when disconnected.
 //
+// There should be exactly one Tricorder per (username, sshdHost, sshdPort) triple.
+//
 type Tricorder struct {
 
-	// optional, parent can provide us
-	// a Halter, and we will AddDownstream.
-	ParentHalt *ssh.Halter
+	// shuts down everything, include the cli
+	Halt *ssh.Halter
 
-	// should only reflect close of the internal sshChannel, not cli nor nc.
-	ChannelHalt *ssh.Halter
+	// optional, parent can provide us
+	// a Halter, and we will ParentHalt.AddDownstream(self.ChannelHalt)
+	parentHalt *ssh.Halter
+
+	// should only reflect close of the internal sshChannels, not cli nor nc.
+	// This is not public because we may replace it internally during run.
+	channelsHalt *ssh.Halter
 
 	dc  *DialConfig
 	cfg *SshegoConfig
+
+	sshdHostPort string
 
 	cli         *ssh.Client
 	nc          io.Closer
@@ -43,8 +51,8 @@ type Tricorder struct {
 
 	tofu bool
 
-	retries             int           // := 10
-	pauseBetweenRetries time.Duration // := 1000 * time.Millisecond
+	retries             int           // example: 10
+	pauseBetweenRetries time.Duration // example: 1000 * time.Millisecond
 
 }
 
@@ -59,11 +67,15 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) 
 	if err != nil {
 		return nil, err
 	}
+	sshdHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
+
 	tri = &Tricorder{
-		dc:          dc,
-		cfg:         cfg,
-		ParentHalt:  halt,
-		ChannelHalt: ssh.NewHalter(),
+		dc:           dc,
+		cfg:          cfg,
+		sshdHostPort: sshdHostPort,
+		parentHalt:   halt,
+		Halt:         ssh.NewHalter(),
+		channelsHalt: ssh.NewHalter(),
 
 		sshChannels: make(map[net.Conn]context.CancelFunc),
 
@@ -75,9 +87,10 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) 
 		retries:             10,
 		pauseBetweenRetries: 1000 * time.Millisecond,
 	}
-	if tri.ParentHalt != nil {
-		tri.ParentHalt.AddDownstream(tri.ChannelHalt)
+	if tri.parentHalt != nil {
+		tri.parentHalt.AddDownstream(tri.Halt)
 	}
+	tri.Halt.AddDownstream(tri.channelsHalt)
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
 
 	tri.startReconnectLoop()
@@ -104,32 +117,30 @@ func (t *Tricorder) closeChannels() {
 func (t *Tricorder) startReconnectLoop() {
 	go func() {
 		defer func() {
-			t.ChannelHalt.RequestStop()
-			t.ChannelHalt.MarkDone()
-			if t.ParentHalt != nil {
-				t.ParentHalt.RemoveDownstream(t.ChannelHalt)
+			t.channelsHalt.RequestStop()
+			t.channelsHalt.MarkDone()
+			t.Halt.RequestStop()
+			t.Halt.MarkDone()
+			if t.parentHalt != nil {
+				t.parentHalt.RemoveDownstream(t.Halt)
 			}
 			t.closeChannels()
 		}()
 		for {
 			select {
-			case <-t.ChannelHalt.ReqStopChan():
+			case <-t.Halt.ReqStopChan():
 				return
 			case uhp := <-t.reconnectNeededCh:
 				pp("Tricorder sees reconnectNeeded!!")
 				t.uhp = uhp
 				t.closeChannels()
 
-				t.ChannelHalt.RequestStop()
-				t.ChannelHalt.MarkDone()
+				t.channelsHalt.RequestStop()
+				t.channelsHalt.MarkDone()
 
-				if t.ParentHalt != nil {
-					t.ParentHalt.RemoveDownstream(t.ChannelHalt)
-				}
-				t.ChannelHalt = ssh.NewHalter()
-				if t.ParentHalt != nil {
-					t.ParentHalt.AddDownstream(t.ChannelHalt)
-				}
+				t.Halt.RemoveDownstream(t.channelsHalt)
+				t.channelsHalt = ssh.NewHalter()
+				t.Halt.AddDownstream(t.channelsHalt)
 
 				t.cli = nil
 				t.nc = nil
@@ -241,7 +252,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 	var err error
 	t.uhp = &UHP{
 		User:     tk.username,
-		HostPort: tk.sshdHostPort,
+		HostPort: t.sshdHostPort,
 	}
 	if t.cli == nil {
 		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
@@ -266,7 +277,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 		ch, in, err = t.cli.OpenChannel(tk.ctx, tk.typ, nil)
 		if err == nil {
-			go DiscardRequestsExceptKeepalives(discardCtx, in, t.ChannelHalt.ReqStopChan())
+			go DiscardRequestsExceptKeepalives(discardCtx, in, t.channelsHalt.ReqStopChan())
 		}
 	}
 	if ch != nil {
@@ -290,8 +301,7 @@ type getChannelTicket struct {
 	done           chan struct{}
 	sshChannel     net.Conn
 	username       string
-	sshdHostPort   string
-	targetHostPort string // leave empty for "custom-inproc-stream"
+	targetHostPort string // leave empty for "custom-inproc-stream", else downstream addr
 	typ            string // "direct-tcpip" or "custom-inproc-stream"
 	err            error
 	ctx            context.Context
@@ -306,11 +316,10 @@ func newGetChannelTicket(ctx context.Context) *getChannelTicket {
 
 // typ can be "direct-tcpip" (specify destHostPort), or "custom-inproc-stream"
 // in which case leave destHostPort as the empty string.
-func (t *Tricorder) SSHChannel(ctx context.Context, typ, sshdHostPort, targetHostPort, user string) (net.Conn, error) {
+func (t *Tricorder) SSHChannel(ctx context.Context, typ, targetHostPort, user string) (net.Conn, error) {
 	tk := newGetChannelTicket(ctx)
 	tk.typ = typ
 	tk.username = user
-	tk.sshdHostPort = sshdHostPort
 	tk.targetHostPort = targetHostPort
 	t.getChannelCh <- tk
 	<-tk.done
@@ -320,7 +329,7 @@ func (t *Tricorder) SSHChannel(ctx context.Context, typ, sshdHostPort, targetHos
 func (t *Tricorder) Cli() (cli *ssh.Client, err error) {
 	select {
 	case cli = <-t.getCliCh:
-	case <-t.ChannelHalt.ReqStopChan():
+	case <-t.Halt.ReqStopChan():
 		err = ErrShutdown
 	}
 	return
@@ -329,7 +338,7 @@ func (t *Tricorder) Cli() (cli *ssh.Client, err error) {
 func (t *Tricorder) Nc() (nc io.Closer, err error) {
 	select {
 	case nc = <-t.getNcCh:
-	case <-t.ChannelHalt.ReqStopChan():
+	case <-t.Halt.ReqStopChan():
 		err = ErrShutdown
 	}
 	return
