@@ -756,6 +756,10 @@ func (ch *channel) Stderr() io.ReadWriter {
 	return ch.Extended(1)
 }
 
+// Done returns the mux's halt.ReqStopChan(), so
+// it lasts until the connection is lost. Use
+// GetHalter() below to get a Channel specific
+// done channel.
 func (ch *channel) Done() <-chan struct{} {
 	if ch.mux.halt != nil {
 		return ch.mux.halt.ReqStopChan()
@@ -763,6 +767,7 @@ func (ch *channel) Done() <-chan struct{} {
 	return nil
 }
 
+// GetHalter returns the channel ch specific Halter.
 func (ch *channel) GetHalter() *Halter {
 	return ch.halt
 }
