@@ -138,7 +138,7 @@ func verifyHostKeySignature(hostKey PublicKey, result *kexResult) error {
 // NewSession opens a new Session for this client. (A session is a remote
 // execution of a program.)
 func (c *Client) NewSession(ctx context.Context) (*Session, error) {
-	ch, in, err := c.OpenChannel(ctx, "session", nil)
+	ch, in, err := c.OpenChannel(ctx, "session", nil, nil)
 	if err != nil {
 		return nil, err
 	}

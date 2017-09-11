@@ -45,7 +45,7 @@ func channelPair(t *testing.T, halt *Halter) (*channel, *channel, *mux) {
 	}()
 	ctx := context.Background()
 
-	chc, err := c.openChannel(ctx, "chan", nil)
+	chc, err := c.openChannel(ctx, "chan", nil, nil)
 	if err != nil {
 		t.Fatalf("OpenChannel: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestMuxReadWrite(t *testing.T) {
 	var buf [1024]byte
 	n, err := c.Read(buf[:])
 	if err != nil {
-		t.Fatalf("server Read: %v", err) // eof:c.sentClose; channel.go:268 channel.writePacket()
+		t.Fatalf("server Read: %v", err)
 	}
 	got := string(buf[:n])
 	if got != magic {
@@ -157,7 +157,7 @@ func TestMuxReadWrite(t *testing.T) {
 
 	n, err = c.Extended(1).Read(buf[:])
 	if err != nil {
-		t.Fatalf("server Read: %v", err) // eof:c.sentClose
+		t.Fatalf("server Read: %v", err)
 	}
 
 	got = string(buf[:n])
@@ -281,7 +281,7 @@ func TestMuxReject(t *testing.T) {
 	}()
 	ctx := context.Background()
 
-	ch, err := client.openChannel(ctx, "ch", []byte("extra"))
+	ch, err := client.openChannel(ctx, "ch", []byte("extra"), nil)
 	if ch != nil {
 		t.Fatal("openChannel not rejected")
 	}

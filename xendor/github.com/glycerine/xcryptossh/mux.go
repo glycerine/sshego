@@ -340,8 +340,8 @@ func (m *mux) handleChannelOpen(ctx context.Context, packet []byte) error {
 	return nil
 }
 
-func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte) (Channel, <-chan *Request, error) {
-	ch, err := m.openChannel(ctx, chanType, extra)
+func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte, parentHalt *Halter) (Channel, <-chan *Request, error) {
+	ch, err := m.openChannel(ctx, chanType, extra, parentHalt)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -349,7 +349,7 @@ func (m *mux) OpenChannel(ctx context.Context, chanType string, extra []byte) (C
 	return ch, ch.incomingRequests, nil
 }
 
-func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte) (*channel, error) {
+func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte, parentHalt *Halter) (*channel, error) {
 	ch := m.newChannel(chanType, channelOutbound, extra)
 
 	ch.maxIncomingPayload = channelMaxPacket

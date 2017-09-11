@@ -308,6 +308,8 @@ type channel struct {
 
 	// idleW is for writes, idleR is for reads.
 	idleW *IdleTimer
+
+	halt *Halter
 }
 
 // writePacket sends a packet. If the packet is a channel close, it updates
@@ -501,6 +503,8 @@ func (c *channel) close() {
 	c.writeMu.Unlock()
 	// Unblock writers.
 	c.remoteWin.close()
+	c.halt.RequestStop()
+	c.halt.MarkDone()
 	c.idleR.Stop()
 	c.idleW.Stop()
 }
@@ -553,9 +557,10 @@ func (c *channel) handlePacket(packet []byte) error {
 		return err
 	}
 
-	var reqStop chan struct{}
+	reqStopCh := c.halt.ReqStopChan()
+	var reqStopMux chan struct{}
 	if c.mux.halt != nil {
-		reqStop = c.mux.halt.ReqStopChan()
+		reqStopMux = c.mux.halt.ReqStopChan()
 	}
 
 	switch msg := decoded.(type) {
@@ -566,7 +571,9 @@ func (c *channel) handlePacket(packet []byte) error {
 		c.mux.chanList.remove(msg.PeersId)
 		select {
 		case c.msg <- msg:
-		case <-reqStop:
+		case <-reqStopMux:
+			return io.EOF
+		case <-reqStopCh:
 			return io.EOF
 		}
 	case *channelOpenConfirmMsg:
@@ -581,7 +588,9 @@ func (c *channel) handlePacket(packet []byte) error {
 		c.remoteWin.add(msg.MyWindow)
 		select {
 		case c.msg <- msg:
-		case <-reqStop:
+		case <-reqStopMux:
+			return io.EOF
+		case <-reqStopCh:
 			return io.EOF
 		}
 	case *windowAdjustMsg:
@@ -597,13 +606,17 @@ func (c *channel) handlePacket(packet []byte) error {
 		}
 		select {
 		case c.incomingRequests <- &req:
-		case <-reqStop:
+		case <-reqStopMux:
+			return io.EOF
+		case <-reqStopCh:
 			return io.EOF
 		}
 	default:
 		select {
 		case c.msg <- msg:
-		case <-reqStop:
+		case <-reqStopMux:
+			return io.EOF
+		case <-reqStopCh:
 			return io.EOF
 		}
 	}
@@ -626,6 +639,7 @@ func (m *mux) newChannel(chanType string, direction channelDirection, extraData 
 		packetPool:       make(map[uint32][]byte),
 		idleR:            idleR,
 		idleW:            idleW,
+		halt:             NewHalter(),
 	}
 	idleR.AddTimeoutCallback(ch.timeout)
 	idleW.AddTimeoutCallback(ch.timeout)
@@ -715,6 +729,8 @@ func (ch *channel) Close() error {
 	}
 	ch.idleR.Halt.RequestStop()
 	ch.idleW.Halt.RequestStop()
+	ch.halt.RequestStop()
+	ch.halt.MarkDone()
 
 	if !ch.decided {
 		return errUndecided
@@ -764,14 +780,17 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 	if err := ch.sendMessage(msg); err != nil {
 		return false, err
 	}
-	var reqStop chan struct{}
+	var reqStopMux chan struct{}
 	if ch.mux.halt != nil {
-		reqStop = ch.mux.halt.ReqStopChan()
+		reqStopMux = ch.mux.halt.ReqStopChan()
 	}
+	reqStopCh := ch.halt.ReqStopChan()
 
 	if wantReply {
 		select {
-		case <-reqStop:
+		case <-reqStopMux:
+			return false, io.EOF
+		case <-reqStopCh:
 			return false, io.EOF
 		case m, ok := (<-ch.msg):
 			if !ok {

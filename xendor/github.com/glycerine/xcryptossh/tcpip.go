@@ -465,7 +465,7 @@ func (c *Client) dial(ctx context.Context, laddr string, lport int, raddr string
 		laddr: laddr,
 		lport: uint32(lport),
 	}
-	ch, in, err := c.OpenChannel(ctx, "direct-tcpip", Marshal(&msg))
+	ch, in, err := c.OpenChannel(ctx, "direct-tcpip", Marshal(&msg), nil)
 	if err != nil {
 		return nil, err
 	}

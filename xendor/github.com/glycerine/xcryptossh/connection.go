@@ -62,7 +62,7 @@ type Conn interface {
 	// the SSH Channel and a Go channel for incoming, out-of-band
 	// requests. The Go channel must be serviced, or the
 	// connection will hang.
-	OpenChannel(ctx context.Context, name string, data []byte) (Channel, <-chan *Request, error)
+	OpenChannel(ctx context.Context, name string, data []byte, parHalt *Halter) (Channel, <-chan *Request, error)
 
 	// Close closes the underlying network connection
 	Close() error

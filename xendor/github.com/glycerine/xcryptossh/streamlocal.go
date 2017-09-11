@@ -58,7 +58,7 @@ func (c *Client) dialStreamLocal(ctx context.Context, socketPath string) (Channe
 	msg := streamLocalChannelOpenDirectMsg{
 		socketPath: socketPath,
 	}
-	ch, in, err := c.OpenChannel(ctx, "direct-streamlocal@openssh.com", Marshal(&msg))
+	ch, in, err := c.OpenChannel(ctx, "direct-streamlocal@openssh.com", Marshal(&msg), nil)
 	if err != nil {
 		return nil, err
 	}

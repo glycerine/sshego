@@ -113,7 +113,7 @@ func BenchmarkEndToEnd(b *testing.B) {
 		done <- 1
 	}()
 
-	ch, in, err := client.OpenChannel(ctx, "speed", nil)
+	ch, in, err := client.OpenChannel(ctx, "speed", nil, nil)
 	if err != nil {
 		b.Fatalf("OpenChannel: %v", err)
 	}
