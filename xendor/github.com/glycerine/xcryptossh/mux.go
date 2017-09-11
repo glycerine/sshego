@@ -376,6 +376,9 @@ func (m *mux) openChannel(ctx context.Context, chanType string, extra []byte, pa
 	case msg := <-ch.msg:
 		switch msgt := msg.(type) {
 		case *channelOpenConfirmMsg:
+			if parentHalt != nil {
+				parentHalt.AddDownstream(ch.halt)
+			}
 			return ch, nil
 		case *channelOpenFailureMsg:
 			ch.idleR.Halt.RequestStop()
