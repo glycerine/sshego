@@ -173,3 +173,15 @@ func (b *UHPTower) Clear() {
 	}
 	b.mut.Unlock()
 }
+
+// EmptyUHPChan is helper utility.
+// It clears everything out of ch.
+func EmptyUHPChan(ch chan *UHP) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
+}

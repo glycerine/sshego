@@ -26,6 +26,9 @@ type Tricorder struct {
 	// shuts down everything, include the cli
 	Halt *ssh.Halter
 
+	// shared with cfg
+	ClientReconnectNeededTower *UHPTower
+
 	// optional, parent can provide us
 	// a Halter, and we will ParentHalt.AddDownstream(self.ChannelHalt)
 	parentHalt *ssh.Halter
@@ -97,8 +100,12 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) 
 	}
 	tri.Halt.AddDownstream(tri.channelsHalt)
 	cfg.ClientReconnectNeededTower.Subscribe(tri.reconnectNeededCh)
+	tri.ClientReconnectNeededTower = cfg.ClientReconnectNeededTower
 
-	tri.startReconnectLoop()
+	err = tri.startReconnectLoop()
+	if err != nil {
+		return nil, err
+	}
 	return tri, nil
 }
 
@@ -119,7 +126,14 @@ func (t *Tricorder) closeChannels() {
 	t.sshChannels = make(map[net.Conn]context.CancelFunc)
 }
 
-func (t *Tricorder) startReconnectLoop() {
+func (t *Tricorder) startReconnectLoop() error {
+
+	// do the initial connect.
+	err := t.helperNewClientConnect(context.Background())
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		defer func() {
 			t.channelsHalt.RequestStop()
@@ -163,6 +177,7 @@ func (t *Tricorder) startReconnectLoop() {
 				// provide current state
 			case t.getCliCh <- t.cli:
 			case t.getNcCh <- t.nc:
+				pp("tri sent t.nc='%#v'", t.nc)
 
 				// bring up a new channel
 			case tk := <-t.getChannelCh:
@@ -170,6 +185,7 @@ func (t *Tricorder) startReconnectLoop() {
 			}
 		}
 	}()
+	return nil
 }
 
 // only reconnect, don't open any new channels!
@@ -250,6 +266,8 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 	t.cli = sshcli
 	if t.cli != nil {
 		t.nc = t.cli.NcCloser()
+	} else {
+		panic("why no NcCloser()???")
 	}
 	return nil
 }
