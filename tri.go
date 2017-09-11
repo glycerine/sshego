@@ -172,6 +172,9 @@ func (t *Tricorder) startReconnectLoop() error {
 				// need to reconnect!
 				ctx := context.Background()
 				err := t.helperNewClientConnect(ctx)
+				if err == ErrShutdown {
+					return
+				}
 				panicOn(err)
 
 				// provide current state
@@ -218,6 +221,13 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 
 	for i := 0; i < tries; i++ {
 		pp("Tricorder.helperNewClientConnect() calling t.dc.Dial(), i=%v", i)
+
+		// check for shutdown request
+		select {
+		case <-t.Halt.ReqStopChan():
+			return ErrShutdown
+		default:
+		}
 
 		ctxChild, cancelChildCtx := context.WithCancel(ctx)
 
