@@ -266,7 +266,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			// client forward tunnel with this RSA key
 			privkey, err = LoadRSAPrivateKey(keypath)
 			if err != nil {
-				panic(err)
+				return nil, nil, fmt.Errorf("error in SshegoConfig.SSHConnect() to '%s@%s:%v', LoadRSAPrivateKey(keypath='%v') errored with: '%v'", username, sshdHost, sshdPort, keypath, err)
 			}
 		}
 

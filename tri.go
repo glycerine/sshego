@@ -271,7 +271,9 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 	if sshcli != nil && okCtx != nil {
 		sshcli.TmpCtx = okCtx
 	}
-	panicOn(err)
+	if err != nil {
+		return err
+	}
 	pp("good: Tricorder.helperNewClientConnect succeeded.")
 	t.cli = sshcli
 	if t.cli != nil {
