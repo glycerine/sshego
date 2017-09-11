@@ -161,6 +161,7 @@ func (dc *DialConfig) Dial(parCtx context.Context, cfg0 *SshegoConfig, skipDowns
 	retryCount := 3
 	try := 0
 	var okCtx context.Context
+	var okHalt *ssh.Halter
 
 	for ; try < retryCount; try++ {
 		ctx, cancelctx := context.WithCancel(parCtx)
@@ -175,6 +176,7 @@ func (dc *DialConfig) Dial(parCtx context.Context, cfg0 *SshegoConfig, skipDowns
 			// tie ctx and childHalt together
 			go ssh.MAD(ctx, cancelctx, childHalt)
 			okCtx = ctx
+			okHalt = childHalt
 			break
 		} else {
 			cancelctx()
@@ -233,7 +235,7 @@ func (dc *DialConfig) Dial(parCtx context.Context, cfg0 *SshegoConfig, skipDowns
 	}
 	if tryUnixDomain || (len(host) > 0 && host[0] == '/') {
 		// a unix-domain socket request
-		nc, err = DialRemoteUnixDomain(okCtx, sshClient, host)
+		nc, err = DialRemoteUnixDomain(okCtx, sshClient, host, okHalt)
 		p("DialRemoteUnixDomain had error '%v'", err)
 		return nc, sshClient, cfg, err
 	}

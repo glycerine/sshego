@@ -40,13 +40,13 @@ as a unix socket path name.
 // ssh client. Here udpath is a unixDomain socket
 // path in the remote filesystem.
 // The resulting connection has a zero LocalAddr() and RemoteAddr().
-func DialRemoteUnixDomain(ctx context.Context, c *ssh.Client, udpath string) (net.Conn, error) {
+func DialRemoteUnixDomain(ctx context.Context, c *ssh.Client, udpath string, parentHalt *ssh.Halter) (net.Conn, error) {
 	// Use a zero address for local and remote address.
 	zeroAddr := &net.TCPAddr{
 		IP:   net.IPv4zero,
 		Port: 0,
 	}
-	ch, err := dialDirect(ctx, c, net.IPv4zero.String(), 0, udpath, -2)
+	ch, err := dialDirect(ctx, c, net.IPv4zero.String(), 0, udpath, -2, parentHalt)
 	if err != nil {
 		return nil, err
 	}

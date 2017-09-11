@@ -300,7 +300,7 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
 	} else {
 
-		ch, in, err = t.cli.OpenChannel(tk.ctx, tk.typ, nil)
+		ch, in, err = t.cli.OpenChannel(tk.ctx, tk.typ, nil, t.channelsHalt)
 		if err == nil {
 			go DiscardRequestsExceptKeepalives(discardCtx, in, t.channelsHalt.ReqStopChan())
 		}

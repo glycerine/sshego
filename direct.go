@@ -77,14 +77,14 @@ func handleDirectTcp(ctx context.Context, parentHalt *ssh.Halter, newChannel ssh
 }
 
 // client side
-func dialDirect(ctx context.Context, c *ssh.Client, laddr string, lport int, raddr string, rport int) (ssh.Channel, error) {
+func dialDirect(ctx context.Context, c *ssh.Client, laddr string, lport int, raddr string, rport int, parentHalt *ssh.Halter) (ssh.Channel, error) {
 	msg := channelOpenDirectMsg{
 		Rhost: raddr,
 		Rport: uint32(rport),
 		Lhost: laddr,
 		Lport: uint32(lport),
 	}
-	ch, in, err := c.OpenChannel(ctx, "direct-tcpip", ssh.Marshal(&msg))
+	ch, in, err := c.OpenChannel(ctx, "direct-tcpip", ssh.Marshal(&msg), parentHalt)
 	if err != nil {
 		return nil, err
 	}
