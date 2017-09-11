@@ -91,6 +91,9 @@ type Channel interface {
 	// returned channel will be closed when the Channel is closed.
 	Done() <-chan struct{}
 
+	// 	GetHalter returns the Channel specific Halter.
+	GetHalter() *Halter
+
 	// SetReadIdleTimeout starts an idle timer on
 	// Reads that will cause them to timeout after dur.
 	// A successful Read will bump the idle
@@ -758,6 +761,10 @@ func (ch *channel) Done() <-chan struct{} {
 		return ch.mux.halt.ReqStopChan()
 	}
 	return nil
+}
+
+func (ch *channel) GetHalter() *Halter {
+	return ch.halt
 }
 
 func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (bool, error) {
