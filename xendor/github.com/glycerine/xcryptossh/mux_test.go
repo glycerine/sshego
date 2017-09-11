@@ -32,14 +32,14 @@ func channelPair(t *testing.T, halt *Halter) (*channel, *channel, *mux) {
 	go func() {
 		newCh, ok := <-s.incomingChannels
 		if !ok {
-			t.Fatalf("No incoming channel")
+			fatalf("No incoming channel")
 		}
 		if newCh.ChannelType() != "chan" {
-			t.Fatalf("got type %q want chan", newCh.ChannelType())
+			fatalf("got type %q want chan", newCh.ChannelType())
 		}
 		ch, _, err := newCh.Accept()
 		if err != nil {
-			t.Fatalf("Accept %v", err)
+			fatalf("Accept %v", err)
 		}
 		res <- ch.(*channel)
 	}()
@@ -47,7 +47,7 @@ func channelPair(t *testing.T, halt *Halter) (*channel, *channel, *mux) {
 
 	chc, err := c.openChannel(ctx, "chan", nil, nil)
 	if err != nil {
-		t.Fatalf("OpenChannel: %v", err)
+		fatalf("OpenChannel: %v", err)
 	}
 
 	chs := <-res
@@ -96,14 +96,14 @@ func TestMuxChannelExtendedThreadSafety(t *testing.T) {
 	go func() {
 		c, err := ioutil.ReadAll(reader)
 		if string(c) != magic {
-			t.Fatalf("stdout read got %q, want %q (error %s)", c, magic, err)
+			fatalf("stdout read got %q, want %q (error %s)", c, magic, err)
 		}
 		rd.Done()
 	}()
 	go func() {
 		c, err := ioutil.ReadAll(reader.Stderr())
 		if string(c) != magic {
-			t.Fatalf("stderr read got %q, want %q (error %s)", c, magic, err)
+			fatalf("stderr read got %q, want %q (error %s)", c, magic, err)
 		}
 		rd.Done()
 	}()
@@ -131,15 +131,15 @@ func TestMuxReadWrite(t *testing.T) {
 	go func() {
 		_, err := s.Write([]byte(magic))
 		if err != nil {
-			t.Fatalf("Write: %v", err)
+			fatalf("Write: %v", err)
 		}
 		_, err = s.Extended(1).Write([]byte(magicExt))
 		if err != nil {
-			t.Fatalf("Write: %v", err)
+			fatalf("Write: %v", err)
 		}
 		err = s.Close()
 		if err != nil {
-			t.Fatalf("Close: %v", err)
+			fatalf("Close: %v", err)
 		}
 
 		close(writeDone)
@@ -148,21 +148,21 @@ func TestMuxReadWrite(t *testing.T) {
 	var buf [1024]byte
 	n, err := c.Read(buf[:])
 	if err != nil {
-		t.Fatalf("server Read: %v", err)
+		fatalf("server Read: %v", err)
 	}
 	got := string(buf[:n])
 	if got != magic {
-		t.Fatalf("server: got %q want %q", got, magic)
+		fatalf("server: got %q want %q", got, magic)
 	}
 
 	n, err = c.Extended(1).Read(buf[:])
 	if err != nil {
-		t.Fatalf("server Read: %v", err)
+		fatalf("server Read: %v", err)
 	}
 
 	got = string(buf[:n])
 	if got != magicExt {
-		t.Fatalf("server: got %q want %q", got, magic)
+		fatalf("server: got %q want %q", got, magic)
 	}
 
 	<-writeDone
@@ -272,10 +272,10 @@ func TestMuxReject(t *testing.T) {
 	go func() {
 		ch, ok := <-server.incomingChannels
 		if !ok {
-			t.Fatalf("Accept")
+			fatalf("Accept")
 		}
 		if ch.ChannelType() != "ch" || string(ch.ExtraData()) != "extra" {
-			t.Fatalf("unexpected channel: %q, %q", ch.ChannelType(), ch.ExtraData())
+			fatalf("unexpected channel: %q, %q", ch.ChannelType(), ch.ExtraData())
 		}
 		ch.Reject(RejectionReason(42), "message")
 	}()
@@ -322,11 +322,11 @@ func TestMuxChannelRequest(t *testing.T) {
 	}()
 	_, err := client.SendRequest("yes", false, nil)
 	if err != nil {
-		t.Fatalf("SendRequest: %v", err)
+		fatalf("SendRequest: %v", err)
 	}
 	ok, err := client.SendRequest("yes", true, nil)
 	if err != nil {
-		t.Fatalf("SendRequest: %v", err)
+		fatalf("SendRequest: %v", err)
 	}
 
 	if !ok {
@@ -336,7 +336,7 @@ func TestMuxChannelRequest(t *testing.T) {
 
 	ok, err = client.SendRequest("no", true, nil)
 	if err != nil {
-		t.Fatalf("SendRequest: %v", err)
+		fatalf("SendRequest: %v", err)
 	}
 	if ok {
 		t.Errorf("SendRequest(no): %v", ok)

@@ -36,3 +36,9 @@ func tsPrintf(format string, a ...interface{}) {
 func ts() string {
 	return time.Now().Format("2006-01-02 15:04:05.999 -0700 MST")
 }
+
+// better than t.Fatalf b/c we actually panic as we should,
+// instead of hanging on a channel receive.
+func fatalf(format string, a ...interface{}) {
+	panic(fmt.Sprintf(format, a...))
+}
