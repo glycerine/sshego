@@ -87,6 +87,9 @@ type DialConfig struct {
 	SkipKeepAlive bool
 
 	KeepAliveEvery time.Duration // default 30 seconds
+
+	// identify who is calling.
+	LocalNickname string
 }
 
 // Dial is a convenience method for contacting an sshd
@@ -111,6 +114,7 @@ type DialConfig struct {
 func (dc *DialConfig) DeriveNewConfig() (cfg *SshegoConfig, err error) {
 
 	cfg = NewSshegoConfig()
+	cfg.Nickname = dc.LocalNickname
 	cfg.BitLenRSAkeys = 4096
 	cfg.DirectTcp = true
 	cfg.AddIfNotKnown = dc.TofuAddIfNotKnown
@@ -296,7 +300,7 @@ func (cfg *SshegoConfig) startKeepalives(ctx context.Context, dur time.Duration,
 				responseStatus, responsePayload, err := sshClientConn.SendRequest(
 					ctx, "keepalive@sshego.glycerine.github.com", true, pingBy)
 				if err != nil {
-					log.Printf("startKeepalives: keepalive send error: '%v', notifying reconnect needed.", err)
+					log.Printf("%s startKeepalives: keepalive send error: '%v', notifying reconnect needed to '%#v'", cfg.Nickname, err, uhp)
 					// notify here
 					cfg.ClientReconnectNeededTower.Broadcast(uhp)
 					//pp("SshegoConfig.startKeepalives() goroutine exiting!")

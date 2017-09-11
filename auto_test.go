@@ -50,6 +50,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 			Sshdport:             s.SrvCfg.EmbeddedSSHd.Port,
 			DownstreamHostPort:   dest,
 			TofuAddIfNotKnown:    tofu,
+			LocalNickname:        "test060",
 		}
 
 		pp("060 1st time: tcpSrvPort = %v. dest='%v'", tcpSrvPort, dest)
@@ -61,7 +62,7 @@ func Test060AutoRedialWithTricorder(t *testing.T) {
 		pp("making tri: s.CliCfg.LocalToRemote.Listen.Addr='%v'",
 			s.CliCfg.LocalToRemote.Listen.Addr)
 
-		tri, err := NewTricorder(dc, s.CliCfg.Halt)
+		tri, err := NewTricorder(dc, s.CliCfg.Halt, "test060")
 		panicOn(err)
 		bkg := context.Background()
 		channelToTcpServer, err = tri.SSHChannel(bkg, "direct-tcpip", dest)

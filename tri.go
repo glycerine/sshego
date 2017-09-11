@@ -22,6 +22,7 @@ var ErrShutdown = fmt.Errorf("shutting down")
 // There should be exactly one Tricorder per (username, sshdHost, sshdPort) triple.
 //
 type Tricorder struct {
+	Name string
 
 	// shuts down everything, include the cli
 	Halt *ssh.Halter
@@ -57,6 +58,7 @@ type Tricorder struct {
 	retries             int           // example: 10
 	pauseBetweenRetries time.Duration // example: 1000 * time.Millisecond
 
+	lastConnectTime time.Time
 }
 
 /*
@@ -64,7 +66,7 @@ NewTricorder has got to wait to allocate
 ssh.Channel until requested. Otherwise we
 make too many, and get them mixed up.
 */
-func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) {
+func NewTricorder(dc *DialConfig, halt *ssh.Halter, name string) (tri *Tricorder, err error) {
 
 	cfg, err := dc.DeriveNewConfig()
 	if err != nil {
@@ -73,6 +75,7 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter) (tri *Tricorder, err error) 
 	sshdHostPort := fmt.Sprintf("%v:%v", dc.Sshdhost, dc.Sshdport)
 
 	tri = &Tricorder{
+		Name:         name,
 		dc:           dc,
 		cfg:          cfg,
 		sshdHostPort: sshdHostPort,
@@ -150,12 +153,19 @@ func (t *Tricorder) startReconnectLoop() error {
 			case <-t.Halt.ReqStopChan():
 				return
 			case uhp := <-t.reconnectNeededCh:
-				pp("Tricorder sees reconnectNeeded!!")
+				pp("%s Tricorder sees reconnectNeeded to '%#v'!!", uhp, t.Name)
+
 				if uhp.User != t.uhp.User {
-					panic(fmt.Sprintf("yikes, bad! uhp from reconnectNeededChan asks for change of user: '%v' != '%v' previous", uhp.User, t.uhp.User))
+					panic(fmt.Sprintf("%s yikes, bad! uhp from reconnectNeededChan asks for change of user: '%v' != '%v' previous", t.Name, uhp.User, t.uhp.User))
 				}
 				if uhp.HostPort != t.uhp.HostPort {
-					panic(fmt.Sprintf("yikes, bad! uhp from reconnectNeededChan asks for change of hostport: '%v' != '%v' previous", uhp.HostPort, t.uhp.HostPort))
+					panic(fmt.Sprintf("%s yikes, bad! uhp from reconnectNeededChan asks for change of hostport: '%v' != '%v' previous", t.Name, uhp.HostPort, t.uhp.HostPort))
+				}
+				now := time.Now()
+				if now.Sub(t.lastConnectTime) < time.Second {
+					pp("%s Tricorder ignoring reconnectNeeded within "+
+						"1 second of successful connection.", t.Name)
+					continue
 				}
 				t.uhp = uhp
 				t.closeChannels()
@@ -180,7 +190,7 @@ func (t *Tricorder) startReconnectLoop() error {
 				// provide current state
 			case t.getCliCh <- t.cli:
 			case t.getNcCh <- t.nc:
-				pp("tri sent t.nc='%#v'", t.nc)
+				pp("%s tri sent t.nc='%#v'", t.Name, t.nc)
 
 				// bring up a new channel
 			case tk := <-t.getChannelCh:
@@ -192,9 +202,15 @@ func (t *Tricorder) startReconnectLoop() error {
 }
 
 // only reconnect, don't open any new channels!
-func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
+func (t *Tricorder) helperNewClientConnect(ctx context.Context) (err error) {
 
-	pp("Tricorder.helperNewClientConnect starting! t.uhp='%#v'", t.uhp)
+	pp("%s Tricorder.helperNewClientConnect starting! t.uhp='%#v'.", t.Name, t.uhp)
+
+	defer func() {
+		if err != nil {
+			t.lastConnectTime = time.Now()
+		}
+	}()
 
 	destHost, port, err := SplitHostPort(t.uhp.HostPort)
 	_, _ = destHost, port
@@ -220,7 +236,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 	var okCtx context.Context
 
 	for i := 0; i < tries; i++ {
-		pp("Tricorder.helperNewClientConnect() calling t.dc.Dial(), i=%v", i)
+		pp("%s Tricorder.helperNewClientConnect() calling t.dc.Dial(), i=%v", t.Name, i)
 
 		// check for shutdown request
 		select {
@@ -258,11 +274,11 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 				return err
 			}
 			if strings.Contains(errs, "getsockopt: connection refused") {
-				pp("Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying after %v.", pause)
+				pp("%s Tricorder.helperNewClientConnect: ignoring 'connection refused' and retrying after %v. connecting to '%#v'", t.Name, pause, t.uhp)
 				time.Sleep(pause)
 				continue
 			}
-			pp("err = '%v'. retrying after %v", err, pause)
+			pp("%s Tricorder: err = '%v'. retrying after %v", t.Name, err, pause)
 			time.Sleep(pause)
 			continue
 		}
@@ -274,7 +290,7 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	pp("good: Tricorder.helperNewClientConnect succeeded.")
+	pp("good: %s Tricorder.helperNewClientConnect succeeded to '%#v'.", t.Name, t.uhp)
 	t.cli = sshcli
 	if t.cli != nil {
 		t.nc = t.cli.NcCloser()
@@ -286,13 +302,13 @@ func (t *Tricorder) helperNewClientConnect(ctx context.Context) error {
 
 func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 
-	pp("Tricorder.helperGetChannel starting!")
+	pp("%s Tricorder.helperGetChannel starting! t.uhp='%#v'", t.Name, t.uhp)
 
 	var ch ssh.Channel
 	var in <-chan *ssh.Request
 	var err error
 	if t.cli == nil {
-		pp("Tricorder.helperGetChannel: saw nil cli, so making new client")
+		pp("%s Tricorder.helperGetChannel: saw nil cli, so making new client", t.Name)
 		err = t.helperNewClientConnect(tk.ctx)
 		if err != nil {
 			tk.err = err
@@ -301,13 +317,13 @@ func (t *Tricorder) helperGetChannel(tk *getChannelTicket) {
 		}
 	}
 
-	pp("Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()")
+	pp("%s Tricorder.helperGetChannel: had cli already, so calling t.cli.Dial()", t.Name)
 	discardCtx, discardCtxCancel := context.WithCancel(tk.ctx)
 
 	if tk.typ == "direct-tcpip" {
 		hp := strings.Trim(tk.targetHostPort, "\n\r\t ")
 
-		pp("Tricorder.helperGetChannel dialing hp='%v'", hp)
+		pp("%s Tricorder.helperGetChannel dialing hp='%v'", t.Name, hp)
 		ch, err = t.cli.DialWithContext(discardCtx, "tcp", hp)
 
 	} else {
