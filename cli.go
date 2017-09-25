@@ -86,10 +86,13 @@ type DialConfig struct {
 	// a keepalive every so often.
 	SkipKeepAlive bool
 
-	KeepAliveEvery time.Duration // default 30 seconds
+	KeepAliveEvery time.Duration // default 1 second
 
 	// identify who is calling.
 	LocalNickname string
+
+	// remote destination for sshdhost
+	DestNickname string
 }
 
 // Dial is a convenience method for contacting an sshd

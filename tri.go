@@ -96,6 +96,7 @@ func NewTricorder(dc *DialConfig, halt *ssh.Halter, name string) (tri *Tricorder
 	tri.uhp = &UHP{
 		User:     tri.dc.Mylogin,
 		HostPort: tri.sshdHostPort,
+		Nickname: tri.dc.DestNickname,
 	}
 
 	if tri.parentHalt != nil {
