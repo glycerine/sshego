@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/glycerine/go-unsnap-stream"
-	"github.com/mailgun/log"
+	"log"
 )
 
 func (s *KnownHosts) saveJSONSnappy(fn string) error {
@@ -43,7 +43,7 @@ func (s *KnownHosts) saveJSONSnappy(fn string) error {
 	j.Close()
 	exec.Command("mv", fnNew, fn).Run()
 
-	log.Infof("saveJSONSnappy() took %v", time.Since(t0))
+	log.Printf("saveJSONSnappy() took %v", time.Since(t0))
 	return err
 }
 
@@ -53,7 +53,7 @@ func (s *KnownHosts) readJSONSnappy(fn string) error {
 		return fmt.Errorf("could not open because no such file: '%s'", fn)
 	}
 
-	log.Infof("readJSONSnappy() is restoring state from file '%s'.", fn)
+	log.Printf("readJSONSnappy() is restoring state from file '%s'.", fn)
 
 	f, err := unsnap.Open(fn)
 	if err != nil {

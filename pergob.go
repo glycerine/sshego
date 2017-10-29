@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"log"
 	"net"
 	"os/exec"
 	"time"
 
 	"github.com/glycerine/go-unsnap-stream"
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
-	"github.com/mailgun/log"
 )
 
 func (s *KnownHosts) saveGobSnappy(fn string) error {
@@ -51,7 +51,7 @@ func (s *KnownHosts) saveGobSnappy(fn string) error {
 	file.Close()
 	exec.Command("mv", fnNew, fn).Run()
 
-	log.Infof("saveGobSnappy() took %v", time.Since(t0))
+	log.Printf("saveGobSnappy() took %v", time.Since(t0))
 
 	return err
 }
@@ -64,7 +64,7 @@ func (s *KnownHosts) readGobSnappy(fn string) error {
 	}
 	defer f.Close()
 
-	log.Infof("readgob() is restoring ceptor server state from file '%s'.", fn)
+	log.Printf("readgob() is restoring ceptor server state from file '%s'.", fn)
 
 	// Decode (receive) and print the values.
 	dec := gob.NewDecoder(f)
