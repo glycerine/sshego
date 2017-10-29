@@ -1,5 +1,5 @@
 // +build !darwin,!linux,
-// +build windows,nacl,plan9
+// +build windows
 
 package sshego
 
