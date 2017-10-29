@@ -1,5 +1,5 @@
-// +build !darwin,!linux,
 // +build windows
+// +build !darwin,!linux,
 
 package sshego
 
