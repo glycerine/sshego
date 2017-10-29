@@ -5,6 +5,7 @@ package sshego
 
 import (
 	"os"
+	"os/exec"
 )
 
 func ptyStart(c *exec.Cmd) (*os.File, error) {
