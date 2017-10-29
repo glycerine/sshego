@@ -53,8 +53,6 @@ import (
 	"log"
 	"os/exec"
 	"sync"
-	"syscall"
-	"unsafe"
 
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 	"github.com/kr/pty"
@@ -204,12 +202,3 @@ type Winsize struct {
 	x      uint16 // unused
 	y      uint16 // unused
 }
-
-// SetWinsize sets the size of the given pty.
-func SetWinsize(fd uintptr, w, h uint32) {
-	ws := &Winsize{Width: uint16(w), Height: uint16(h)}
-	syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCSWINSZ), uintptr(unsafe.Pointer(ws)))
-}
-
-// note in the original:
-// Borrowed from https://github.com/creack/termios/blob/master/win/win.go
