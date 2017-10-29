@@ -4,9 +4,16 @@
 package sshego
 
 import (
+	"github.com/kr/pty"
+	"os"
+	"os/exec"
 	"syscall"
 	"unsafe"
 )
+
+func ptyStart(c *exec.Cmd) (*os.File, error) {
+	return pty.Start(c)
+}
 
 // SetWinsize sets the size of the given pty.
 func SetWinsize(fd uintptr, w, h uint32) {

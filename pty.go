@@ -52,7 +52,6 @@ import (
 	"sync"
 
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
-	"github.com/kr/pty"
 )
 
 type ConnectionAlert struct {
@@ -138,7 +137,7 @@ func (cfg *SshegoConfig) handleChannel(ctx context.Context, newChannel ssh.NewCh
 
 	// Allocate a terminal for this channel
 	log.Print("Successful login, creating pty...")
-	bashf, err := pty.Start(bash)
+	bashf, err := ptyStart(bash)
 	if err != nil {
 		log.Printf("Could not start pty (%s)", err)
 		close()
