@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/mailgun/mailgun-go"
-	//"github.com/shurcooL/go-goon"
 	"io"
 	"os"
 	"strings"
@@ -119,22 +117,4 @@ func (c *MailgunConfig) DefineFlags(fs *flag.FlagSet) {
 // ValidateConfig should be called after myflags.Parse().
 func (c *MailgunConfig) ValidateConfig() error {
 	return nil
-}
-
-func (c *MailgunConfig) SendEmail(senderEmail, subject, plain, html, recipEmail string) (string, error) {
-	/*
-		mg := mailgun.NewMailgun(c.Domain, c.SecretApiKey, c.PublicApiKey)
-		m := mailgun.NewMessage(senderEmail, subject, body, recipEmail)
-		m.SetHtml(body)
-	*/
-
-	mg := mailgun.NewMailgun(c.Domain, c.SecretApiKey, c.PublicApiKey)
-	from := senderEmail
-
-	m := mg.NewMessage(from, subject, plain)
-	m.SetHtml(html)
-	m.AddRecipient(recipEmail)
-
-	_, id, err := mg.Send(m)
-	return id, err
 }
