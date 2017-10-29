@@ -245,7 +245,10 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 	if !cfg.DirectTcp &&
 		cfg.RemoteToLocal.Listen.Addr == "" &&
 		cfg.LocalToRemote.Listen.Addr == "" {
-		panic("nothing to do?!")
+		//panic("nothing to do?!")
+		// when starting an esshd, we just listen,
+		// no active outgoing connection.
+		return nil, nil, nil
 	}
 
 	if cfg.DirectTcp ||
