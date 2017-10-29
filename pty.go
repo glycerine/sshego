@@ -1,3 +1,6 @@
+// +build darwin linux
+// +build !windows,!nacl,!plan9
+
 package sshego
 
 /*
