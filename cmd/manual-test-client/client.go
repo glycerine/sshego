@@ -5,6 +5,7 @@ to manually test your setup.
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -38,7 +39,8 @@ func main() {
 		TofuAddIfNotKnown:    addNewHost,
 	}
 
-	channelToTcpServer, _, err := dc.Dial()
+	skipDownstream := false
+	channelToTcpServer, _, _, err := dc.Dial(context.TODO(), nil, skipDownstream)
 	panicOn(err)
 
 	confirmationPayload := "ping"
