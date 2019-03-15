@@ -25,6 +25,7 @@ func Test501BasicServerListenStartupAcceptAndShutdown(t *testing.T) {
 		go func() {
 			pp("bs.Accept starting")
 			_, aerr = bs.Accept(ctx)
+			_ = aerr
 			close(acceptDone)
 			pp("bs.Accept done and close(acceptDone) happened.")
 		}()

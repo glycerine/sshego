@@ -24,7 +24,7 @@ func Test100ExclusiveTcpPortAccess(t *testing.T) {
 		}()
 		select {
 		case when := <-gotLock:
-			panic(fmt.Sprintf("problem: simultaneously 2 holders of lock after", when.Sub(start)))
+			panic(fmt.Sprintf("problem: simultaneously 2 holders of lock after %v", when.Sub(start)))
 		case <-time.After(2000 * time.Millisecond):
 			cv.So(true, cv.ShouldEqual, true)
 			fmt.Printf("\n good: 2nd contender did not aquire lock after 2000 msec")
