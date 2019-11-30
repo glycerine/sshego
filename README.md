@@ -8,7 +8,7 @@ client and server protocols.
 However this library is minimalistic by
 design, cumbersome to figure out how to
 use with RSA keys, and needs additional code to
-support support tunneling
+support tunneling
 and receiving connections as an sshd.
 
 `sshego` bridges this usability gap,
@@ -80,7 +80,7 @@ than OpenVPN.
 
 [1] http://serverfault.com/questions/653211/ssh-tunneling-is-faster-than-openvpn-could-it-be
 
-In its principal use, sshego is the equivalent
+In its principal use, `sshego` is the equivalent
 to using the ssh client and giving `-L` and/or `-R`.
 It acts like an ssh client without a remote shell; it simply
 tunnels other TCP connections securely. There are
