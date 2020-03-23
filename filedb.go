@@ -6,6 +6,7 @@ import (
 	"github.com/glycerine/greenpack/msgp"
 	"io"
 	"os"
+	"runtime"
 )
 
 //go:generate greenpack
@@ -31,8 +32,10 @@ func NewFiledb(filepath string) (*Filedb, error) {
 		return nil, fmt.Errorf("filepath must not be empty string")
 	}
 	if filepath[0] != '/' && filepath[0] != '.' {
-		// help back-compat with old prefix style argument
-		filepath = "./" + filepath
+		if runtime.GOOS != "windows" {
+			// help back-compat with old prefix style argument
+			filepath = "./" + filepath
+		}
 	}
 
 	b := &Filedb{
