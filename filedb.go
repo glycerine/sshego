@@ -48,7 +48,7 @@ func NewFiledb(filepath string) (*Filedb, error) {
 	}
 
 	if sz == 0 {
-		return nil, fmt.Errorf("database file presetn but empty! '%v'", filepath)
+		return nil, fmt.Errorf("database file present but empty! '%v'", filepath)
 	}
 
 	// Open the my.db data file in your current directory.
