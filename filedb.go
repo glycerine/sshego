@@ -47,27 +47,29 @@ func NewFiledb(filepath string) (*Filedb, error) {
 		sz = fi.Size()
 	}
 
-	if sz > 0 {
-		// Open the my.db data file in your current directory.
-		// It will be created if it doesn't exist.
-		fd, err := os.OpenFile(b.filepath, os.O_RDWR|os.O_CREATE, 0600)
-		if err != nil {
-			wd, _ := os.Getwd()
-			// probably already open by another process.
-			return nil, fmt.Errorf("error opening Filedb: '%v' "+
-				"upon trying to open path '%s' in cwd '%s'", err, filepath, wd)
-		}
-		if err != nil {
-			return nil, err
-		}
-		defer fd.Close()
-		err = msgp.Decode(fd, b)
-
-		if err != nil {
-			return nil, err
-		}
-		//log.Printf("FILEDB opened successfully '%s'", filepath)
+	if sz == 0 {
+		return nil, fmt.Errorf("database file presetn but empty! '%v'", filepath)
 	}
+
+	// Open the my.db data file in your current directory.
+	// It will be created if it doesn't exist.
+	fd, err := os.OpenFile(b.filepath, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		wd, _ := os.Getwd()
+		// probably already open by another process.
+		return nil, fmt.Errorf("error opening Filedb: '%v' "+
+			"upon trying to open path '%s' in cwd '%s'", err, filepath, wd)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer fd.Close()
+	err = msgp.Decode(fd, b)
+
+	if err != nil {
+		return nil, err
+	}
+	p("FILEDB opened successfully '%s'", filepath)
 
 	return b, nil
 }
