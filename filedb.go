@@ -3,10 +3,12 @@ package sshego
 import (
 	"bytes"
 	"fmt"
-	"github.com/glycerine/greenpack/msgp"
 	"io"
 	"os"
 	"runtime"
+	"strings"
+
+	"github.com/glycerine/greenpack/msgp"
 )
 
 //go:generate greenpack
@@ -25,6 +27,9 @@ func (b *Filedb) Close() {
 		b.fd = nil
 	}
 }
+func convertSlashes(s string) string {
+	return strings.Replace(s, "/", "\\", -1)
+}
 
 func NewFiledb(filepath string) (*Filedb, error) {
 
@@ -36,6 +41,9 @@ func NewFiledb(filepath string) (*Filedb, error) {
 			// help back-compat with old prefix style argument
 			filepath = "./" + filepath
 		}
+	}
+	if runtime.GOOS == "windows" {
+		filepath = convertSlashes(filepath)
 	}
 
 	b := &Filedb{
