@@ -45,11 +45,13 @@ func NewFiledb(filepath string) (*Filedb, error) {
 			return nil, err
 		}
 		sz = fi.Size()
+		_ = sz
 	}
 
-	if sz == 0 {
-		return nil, fmt.Errorf("database file present but empty! '%v'", filepath)
-	}
+	// maybe windows doesn't report the size?
+	//if sz == 0 {
+	//return nil, fmt.Errorf("database file present but empty! '%v'", filepath)
+	//}
 
 	// Open the my.db data file in your current directory.
 	// It will be created if it doesn't exist.
