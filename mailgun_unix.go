@@ -4,7 +4,6 @@
 package sshego
 
 import (
-	"context"
 	"github.com/mailgun/mailgun-go"
 	//"github.com/shurcooL/go-goon"
 )
@@ -23,6 +22,6 @@ func (c *MailgunConfig) SendEmail(senderEmail, subject, plain, html, recipEmail 
 	m.SetHtml(html)
 	m.AddRecipient(recipEmail)
 
-	_, id, err := mg.Send(context.Background(), m)
+	_, id, err := mg.Send(m)
 	return id, err
 }
