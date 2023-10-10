@@ -107,7 +107,8 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp, halt)
-		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
+		cv.So(err.Error(), cv.ShouldContainSubstring, "rsa private key")
+		cv.So(err.Error(), cv.ShouldContainSubstring, "is encrypted, password required but not supplied.")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, pw, totp, halt)
@@ -116,7 +117,8 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		fmt.Printf("\n and test with only one auth method...\n")
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, rsaPath,
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", "", halt)
-		cv.So(err.Error(), cv.ShouldContainSubstring, "ssh: unable to authenticate")
+		cv.So(err.Error(), cv.ShouldContainSubstring, "rsa private key")
+		cv.So(err.Error(), cv.ShouldContainSubstring, "is encrypted, password required but not supplied.")
 
 		_, _, err = cliCfg.SSHConnect(ctx, cliCfg.KnownHosts, mylogin, "",
 			srvCfg.EmbeddedSSHd.Host, srvCfg.EmbeddedSSHd.Port, "", totp, halt)
