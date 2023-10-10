@@ -38,7 +38,8 @@ func main() {
 		TofuAddIfNotKnown:    addNewHost,
 	}
 
-	channelToTcpServer, _, err := dc.Dial()
+	ctx := context.Background()
+	channelToTcpServer, _, err := dc.Dial(ctx, nil, false)
 	panicOn(err)
 
 	confirmationPayload := "ping"
