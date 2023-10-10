@@ -43,6 +43,8 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		r1()
 		r2()
 		defer TempDirCleanup(srvCfg.Origdir, srvCfg.Tempdir)
+		//fmt.Printf("srvCfg.Tempdir = '%v'\n", srvCfg.Tempdir)
+
 		srvCfg.NewEsshd()
 		ctx := context.Background()
 		halt := ssh.NewHalter()
@@ -58,6 +60,7 @@ func Test102SSHdRequiresTripleAuth(t *testing.T) {
 		toptPath, qrPath, rsaPath, err := srvCfg.HostDb.AddUser(
 			mylogin, myemail, pw, "gosshtun", fullname, "")
 
+		//fmt.Printf("pw = '%v'\n", pw)
 		cv.So(err, cv.ShouldBeNil)
 
 		cv.So(strings.HasPrefix(toptPath, srvCfg.Tempdir), cv.ShouldBeTrue)
