@@ -53,10 +53,16 @@ func NewFiledb(filepath string) (*Filedb, error) {
 	if fileExists(filepath) {
 		fi, err := os.Stat(filepath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stat of filepath='%v' gave err='%v'", filepath, err)
 		}
 		sz = fi.Size()
 		_ = sz
+	} else {
+		return b, nil
+	}
+
+	if sz == 0 {
+		return b, nil
 	}
 
 	// maybe windows doesn't report the size?
@@ -80,7 +86,7 @@ func NewFiledb(filepath string) (*Filedb, error) {
 	err = msgp.Decode(fd, b)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("msgp.Decode returned err='%v'", err)
 	}
 	p("FILEDB opened successfully '%s'", filepath)
 

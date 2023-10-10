@@ -142,7 +142,7 @@ func (h *HostDb) generateHostKey() error {
 
 	p("\n bits = %v\n", bits)
 	host, _ := os.Hostname()
-	_, signer, err := GenRSAKeyPair(path, bits, host)
+	_, signer, err := GenRSAKeyPair(path, bits, host, "") // empty password for host key
 	if err != nil {
 		return err
 	}
@@ -195,12 +195,11 @@ func (h *HostDb) opendb() error {
 		panic("opendb() called on empty h.cfg.EmbeddedSSHdHostDbPath")
 	}
 	p("HostDb.opendb() has h.cfg.EmbeddedSSHdHostDbPath='%s'", h.cfg.EmbeddedSSHdHostDbPath)
+	err := h.gendir()
+	if err != nil {
+		return fmt.Errorf("HostDb.gendir() returned error = '%v'", err)
+	}
 	if h.db.HostDb == nil {
-		err := h.gendir()
-		if err != nil {
-			return err
-		}
-
 		filedb, err := NewFiledb(h.msgpath())
 		if err != nil {
 			return fmt.Errorf("HostDb.opendb: create newFiledb at '%s' failed: %v",
@@ -279,7 +278,7 @@ func (h *HostDb) adoptNewHostKeyFromPath(path string) (ssh.PublicKey, error) {
 		return nil, fmt.Errorf("error in adoptNewHostKeyFromPath: path '%s' does not exist", path)
 	}
 
-	sshPrivKey, err := LoadRSAPrivateKey(path)
+	sshPrivKey, err := LoadRSAPrivateKey(path, "") // empty passwd
 	if err != nil {
 		return nil, fmt.Errorf("error in adoptNewHostKeyFromPath: loading"+
 			" path '%s' with LoadRSAPrivateKey() resulted in error '%v'", path, err)
@@ -308,13 +307,11 @@ func (user *User) MatchingHashAndPw(password string) bool {
 // we admit. Since we are writing out
 // to file system paths that include the email,
 // we want to be restrictive.
-//
 var emailAddressREstring = `^([a-zA-Z0-9][\+-_.a-zA-Z0-9]{0,63})@([-_.a-zA-Z0-9]{1,255})$`
 var emailAddressRE = regexp.MustCompile(emailAddressREstring)
 
 // AddUser will use an existing extantRsaPath path to private key if provided, otherwise
 // we make a new private/public key pair.
-//
 func (h *HostDb) AddUser(mylogin, myemail, pw, issuer, fullname, extantPrivateKeyPath string) (toptPath, qrPath, rsaPath string, err error) {
 
 	p("AddUser mylogin:'%v' pw:'%v' myemail:'%v'", mylogin, pw, myemail)
@@ -396,7 +393,11 @@ func (h *HostDb) finishUserBuildout(user *User) (toptPath, qrPath, rsaPath strin
 			bits := h.cfg.BitLenRSAkeys // default 4096
 
 			var signer ssh.Signer
-			_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail)
+			pw := user.ClearPw
+			if h.cfg.SkipPassphrase {
+				pw = ""
+			}
+			_, signer, err = GenRSAKeyPair(rsaPath, bits, user.MyEmail, pw)
 			if err != nil {
 				return
 			}

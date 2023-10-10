@@ -1,5 +1,6 @@
 package sshego
 
+/*
 import (
 	cryptrand "crypto/rand"
 	"crypto/rsa"
@@ -7,11 +8,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/glycerine/sshego/xendor/github.com/glycerine/xcryptossh"
 )
 
-/*
+
    // WARNING: not implemented/done yet. TODO: finish this.
 
    // looking at
@@ -63,15 +65,15 @@ or:
 
 */
 
-// TODO: Finish this-- specified but password based
-// encryption not implemented.
+/* just added passwd formal arg to rsa.go instead
+
 // GenRSAKeyPairCrypt generates an RSA keypair of
 // length bits. If rsa_file != "", we write
 // the private key to rsa_file and the public
 // key to rsa_file + ".pub". If rsa_file == ""
 // the keys are not written to disk.
 // The private key is encrypted with the password.
-func GenRSAKeyPairCrypt(rsaFile string, bits int, password string) (priv *rsa.PrivateKey, sshPriv ssh.Signer, err error) {
+func GenRSAKeyPairCrypt(rsaFile string, bits int, passwd string) (priv *rsa.PrivateKey, sshPriv ssh.Signer, err error) {
 
 	privKey, err := rsa.GenerateKey(cryptrand.Reader, bits)
 	panicOn(err)
@@ -83,12 +85,18 @@ func GenRSAKeyPairCrypt(rsaFile string, bits int, password string) (priv *rsa.Pr
 
 	// write to disk
 	// save to pem: serialize private key
-	privBytes := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privKey),
-		},
-	)
+	pemBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privKey),
+	}
+	if passwd == "" {
+		// no password
+	} else {
+		// encrypt with password
+		pemBlock, err = x509.EncryptPEMBlock(cryptrand.Reader, pemBlock.Type, pemBlock.Bytes, []byte(passwd), x509.PEMCipherAES256)
+		panicOn(err)
+	}
+	privBytes := pem.EncodeToMemory(pemBlock)
 
 	sshPrivKey, err := ssh.ParsePrivateKey(privBytes)
 	panicOn(err)
@@ -108,13 +116,18 @@ func GenRSAKeyPairCrypt(rsaFile string, bits int, password string) (priv *rsa.Pr
 	return privKey, sshPrivKey, nil
 }
 
-// TODO: Finish this-- specified but password based
-// encryption not implemented.
 // LoadRSAPrivateKey reads a private key from path on disk.
-func LoadRSAPrivateKeyCrypt(path string, password string) (privkey ssh.Signer, err error) {
+func LoadRSAPrivateKeyCrypt(path string, passwd string) (privkey ssh.Signer, err error) {
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("got error '%s' trying to read path '%s'", err, path)
+	}
+
+	if strings.Contains(string(buf), "Proc-Type: 4,ENCRYPTED") {
+		if passwd == "" {
+			return nil, fmt.Errorf("rsa private key '%v' is encrypted, password required but not supplied.", path)
+		}
+		return ssh.ParsePrivateKeyWithPassphrase(buf, []byte(passwd))
 	}
 
 	privkey, err = ssh.ParsePrivateKey(buf)
@@ -124,3 +137,4 @@ func LoadRSAPrivateKeyCrypt(path string, password string) (privkey ssh.Signer, e
 
 	return privkey, err
 }
+*/

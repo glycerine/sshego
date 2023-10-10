@@ -162,7 +162,6 @@ func (h *KnownHosts) HostAlreadyKnown(hostname string, remote net.Addr, key ssh.
 //
 // passphrase and toptUrl (one-time password used in challenge/response)
 // are optional, but will be offered to the server if set.
-//
 func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, username string, keypath string, sshdHost string, sshdPort int64, passphrase string, toptUrl string, halt *ssh.Halter) (sshClient *ssh.Client, nc net.Conn, err error) {
 	cfg.Mut.Lock()
 	defer cfg.Mut.Unlock()
@@ -267,7 +266,7 @@ func (cfg *SshegoConfig) SSHConnect(ctxPar context.Context, h *KnownHosts, usern
 			useRSA = false
 		} else {
 			// client forward tunnel with this RSA key
-			privkey, err = LoadRSAPrivateKey(keypath)
+			privkey, err = LoadRSAPrivateKey(keypath, passphrase)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error in SshegoConfig.SSHConnect() to '%s@%s:%v', LoadRSAPrivateKey(keypath='%v') errored with: '%v'", username, sshdHost, sshdPort, keypath, err)
 			}
