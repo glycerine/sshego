@@ -6,15 +6,22 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	cv "github.com/glycerine/goconvey/convey"
 )
 
 // ud_test.go: unix domain socket test.
 
+// this can be flakey in batch run of all tests...
 func Test401UnixDomainSocketListening(t *testing.T) {
 
 	cv.Convey("Instead of -listen and -remote only forwarding via connections, if given a path instead of a port it should listen on a unix domain socket.", t, func() {
+
+		// since can be red under go test -v but green
+		// when run standalone, try sleeping for a few seconds to
+		// let ports reset?
+		time.Sleep(time.Second * 2)
 
 		// generate a random payload for the client to send to the server.
 		payloadByteCount := 50

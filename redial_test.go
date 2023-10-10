@@ -20,8 +20,14 @@ func init() {
 	debug.SetTraceback("all")
 }
 
+// this can be flakey in batch run of all tests...
 func Test050RedialCleanlyIsPossible(t *testing.T) {
 	cv.Convey("Unless cfg.SkipKeepAlive, if our client has done sub := clientSshegoCfg.ClientReconnectNeededTower.Subscribe() and is later disconnected from the ssh server, then: we receive a notification on sub that reconnect is needed. We should be able to redial cleanly and create a new direct tcp channel to resume communication with a downstream server.", t, func() {
+
+		// since can be red under go test -v but green
+		// when run standalone, try sleeping for a few seconds to
+		// let ports reset?
+		time.Sleep(time.Second * 2)
 
 		// start a simple TCP server  that is the target of the forward through the sshd,
 		// so we can confirm the client has made the connection.
